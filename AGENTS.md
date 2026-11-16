@@ -1,0 +1,67 @@
+# Repository instructions
+
+## Locked compatibility rule
+
+- The existing `.wos` binary format is locked. Preserve its layout, field encoding, size and read/write compatibility.
+- The original Windows BMHelper beta 4′ `.bmh` format is equally locked. Preserve its layout, field encoding and read/write compatibility at import and export. Use the original source and [format contract](docs/BMH_FORMAT.md) as the reference. DX projects use UTF-8 JSON independently of legacy BMH encoding. The unreleased application's incorrect encoding has no compatibility guarantee.
+- These format contracts are the fixed project invariants. Other instructions are defaults that may change to support user goals and human maintenance.
+- If a user instruction would change `.wos` or original `.bmh` compatibility, explain the exact change and its compatibility effects. Obtain explicit user confirmation before implementation. The initial conflicting instruction does not count as confirmation. Continue unrelated work while confirmation is pending.
+
+## Product boundaries
+
+- Keep the application offline and user data local. Do not add telemetry, uploads, update checks, remote assets or cloud services. Only the About dialog's project and credit links may open an external browser after a user click. Bundle their destinations at build time; do not fetch them at runtime.
+- Preserve Tauri isolation and the restrictive content security policy (CSP) in both release variants. About links use a command that accepts fixed link identifiers only. Do not expose arbitrary URL, shell or open capabilities, or broad inter-process communication (IPC) access. Keep the default WebView installation behavior.
+- External installers, build tools and dependencies may use the network. Bind test servers and DevTools to loopback addresses.
+- Use MIT for project code. Keep LICENSE and necessary credits in NOTICE. Use npm and Cargo metadata for dependencies; do not maintain duplicate license databases or source archives.
+
+## Implementation and validation
+
+- Follow existing module boundaries. Keep changes focused. Preserve unrelated work.
+- Keep TypeScript strict checks enabled. Validate external input at boundaries. Avoid `any`, unchecked assertions, non-null assertions and compiler suppressions.
+- Keep things in one function unless the logic is composable or reusable.
+- Validate unknown values once at the boundary that owns them. Pass typed values inward. Do not repeat object-shape checks or revalidate values already guaranteed by a schema, constructor or internal type.
+- Do not extract single-use helpers preemptively. Inline the logic unless the helper is reused, hides a complex boundary, or has a clear independent name that improves the caller.
+- Before adding complexity for a speculative or very unlikely race or security edge case, explain the concrete failure mode, likelihood and complexity cost to the user and get their buy-in. Do not expand scope for theoretical robustness.
+- Avoid `try`/`catch` where possible. Catch errors where the caller can recover or report them; otherwise let them propagate.
+- Test observable behavior. Use Node.js 26.x and npm. Use `npm ci` for clean installs. See the [development guide](docs/DEVELOPMENT.md) and [CI guide](docs/CI.md).
+- Default to debug for local builds, Rust tests, Clippy and native UI checks. Prioritize local build speed. Select release explicitly when needed.
+- CI uses debug native builds outside `main` and release frontend assets on every branch. Main supplies release packages and shared caches. Tags publish verified main artifacts without rebuilding. See [CI profiles and cache policy](docs/CI.md).
+- Before reporting a complete build, run typecheck, unit tests, both browser UI profiles and archive validation. Diagnose failures before packaging. State the platform and actual test coverage.
+- Run each browser UI profile separately with isolated user data and a 30-second hard timeout. Check menu visibility, device scale and canvas size. Use a numeric tolerance for fractional device pixel ratios (DPR). Browser checks do not check the native window.
+- CI runs on pushes to `main` and `dev` and on pull requests. Keep changes within existing workflows unless the user requests deployment or publishing. Obtain explicit authorization before pushing, tagging or publishing.
+
+## Branch strategy
+
+- Create `hotfix/*` branches from `main`. Merge the hotfix into `main`, then merge `main` into `dev`.
+- Create `feature/*` branches from `dev`. Merge the feature into `dev`, then merge `dev` into `main` for release.
+- Use the hotfix route for CI and release maintenance that must reach `main` before the next feature release.
+- Target `dev` when opening external contribution PRs, including PRs prepared by agents on behalf of contributors. Contributor branch names are unrestricted.
+- Maintainers manually change existing external PRs to target `dev` when necessary. Do not add automation to retarget those PRs.
+- See [Contributing](CONTRIBUTING.md) for contributor guidance. These routes do not grant permission to push, merge or publish.
+
+## Commit messages
+
+- Use one concise Conventional Commit line: `genre(module): contents`.
+- Include the module. Describe the change in the imperative mood. Do not add a body or footers.
+
+## Documentation and versioning
+
+- Maintain the root README in English, Chinese, Japanese and Korean. Keep user-facing content consistent across all four languages.
+- Maintain the changelog in English and Chinese only. Keep release entries consistent across both languages.
+- Release descriptions must use the matching English and Chinese changelog entries. Describe user-visible changes; omit build results, CI details and artifact inventories.
+- Include only changes that end users can see, interact with or hear. Keep entries brief. Describe the effect on everyday use.
+- Omit implementation choices, dependencies, developer tooling, internal refactors, documentation maintenance and minor optimizations. If unsure whether users care about a change, omit it.
+- Use Added and Fixed sections when applicable. Translate these headings in Chinese. Omit empty sections. Use blame and commit history to place changes in the appropriate release. Do not present old behavior as new.
+- Write `docs/` in English by default. Put architecture, formats, build/release procedures and other developer details there. Do not maintain translated copies of technical documents.
+- Keep original-language quotations or UI labels only when needed as reference evidence. Add an English explanation.
+- Use [ASD-STE100 guidance](.agents/skills/asd-ste100/SKILL.md) for English descriptions and instructions. Prefer short sentences, explicit actors and consistent terms. Preserve conditions, limits and uncertainty.
+- Apply the same clarity principles to Japanese and Korean descriptions. Keep natural grammar and established UI terms in each language. Do not apply English word-count rules to other languages. Use [Chinese technical writing](.agents/skills/zh-tech-writing/SKILL.md) for Chinese.
+- The root `package.json` contains the only editable application version. Use `npm version <major.minor.patch> --no-git-tag-version --ignore-scripts`. Update both changelogs. Run `npm run check:version`.
+- Bundle the version, full commit, dirty-tree marker and fixed UTC build time for About. See the [version policy](docs/VERSIONING.md).
+
+## Project skills
+
+- Use the relevant skills in [`.agents/skills/`](.agents/skills/README.md). Load only the skills needed for the task.
+- Repository constraints and explicit user instructions take precedence over generic skill advice. Prioritize human maintenance when choosing between valid implementations.
+- Keep upstream skills at their recorded submodule commits. Do not edit upstream files for project-specific rules.
+- Initialize missing submodules with the [setup guide](docs/SKILLS.md). Read the skill catalog for companion-skill references.

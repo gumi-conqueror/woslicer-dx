@@ -1,0 +1,24 @@
+{
+  "languages": [
+    {
+      "id": "en",
+      "label": "EN",
+      "docLang": "en"
+    },
+    {
+      "id": "zh",
+      "label": "中文",
+      "docLang": "zh-CN"
+    },
+    {
+      "id": "ja",
+      "label": "日本語",
+      "docLang": "ja"
+    },
+    {
+      "id": "ko",
+      "label": "한국어",
+      "docLang": "ko"
+    }
+  ]
+}

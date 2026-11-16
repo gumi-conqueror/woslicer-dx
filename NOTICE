@@ -1,0 +1,10 @@
+Credits
+
+Original tools: woslicer II/III by wosderge; Be-Music Helper by exclusion.
+
+Waveform peak helper: waveform-playlist by Naomi.
+https://github.com/naomiaro/waveform-playlist
+Copyright (c) 2015 Naomi. MIT license; see LICENSE.
+
+Ogg parsing: codec-parser by Ethan Halsall.
+Copyright 2020–2023 Ethan Halsall. LGPL-3.0-or-later.
