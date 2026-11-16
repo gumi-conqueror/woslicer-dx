@@ -52,7 +52,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^17.6.0",
     "oxfmt": "0.78.0",
-    "typescript": "^5.7.0",
+    "typescript": "^7.0.2",
     "typescript-eslint": "^8.72.2",
     "vite": "^8.3.7",
     "vitest": "^5.1.0",
