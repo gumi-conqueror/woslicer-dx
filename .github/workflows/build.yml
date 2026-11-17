@@ -1,0 +1,146 @@
+name: Build and test
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      all_platforms:
+        description: Validate all desktop platforms (always enabled on main)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  WOSLICER_BUILD_PROFILE: release
+
+concurrency:
+  # Build and publication runs have separate concurrency groups.
+  group: build-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  web:
+    name: Web (required)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: Use the source commit time for all build identities
+        run: echo "SOURCE_DATE_EPOCH=$(git show -s --format=%ct HEAD)" >> "$GITHUB_ENV"
+      - run: npm ci
+      - run: npm run check:quality
+      - run: npm test
+      - run: npm run build
+      - run: npm exec --no -- playwright install chromium --with-deps
+      - name: Test the production web output (isolated 30-second profiles)
+        run: npm run test:app-ui
+      - name: Archive and validate the tested web output
+        run: |
+          bash .github/scripts/package-web.sh
+          node scripts/release-artifacts.mjs record release/web web
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: woslicer-web-release-${{ github.sha }}
+          path: release/web/*
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: true
+          retention-days: 14
+      - name: Upload web diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: diagnostics-web-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            test-artifacts/
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  windows-x64:
+    # Preserve the required check name while main also warms the debug cache.
+    name: ${{ github.ref == 'refs/heads/main' && matrix.profile == 'debug' && 'Windows x64 (debug cache)' || 'Windows x64 (required)' }}
+    needs: web
+    runs-on: windows-2025
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: ${{ fromJSON(github.ref == 'refs/heads/main' && '["release", "debug"]' || '["debug"]') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/build-desktop
+        with:
+          platform: windows-x64
+          target: x86_64-pc-windows-msvc
+          profile: ${{ matrix.profile }}
+
+  additional-desktop:
+    name: ${{ matrix.platform }}
+    needs: web
+    if: github.ref == 'refs/heads/main' || inputs.all_platforms
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-arm64
+            os: windows-11-arm
+            target: aarch64-pc-windows-msvc
+          - platform: linux-x64
+            os: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+            bundles: deb,appimage
+          - platform: linux-arm64
+            os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            bundles: deb,appimage
+          - platform: macos-arm64
+            os: macos-15
+            target: aarch64-apple-darwin
+            bundles: app,dmg
+          - platform: macos-x64
+            os: macos-15-intel
+            target: x86_64-apple-darwin
+            bundles: app,dmg
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/build-desktop
+        with:
+          platform: ${{ matrix.platform }}
+          target: ${{ matrix.target }}
+          profile: ${{ github.ref == 'refs/heads/main' && 'release' || 'debug' }}
+          bundles: ${{ matrix.bundles || '' }}
+
+  required:
+    name: Required release checks
+    if: always()
+    needs: [web, windows-x64, additional-desktop]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require all selected targets to succeed
+        env:
+          WEB_RESULT: ${{ needs.web.result }}
+          WINDOWS_RESULT: ${{ needs.windows-x64.result }}
+          OTHER_RESULT: ${{ needs.additional-desktop.result }}
+        run: |
+          test "$WEB_RESULT" = success
+          test "$WINDOWS_RESULT" = success
+          [[ "$OTHER_RESULT" == success || "$OTHER_RESULT" == skipped ]]
