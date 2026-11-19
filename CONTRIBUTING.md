@@ -2,6 +2,8 @@
 
 ## Branches and pull requests
 
+The GitHub default branch is `dev`. It is the integration branch for contributions. The `main` branch supplies releases.
+
 | Work | Start from | Merge route |
 | --- | --- | --- |
 | Hotfix | `main` | `hotfix/*` → `main` → `dev` |
@@ -15,7 +17,7 @@ For a feature, open a PR against `dev`. Merge `dev` into `main` through a releas
 ## External contributions
 
 Start external contributions from `dev`. Open the PR against this repository's `dev` branch, including when an agent prepares the contribution.
-External contributors can use any source branch name. Check the PR base explicitly because GitHub can select the default branch, `main`.
+External contributors can use any source branch name. New PRs default to `dev`. Check the base when you use an older fork or compare link.
 
 Maintainers manually change existing external PRs to target `dev` when necessary. No workflow automatically changes their target branches.
 

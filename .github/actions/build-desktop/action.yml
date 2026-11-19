@@ -54,8 +54,8 @@ runs:
         workspaces: src-tauri -> target
         shared-key: tauri-${{ inputs.profile }}-${{ runner.os }}-${{ inputs.target }}
         env-vars: CARGO CC CFLAGS CXX CMAKE RUST MACOSX_DEPLOYMENT_TARGET
-        # Default-branch caches are readable by PRs and dev.
-        save-if: ${{ github.ref == 'refs/heads/main' }}
+        # Dev supplies shared debug caches. Main retains its release caches.
+        save-if: ${{ github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main' }}
     - name: Build frontend and generate identity before Cargo
       shell: bash
       run: npm run build:app:tauri -- --release
