@@ -19,12 +19,7 @@ done
 unzip -t "$web_archive"
 unzip -t "$portable_archive"
 
-(
-  cd release-assets
-  find . -maxdepth 1 -type f ! -name SHA256SUMS -print0 |
-    sort -z |
-    xargs -0 sha256sum > SHA256SUMS
-)
+node scripts/release-downloads.mjs
 
 printf 'title=%s %s\n' "$name" "$version" >> "$GITHUB_OUTPUT"
 

@@ -53,6 +53,31 @@ Dev supplies the shared Windows x64 debug cache. Manual builds on dev can also s
 Manually selected debug jobs on other platforms can start with cold caches.
 GitHub scopes cache entries by ref, including PR merge refs.
 
+### Reuse validation for a dev-to-main PR
+
+Only a PR from this repository's `dev` branch to `main` can reuse source checks.
+Contribution PRs, dev pushes, main pushes and manual runs execute their normal checks.
+Dev remains the integration gate and debug cache producer. Main still builds every release target.
+
+`scripts/ci-reuse.mjs` requires all of the following evidence:
+
+- The latest dev push run at the exact PR head commit completed successfully within 24 hours.
+- Quality, Web, Windows x64 and the aggregate check all succeeded in that run attempt.
+- The actual PR merge tree equals the tested dev tree. A matching head tree alone is insufficient.
+- A receipt from that attempt matches the tree, Node version and Ubuntu quality runner image.
+
+The tree comparison covers workflows, dependency locks, the pinned Rust compiler, Playwright version,
+runner labels and build profiles. Both dev and PR validation use release frontend assets and Windows debug builds.
+The comparison does not assert identical hosted Windows VM images or identical package bytes.
+The short reuse window limits environment drift. Main performs fresh release validation before publication.
+
+The quality job always checks the current commit identity and application version.
+If evidence matches, it reuses source checks and skips the Web and Windows jobs.
+It does not create packages for the new PR commit. The aggregate check verifies this path and links the source run.
+Missing receipts, changed inputs, failed runs, pending runs or API errors trigger normal checks.
+CI does not wait for a pending dev run. No external action or separate cache database manages this decision.
+A manual run always performs fresh validation.
+
 ### Rust cache scope and invalidation
 
 The root `rust-toolchain.toml` pins Rust for local work and CI. Dependabot can propose compiler updates.
@@ -122,6 +147,7 @@ When adding or removing a platform, update both the build matrix and that script
 Keep the runner matrix in YAML so maintainers can inspect it directly in the workflow.
 
 The Required release checks job requires quality, Web, Windows x64 and every selected additional platform to succeed.
+For an eligible dev-to-main PR, it can instead accept the verified reuse result described above.
 Additional platforms run on `main` or when a manual run selects `all_platforms`.
 Their failures block the run and publication. PR and `dev` runs normally skip those platforms.
 The workflow uploads successful packages and failure diagnostics as artifacts.
@@ -146,7 +172,12 @@ It never substitutes a PR build, a debug artifact or another commit.
 The source job returns a run ID and exact artifact IDs. Publication and Pages consume that same source run.
 Each artifact includes a manifest with the commit, version, profile, platform, target, run ID, attempt and package checksums.
 The workflow verifies those fields and SHA-256 hashes before publication or deployment.
-Packages must come from a clean checkout and the same run attempt. The release includes manifests and checksums.
+Packages must come from a clean checkout and the same run attempt.
+Public downloads contain the application packages and one optional `<name>-<version>-verification.zip`.
+That archive contains all platform manifests and `SHA256SUMS`. Application packages retain their LICENSE and NOTICE files.
+`scripts/release-downloads.mjs` prepares this layout after source verification and checks every verification archive entry.
+The publication script downloads and compares the new archive before removing legacy loose metadata from an unpublished draft.
+Internal build artifacts retain their manifests for release verification. GitHub adds source archives separately.
 
 Artifacts expire after 14 days. If they are missing, expired or from mixed attempts, the release stops without rebuilding.
 Rerun all jobs in the original main build at the tag commit, then rerun the release workflow.
@@ -158,9 +189,16 @@ The release description contains those English and Chinese user-facing changes, 
 or artifact summaries. Missing, duplicate or empty entries fail release preparation before publication.
 Preview the description with `node scripts/release-notes.mjs`.
 
-The workflow creates an immediately public **prerelease**, not a draft.
-Reruns update matching assets and convert an existing draft to a public
-prerelease. It does not mark the prerelease as the latest stable release.
+The workflow uploads assets to a temporary draft, verifies their names and GitHub SHA-256 digests,
+then publishes a public **prerelease**. Successful runs do not leave a draft.
+This order supports [immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases).
+Publishing locks the assets and tag. Existing immutable releases, including v1.0.2, cannot adopt a new attachment layout.
+Do not delete and recreate a published release to work around that restriction.
+
+Reruns can resume an unpublished draft. For a published release, they only verify that the expected assets already exist with identical bytes.
+Verification archives use a fixed ZIP timestamp so reruns produce the same bytes.
+A mismatch stops publication. A matching rerun preserves the release's current prerelease and Latest flags.
+New releases are not marked as Latest until a maintainer promotes them.
 
 After publishing the release, the workflow deploys the tested web ZIP to the existing Cloudflare Pages Direct Upload project. Pages is not connected to the Git repository:
 GitHub Actions uploads the prebuilt files through Wrangler and the Cloudflare API.

@@ -27,7 +27,12 @@ jobs:
     name: Quality (required)
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
     outputs:
+      reused: ${{ steps.reuse.outputs.reused }}
+      source-url: ${{ steps.reuse.outputs.source-url }}
       playwright-image: ${{ steps.browser.outputs.image }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -37,9 +42,34 @@ jobs:
         with:
           node-version-file: .node-version
           cache: npm
+      - name: Check current commit identity and application version
+        run: |
+          export SOURCE_DATE_EPOCH=$(git show -s --format=%ct HEAD)
+          node scripts/tauri-build-info.mjs
+          node scripts/tauri-build-info.mjs --check
+          node scripts/check-version.js
+      - name: Find equivalent successful dev validation
+        id: reuse
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/ci-reuse.mjs probe
       - run: npm ci
+        if: steps.reuse.outputs.reused != 'true'
       - run: npm run check:quality
+        if: steps.reuse.outputs.reused != 'true'
       - run: npm test
+        if: steps.reuse.outputs.reused != 'true'
+      - name: Record the dev validation environment
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+        run: node scripts/ci-reuse.mjs record
+      - name: Upload the dev validation environment
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: validation-environment-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/validation-environment.json
+          if-no-files-found: error
+          retention-days: 2
       - name: Select the browser image from the dependency lockfile
         id: browser
         run: |
@@ -48,6 +78,7 @@ jobs:
   web:
     name: Web (required)
     needs: quality
+    if: needs.quality.outputs.reused != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     container:
@@ -97,6 +128,7 @@ jobs:
   windows-x64:
     name: Windows x64 (required)
     needs: quality
+    if: needs.quality.outputs.reused != 'true'
     runs-on: windows-2025
     timeout-minutes: 60
     steps:
@@ -158,12 +190,24 @@ jobs:
     steps:
       - name: Require all selected targets to succeed
         env:
+          REUSED: ${{ needs.quality.outputs.reused }}
+          SOURCE_URL: ${{ needs.quality.outputs.source-url }}
+          INTERNAL_RELEASE_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'dev' && github.event.pull_request.head.repo.full_name == github.repository }}
           QUALITY_RESULT: ${{ needs.quality.result }}
           WEB_RESULT: ${{ needs.web.result }}
           WINDOWS_RESULT: ${{ needs.windows-x64.result }}
           OTHER_RESULT: ${{ needs.additional-desktop.result }}
         run: |
           test "$QUALITY_RESULT" = success
-          test "$WEB_RESULT" = success
-          test "$WINDOWS_RESULT" = success
+          if [[ "$REUSED" == true ]]; then
+            test "$INTERNAL_RELEASE_PR" = true
+            test -n "$SOURCE_URL"
+            test "$WEB_RESULT" = skipped
+            test "$WINDOWS_RESULT" = skipped
+            test "$OTHER_RESULT" = skipped
+            printf 'Source validation reused: %s\n' "$SOURCE_URL" >> "$GITHUB_STEP_SUMMARY"
+          else
+            test "$WEB_RESULT" = success
+            test "$WINDOWS_RESULT" = success
+          fi
           [[ "$OTHER_RESULT" == success || "$OTHER_RESULT" == skipped ]]
