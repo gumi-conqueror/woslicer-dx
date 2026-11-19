@@ -108,8 +108,9 @@ Hosted CI validates compilation and packages. It does not validate native macOS 
 
 Actions use fixed SHAs. The workflows define triggers, runners, permissions
 and artifact transfer. The scripts in [`.github/scripts/`](../.github/scripts/)
-validate and collect native packages, archive the Web build, and prepare or
-publish releases.
+validate and collect native packages and prepare or publish releases.
+`scripts/package-web.mjs` uses the existing `fflate` dependency to archive the tested Web output.
+It checks the entry list and compares every unpacked file with its source. It does not require system ZIP tools.
 
 For artifact selection, manifests and checksums, start at [`scripts/release-artifacts.mjs`](../scripts/release-artifacts.mjs).
 Its `resolve`, `record` and `verify` commands own the transfer contract between build and release.
