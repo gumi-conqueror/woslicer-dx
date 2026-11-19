@@ -40,6 +40,10 @@ The shared desktop action runs these steps:
 5. Build static Tauri bundles with that profile.
 6. Check native package metadata.
 
+Linux installs the listed build dependencies without recommended packages.
+On the x64 runner, the action selects the official Ubuntu archive instead of the regional mirror list.
+A regional mirror took over 23 minutes to download dependencies in the 1.0.2 build. ARM64 keeps its Ubuntu ports source.
+
 Swatinem/rust-cache caches Cargo registry and target dependencies per
 OS, target and profile. Debug and release dependencies are not interchangeable.
 Tests, Clippy and packaging use the same profile within each job. The cache does not replace checks.
