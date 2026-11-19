@@ -9,6 +9,7 @@ import {
 } from 'element-plus';
 import { shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
+import type { ChromeKey } from '../../core/messages';
 import type { BuildIdentity } from '../../platform/contracts';
 import { getPlatform } from '../../platform';
 import { creditLinks, type AboutLink } from '../../platform/about-links';
@@ -18,6 +19,16 @@ const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>();
 // Build identity comes from the parent; closing flows through update:modelValue.
 const { t } = useI18n();
 const linkError = shallowRef(false);
+const credits = {
+  woslicer: { label: 'woslicer II/III — wosderge', description: 'aboutWoslicerCredit' },
+  bmhelper: { label: 'Be-Music Helper — exclusion', description: 'aboutBmhelperCredit' },
+  waveformPlaylist: {
+    label: 'waveform-playlist — Naomi',
+    description: 'aboutWaveformPlaylistCredit',
+  },
+  codecParser: { label: 'codec-parser — Ethan Halsall', description: 'aboutCodecParserCredit' },
+} satisfies Record<keyof typeof creditLinks, { label: string; description: ChromeKey }>;
+
 function openLink(event: MouseEvent, link: AboutLink): void {
   if (getPlatform().kind !== 'tauri') return;
   event.preventDefault();
@@ -71,32 +82,17 @@ function openLink(event: MouseEvent, link: AboutLink): void {
     </template>
     <h3>{{ t('chrome.aboutCredits') }}</h3>
     <ul class="credits">
-      <li>
+      <li
+        v-for="(credit, id) in credits"
+        :key="id"
+      >
         <a
-          :href="creditLinks.woslicer"
+          :href="creditLinks[id]"
           target="_blank"
           rel="noopener noreferrer"
-          @click="openLink($event, 'woslicer')"
-          >woslicer II/III — wosderge</a
-        ><br />{{ t('chrome.aboutWoslicerCredit') }}
-      </li>
-      <li>
-        <a
-          :href="creditLinks.bmhelper"
-          target="_blank"
-          rel="noopener noreferrer"
-          @click="openLink($event, 'bmhelper')"
-          >Be-Music Helper — exclusion</a
-        ><br />{{ t('chrome.aboutBmhelperCredit') }}
-      </li>
-      <li>
-        <a
-          :href="creditLinks.waveformPlaylist"
-          target="_blank"
-          rel="noopener noreferrer"
-          @click="openLink($event, 'waveformPlaylist')"
-          >waveform-playlist</a
-        ><br />{{ t('chrome.aboutWaveformPlaylistCredit') }}
+          @click="openLink($event, id)"
+          >{{ credit.label }}</a
+        ><br />{{ t(`chrome.${credit.description}`) }}
       </li>
     </ul>
     <p class="link-note">{{ t('chrome.aboutExternalLinks') }}</p>

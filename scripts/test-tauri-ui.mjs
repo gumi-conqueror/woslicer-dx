@@ -7,6 +7,7 @@ import { platform } from 'node:os';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { resolveBuildProfile } from './build-profile.mjs';
+import creditLinks from '../src/platform/about-links.json' with { type: 'json' };
 
 // Keep natural OS scaling for low and force DPR 2 for high.
 const PROFILES = [
@@ -242,8 +243,9 @@ async function verifyProfile(profile, client, runDir) {
       if (!bounds || bounds.bottom > innerHeight || bounds.top < 0) {
         throw new Error('About close button is outside the native viewport');
       }
-      const links = Array.from(dialog.querySelectorAll('a')).map(a => a.href);
-      if (!links.includes('https://github.com/naomiaro/waveform-playlist') || links.length < 3) {
+      const links = Array.from(dialog.querySelectorAll('.credits a')).map(a => a.href);
+      const expectedLinks = ${JSON.stringify(Object.values(creditLinks))};
+      if (links.length !== expectedLinks.length || expectedLinks.some(url => !links.includes(url))) {
         throw new Error('About credit links are missing');
       }
       try {
