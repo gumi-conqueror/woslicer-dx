@@ -9,7 +9,8 @@ import {
   ElDropdown,
   ElDropdownItem,
 } from 'element-plus';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { clearMocks, mockIPC } from '@tauri-apps/api/mocks';
 import DocumentOptions from '../../src/app/components/DocumentOptions.vue';
 import EditorToolbar from '../../src/app/components/EditorToolbar.vue';
 import WorkspacePanels from '../../src/app/components/WorkspacePanels.vue';
@@ -28,6 +29,9 @@ import en from '../../src/i18n/en.json';
 import { workspaceKey } from '../../src/workspace/workspace';
 import { fixture } from '../app/workspace-fixture';
 import BMHelperPanel from '../../src/bmhelper/BMHelperPanel.vue';
+import { creditLinks } from '../../src/platform/about-links';
+import * as platformApi from '../../src/platform';
+import { createTauriPlatform } from '../../src/platform/tauri';
 
 function setup() {
   const pinia = createPinia();
@@ -267,13 +271,50 @@ describe('application controls', () => {
       expect(wrapper.text()).toContain('modified working tree');
       expect(wrapper.text()).toContain('v0.3.0');
       expect(wrapper.text()).toContain('Project link unavailable in this local build.');
-      expect(wrapper.findAll('a').map((link) => link.attributes('href'))).toEqual([
-        'https://cerebralmuddystream.nekokan.dyndns.info/',
-        'https://excln.github.io/bmhelper.html',
-        'https://github.com/naomiaro/waveform-playlist',
+      const links = wrapper.findAll('.credits a');
+      expect(links.map((link) => link.text())).toEqual([
+        'woslicer II/III — wosderge',
+        'Be-Music Helper — exclusion',
+        'waveform-playlist — Naomi',
+        'codec-parser — Ethan Halsall',
       ]);
+      expect(links.map((link) => link.attributes('href'))).toEqual(Object.values(creditLinks));
+      for (const link of links) {
+        expect(link.attributes('target')).toBe('_blank');
+        expect(link.attributes('rel')).toBe('noopener noreferrer');
+      }
+      expect(wrapper.text()).toContain('LGPL-3.0-or-later');
     } finally {
       wrapper.unmount();
+      instance.dispose();
+    }
+  });
+  it('opens every About credit through its fixed native identifier', async () => {
+    const instance = setup();
+    vi.spyOn(platformApi, 'getPlatform').mockReturnValue(createTauriPlatform());
+    const calls: { command: string; payload: unknown }[] = [];
+    mockIPC((command, payload) => {
+      calls.push({ command, payload });
+    });
+    const wrapper = mount(AboutDialog, {
+      props: { modelValue: true, identity: null },
+      global: {
+        ...instance.global,
+        stubs: { ElDialog: { template: '<div><slot /><slot name="footer" /></div>' } },
+      },
+    });
+    try {
+      for (const [id, url] of Object.entries(creditLinks)) {
+        const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+        wrapper.get(`a[href="${url}"]`).element.dispatchEvent(event);
+        await nextTick();
+        expect(event.defaultPrevented).toBe(true);
+        expect(calls.at(-1)).toEqual({ command: 'open_about_link', payload: { link: id } });
+      }
+      expect(calls).toHaveLength(Object.keys(creditLinks).length);
+    } finally {
+      wrapper.unmount();
+      clearMocks();
       instance.dispose();
     }
   });

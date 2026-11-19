@@ -178,7 +178,8 @@
     "aboutCredits": "クレジット",
     "aboutWoslicerCredit": "原版アプリケーション。",
     "aboutBmhelperCredit": "原版 MIDI 分割ツール。",
-    "aboutWaveformPlaylistCredit": "Naomi のコードを MIT ライセンスの下で改編した波形ピーク処理。",
+    "aboutWaveformPlaylistCredit": "MIT ライセンスの下で改編した波形ピーク処理。",
+    "aboutCodecParserCredit": "Ogg ストリーム解析（LGPL-3.0-or-later）。",
     "aboutExternalLinks": "リンクは外部ブラウザーまたは新しいタブで開きます。アプリがこれらのサイトに自動で接続することはありません。",
     "aboutLinkFailed": "リンクを開けませんでした。"
   },

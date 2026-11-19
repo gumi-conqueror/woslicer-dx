@@ -178,7 +178,8 @@
     "aboutCredits": "크레딧",
     "aboutWoslicerCredit": "원본 애플리케이션.",
     "aboutBmhelperCredit": "원본 MIDI 분할 도구.",
-    "aboutWaveformPlaylistCredit": "Naomi의 코드를 MIT 라이선스에 따라 수정한 파형 피크 처리.",
+    "aboutWaveformPlaylistCredit": "MIT 라이선스에 따라 수정한 파형 피크 처리.",
+    "aboutCodecParserCredit": "Ogg 스트림 파싱(LGPL-3.0-or-later).",
     "aboutExternalLinks": "링크는 외부 브라우저 또는 새 탭에서 열립니다. 앱은 이 사이트에 자동으로 연결하지 않습니다.",
     "aboutLinkFailed": "링크를 열 수 없습니다."
   },

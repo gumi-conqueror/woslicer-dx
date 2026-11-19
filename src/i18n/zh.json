@@ -178,7 +178,8 @@
     "aboutCredits": "致谢",
     "aboutWoslicerCredit": "原版应用。",
     "aboutBmhelperCredit": "原版 MIDI 分割工具。",
-    "aboutWaveformPlaylistCredit": "波形峰值组件，依据 MIT 许可改编自 Naomi 的代码。",
+    "aboutWaveformPlaylistCredit": "依据 MIT 许可改编的波形峰值组件。",
+    "aboutCodecParserCredit": "Ogg 流解析组件（LGPL-3.0-or-later）。",
     "aboutExternalLinks": "这些链接会打开外部浏览器或新标签页。应用不会自动连接这些站点。",
     "aboutLinkFailed": "无法打开链接。"
   },
