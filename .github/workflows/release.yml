@@ -64,6 +64,7 @@ jobs:
           SOURCE_RUN_ID: ${{ needs.source.outputs.run-id }}
           SOURCE_RUN_ATTEMPT: ${{ needs.source.outputs.run-attempt }}
         run: node scripts/release-artifacts.mjs verify release-assets
+      - run: npm ci --ignore-scripts
       - name: Verify release assets and prepare release notes
         id: prepare
         run: bash .github/scripts/prepare-release.sh
