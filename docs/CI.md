@@ -20,12 +20,18 @@ The tag-based release workflow consumes its verified artifacts without rebuildin
 | macOS Intel | macos-15-intel | DMG | Required when selected |
 
 CI builds production frontend assets on every branch. Native jobs use debug outside `main`.
-Main builds all release targets and a separate Windows x64 debug job. All Node setup steps use Node 26.x.
-The debug job produces the cache that PR and `dev` checks consume. It does not supply release packages.
+Main builds all release targets. Dev builds Windows x64 debug and supplies its cache to PR checks.
+Main does not need a separate debug build. All Node setup steps use Node 26.x.
 Static debug Tauri builds keep the application isolation and CSP. They do not use a development server.
 
-Web runs lint, format checks, typecheck, both test suites, release build,
-both UI profiles, and ZIP integrity validation. Desktop jobs run after web succeeds. The shared desktop action runs these steps:
+The quality job runs lint, format checks, typecheck and all JavaScript test suites.
+After quality checks pass, Web and the selected desktop jobs run in parallel.
+Web runs the release build, both UI profiles and ZIP integrity validation.
+Its official Playwright container includes the browsers and system dependencies. The image version comes from `package-lock.json`.
+The job installs Node 26.x and the locked npm dependencies inside that container. It does not install browser dependencies through apt.
+The final required check waits for quality, Web and every selected desktop target.
+
+The shared desktop action runs these steps:
 
 1. Install system dependencies and the pinned Rust toolchain.
 2. Generate frontend build identity before Cargo.
@@ -34,12 +40,16 @@ both UI profiles, and ZIP integrity validation. Desktop jobs run after web succe
 5. Build static Tauri bundles with that profile.
 6. Check native package metadata.
 
+Linux installs the listed build dependencies without recommended packages.
+On the x64 runner, the action selects the official Ubuntu archive instead of the regional mirror list.
+A regional mirror took over 23 minutes to download dependencies in the 1.0.2 build. ARM64 keeps its Ubuntu ports source.
+
 Swatinem/rust-cache caches Cargo registry and target dependencies per
 OS, target and profile. Debug and release dependencies are not interchangeable.
 Tests, Clippy and packaging use the same profile within each job. The cache does not replace checks.
-Every desktop job can restore a compatible cache. Only successful `main` jobs
-save new Rust cache entries. PR and `dev` builds only read Rust caches. Tags do not compile Rust.
-Main supplies release caches for all native targets and a debug cache for Windows x64.
+Every desktop job can restore a compatible cache. Successful `dev` jobs save debug caches.
+Successful `main` jobs save release caches for all native targets. PR jobs only read Rust caches. Tags do not compile Rust.
+Dev supplies the shared Windows x64 debug cache. Manual builds on dev can also supply debug caches for other platforms.
 Manually selected debug jobs on other platforms can start with cold caches.
 GitHub scopes cache entries by ref, including PR merge refs.
 
@@ -67,13 +77,15 @@ PR runs can also restore caches from their base branch.
 A cache written under `refs/pull/<number>/merge` is available only to that PR's later runs.
 It is not available to `dev`, `main`, another PR or a release tag.
 Default-branch caches can serve all these consumers. Cache keys cannot grant broader access.
-This repository uses `main` as its default branch and sole Rust cache writer.
-Update the save condition if the default branch changes.
+This repository uses `dev` as its default branch. Dev writes the debug caches that contribution PRs can restore.
+Main can restore its own release caches. A new cache key cannot make main's caches available to dev.
+The save condition permits these two branches. PR builds do not write shared Rust caches.
 
-After this configuration reaches `main`, its first successful build creates shared caches for all desktop targets.
-That first build may be cold. New compiler versions or evicted entries also require a cold build.
+The first dev build after the default branch changes may have a cold cache.
+New compiler versions or evicted entries also require a cold build.
 To populate or refresh missing entries, select **Build and test** in Actions.
-Select **Run workflow**, choose `main`, and start the run.
+Choose `dev` for debug caches or `main` for release caches. Start the run.
+Select `all_platforms` on dev only when you need additional debug targets.
 Manual runs validate and archive builds. They do not publish a release or deploy Pages.
 Existing PR-scoped caches can remain until GitHub expires them. They do not become shared caches.
 
@@ -100,15 +112,16 @@ Hosted CI validates compilation and packages. It does not validate native macOS 
 
 Actions use fixed SHAs. The workflows define triggers, runners, permissions
 and artifact transfer. The scripts in [`.github/scripts/`](../.github/scripts/)
-validate and collect native packages, archive the Web build, and prepare or
-publish releases.
+validate and collect native packages and prepare or publish releases.
+`scripts/package-web.mjs` uses the existing `fflate` dependency to archive the tested Web output.
+It checks the entry list and compares every unpacked file with its source. It does not require system ZIP tools.
 
 For artifact selection, manifests and checksums, start at [`scripts/release-artifacts.mjs`](../scripts/release-artifacts.mjs).
 Its `resolve`, `record` and `verify` commands own the transfer contract between build and release.
 When adding or removing a platform, update both the build matrix and that script's `targets` list.
 Keep the runner matrix in YAML so maintainers can inspect it directly in the workflow.
 
-The Required release checks job requires web, Windows x64 and every selected additional platform to succeed.
+The Required release checks job requires quality, Web, Windows x64 and every selected additional platform to succeed.
 Additional platforms run on `main` or when a manual run selects `all_platforms`.
 Their failures block the run and publication. PR and `dev` runs normally skip those platforms.
 The workflow uploads successful packages and failure diagnostics as artifacts.
@@ -172,8 +185,8 @@ Pinned skill submodules remain under manual review.
 
 Dependabot alerts, security-update PRs and scheduled version-update PRs are separate features.
 Repository settings control alerts and security updates. This configuration does not enable those settings.
-Security-update PRs target the default branch, `main`, regardless of the version-update target.
-After a security fix merges into main, merge main into dev. See [Contributing](../CONTRIBUTING.md).
+Security-update PRs target the default branch, `dev`, regardless of the version-update target.
+Release validated security fixes through the dev-to-main route. Urgent maintainer hotfixes can use the main-to-dev route in [Contributing](../CONTRIBUTING.md).
 The configuration takes effect after it reaches the default branch. Referenced manifests must also exist on dev.
 
 See [Dependabot options](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference)

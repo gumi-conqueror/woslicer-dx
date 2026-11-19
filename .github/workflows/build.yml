@@ -23,10 +23,39 @@ concurrency:
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
+  quality:
+    name: Quality (required)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      playwright-image: ${{ steps.browser.outputs.image }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - run: npm run check:quality
+      - run: npm test
+      - name: Select the browser image from the dependency lockfile
+        id: browser
+        run: |
+          node -e 'const version = require("./package-lock.json").packages["node_modules/playwright"].version; console.log(`image=mcr.microsoft.com/playwright:v${version}-noble`)' >> "$GITHUB_OUTPUT"
+
   web:
     name: Web (required)
+    needs: quality
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    container:
+      image: ${{ needs.quality.outputs.playwright-image }}
+      options: --user 1001 --ipc=host
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -38,15 +67,12 @@ jobs:
       - name: Use the source commit time for all build identities
         run: echo "SOURCE_DATE_EPOCH=$(git show -s --format=%ct HEAD)" >> "$GITHUB_ENV"
       - run: npm ci
-      - run: npm run check:quality
-      - run: npm test
       - run: npm run build
-      - run: npm exec --no -- playwright install chromium --with-deps
       - name: Test the production web output (isolated 30-second profiles)
         run: npm run test:app-ui
       - name: Archive and validate the tested web output
         run: |
-          bash .github/scripts/package-web.sh
+          node scripts/package-web.mjs
           node scripts/release-artifacts.mjs record release/web web
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -69,15 +95,10 @@ jobs:
           retention-days: 7
 
   windows-x64:
-    # Preserve the required check name while main also warms the debug cache.
-    name: ${{ github.ref == 'refs/heads/main' && matrix.profile == 'debug' && 'Windows x64 (debug cache)' || 'Windows x64 (required)' }}
-    needs: web
+    name: Windows x64 (required)
+    needs: quality
     runs-on: windows-2025
     timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        profile: ${{ fromJSON(github.ref == 'refs/heads/main' && '["release", "debug"]' || '["debug"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -86,11 +107,11 @@ jobs:
         with:
           platform: windows-x64
           target: x86_64-pc-windows-msvc
-          profile: ${{ matrix.profile }}
+          profile: ${{ github.ref == 'refs/heads/main' && 'release' || 'debug' }}
 
   additional-desktop:
     name: ${{ matrix.platform }}
-    needs: web
+    needs: quality
     if: github.ref == 'refs/heads/main' || inputs.all_platforms
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
@@ -131,16 +152,18 @@ jobs:
   required:
     name: Required release checks
     if: always()
-    needs: [web, windows-x64, additional-desktop]
+    needs: [quality, web, windows-x64, additional-desktop]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Require all selected targets to succeed
         env:
+          QUALITY_RESULT: ${{ needs.quality.result }}
           WEB_RESULT: ${{ needs.web.result }}
           WINDOWS_RESULT: ${{ needs.windows-x64.result }}
           OTHER_RESULT: ${{ needs.additional-desktop.result }}
         run: |
+          test "$QUALITY_RESULT" = success
           test "$WEB_RESULT" = success
           test "$WINDOWS_RESULT" = success
           [[ "$OTHER_RESULT" == success || "$OTHER_RESULT" == skipped ]]
