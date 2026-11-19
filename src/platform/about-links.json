@@ -1,5 +1,6 @@
 {
   "woslicer": "https://cerebralmuddystream.nekokan.dyndns.info/",
   "bmhelper": "https://excln.github.io/bmhelper.html",
-  "waveformPlaylist": "https://github.com/naomiaro/waveform-playlist"
+  "waveformPlaylist": "https://github.com/naomiaro/waveform-playlist",
+  "codecParser": "https://github.com/eshaz/codec-parser"
 }

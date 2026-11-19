@@ -1,5 +1,7 @@
 //! Only the About dialog's project and credit links can open an external browser.
 
+const CREDIT_LINKS: &str = include_str!("../../src/platform/about-links.json");
+
 #[derive(Debug, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub(crate) enum AboutLink {
@@ -8,6 +10,8 @@ pub(crate) enum AboutLink {
     Bmhelper,
     #[serde(rename = "waveformPlaylist")]
     WaveformPlaylist,
+    #[serde(rename = "codecParser")]
+    CodecParser,
 }
 
 fn link_url(link: AboutLink) -> Result<String, String> {
@@ -16,24 +20,16 @@ fn link_url(link: AboutLink) -> Result<String, String> {
             include_str!(concat!(env!("OUT_DIR"), "/build-info.json")),
             "repositoryUrl",
         ),
-        AboutLink::Woslicer => (
-            include_str!("../../src/platform/about-links.json"),
-            "woslicer",
-        ),
-        AboutLink::Bmhelper => (
-            include_str!("../../src/platform/about-links.json"),
-            "bmhelper",
-        ),
-        AboutLink::WaveformPlaylist => (
-            include_str!("../../src/platform/about-links.json"),
-            "waveformPlaylist",
-        ),
+        AboutLink::Woslicer => (CREDIT_LINKS, "woslicer"),
+        AboutLink::Bmhelper => (CREDIT_LINKS, "bmhelper"),
+        AboutLink::WaveformPlaylist => (CREDIT_LINKS, "waveformPlaylist"),
+        AboutLink::CodecParser => (CREDIT_LINKS, "codecParser"),
     };
     let data: serde_json::Value = serde_json::from_str(json).map_err(|error| error.to_string())?;
     data[key]
         .as_str()
         .map(str::to_owned)
-        .ok_or_else(|| "This build does not include the project URL".into())
+        .ok_or_else(|| "This build does not include this link".into())
 }
 
 #[tauri::command]
@@ -59,17 +55,13 @@ mod tests {
 
     #[test]
     fn credit_links_resolve_to_the_bundled_https_sites() -> Result<(), Box<dyn std::error::Error>> {
-        let admitted = serde_json::from_str::<AboutLink>(r#""waveformPlaylist""#)?;
-        assert_eq!(
-            link_url(admitted)?,
-            "https://github.com/naomiaro/waveform-playlist"
-        );
-        for link in [
-            AboutLink::Woslicer,
-            AboutLink::Bmhelper,
-            AboutLink::WaveformPlaylist,
-        ] {
-            let url: tauri::Url = link_url(link)?.parse()?;
+        let links: std::collections::BTreeMap<String, String> = serde_json::from_str(CREDIT_LINKS)?;
+        for (id, expected) in links {
+            let admitted: AboutLink =
+                serde_json::from_value(serde_json::Value::String(id.clone()))?;
+            let actual = link_url(admitted)?;
+            assert_eq!(actual, expected, "credit link {id}");
+            let url: tauri::Url = actual.parse()?;
             assert_eq!(url.scheme(), "https");
             assert!(url.username().is_empty());
             assert!(url.password().is_none());

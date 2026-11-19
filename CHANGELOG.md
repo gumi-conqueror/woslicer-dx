@@ -2,6 +2,10 @@
 
 **English** · [中文](CHANGELOG.zh-CN.md)
 
+## 1.0.2 — 2026-11-19
+
+No user-facing functional changes.
+
 ## 1.0.1 — 2026-11-13
 
 ### Added

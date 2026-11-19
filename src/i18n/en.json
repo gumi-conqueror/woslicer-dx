@@ -178,7 +178,8 @@
     "aboutCredits": "Credits",
     "aboutWoslicerCredit": "Original application.",
     "aboutBmhelperCredit": "Original MIDI division tool.",
-    "aboutWaveformPlaylistCredit": "MIT-licensed waveform peak helper, adapted from Naomi's work.",
+    "aboutWaveformPlaylistCredit": "Adapted waveform peak helper (MIT).",
+    "aboutCodecParserCredit": "Ogg stream parsing (LGPL-3.0-or-later).",
     "aboutExternalLinks": "These links open an external browser or tab. The app does not connect to these sites automatically.",
     "aboutLinkFailed": "Could not open the link."
   },

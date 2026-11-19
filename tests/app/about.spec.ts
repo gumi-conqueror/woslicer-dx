@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { creditLinks } from '../../src/platform/about-links';
 
 test('shows embedded build information under offline CSP and opens only clicked links', async ({
   page,
@@ -31,7 +32,8 @@ test('shows embedded build information under offline CSP and opens only clicked 
   await page.getByRole('menuitem', { name: 'About', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toContainText(identity.commit);
-  await expect(dialog.getByRole('link', { name: 'waveform-playlist', exact: true })).toBeVisible();
+  const links = dialog.locator('.credits a');
+  await expect(links).toHaveCount(Object.keys(creditLinks).length);
   expect(requests.some((url) => url.includes('build-info.json'))).toBe(false);
   expect(requests.every((url) => new URL(url).hostname === '127.0.0.1')).toBe(true);
   expect(errors).toEqual([]);
@@ -40,16 +42,19 @@ test('shows embedded build information under offline CSP and opens only clicked 
     fullPage: true,
     animations: 'disabled',
   });
-  // Intercept the destination: this checks navigation without contacting the credit site.
-  await context.route('https://github.com/naomiaro/waveform-playlist', (route) =>
-    route.fulfill({ body: '<title>Credit destination</title>' }),
-  );
-  const opening = context.waitForEvent('page');
-  await dialog.getByRole('link', { name: 'waveform-playlist', exact: true }).click();
-  const external = await opening;
-  await external.waitForLoadState();
-  expect(external.url()).toBe('https://github.com/naomiaro/waveform-playlist');
-  expect(await external.evaluate(() => window.opener === null)).toBe(true);
-  await external.close();
-  await expect(dialog).toBeVisible();
+  for (const url of Object.values(creditLinks)) {
+    // Intercept each destination without contacting the credit site.
+    await context.route(url, (route) =>
+      route.fulfill({ body: '<title>Credit destination</title>' }),
+    );
+    const opening = context.waitForEvent('page');
+    await dialog.locator(`.credits a[href="${url}"]`).click();
+    const external = await opening;
+    await external.waitForLoadState();
+    expect(external.url()).toBe(url);
+    expect(await external.evaluate(() => window.opener === null)).toBe(true);
+    await external.close();
+    await expect(dialog).toBeVisible();
+  }
+  await expect(dialog.getByRole('button', { name: 'Close', exact: true })).toBeInViewport();
 });

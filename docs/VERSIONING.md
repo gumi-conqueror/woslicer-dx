@@ -54,6 +54,6 @@ Git is required only during builds. Packaged applications use the embedded ident
 CI derives the project link from `GITHUB_SERVER_URL` and `GITHUB_REPOSITORY`.
 Local builds use a recognized GitHub origin URL, or show a placeholder when the origin cannot be resolved.
 The About dialog's project and credit links open only after a user click. The native command accepts
-four fixed link identifiers; it does not accept a URL or expose a general opener capability.
+fixed link identifiers; it does not accept a URL or expose a general opener capability.
 The Rust build script (`src-tauri/build.rs`) rejects stale build identity.
 Before invoking Cargo directly, run `node scripts/tauri-build-info.mjs`.
