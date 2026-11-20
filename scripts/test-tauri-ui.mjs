@@ -230,6 +230,31 @@ async function verifyProfile(profile, client, runDir) {
   }
   writeFileSync(join(runDir, 'ogg.json'), JSON.stringify(audio, null, 2));
 
+  // Exercise actual native permissions, including state changes initiated outside Vue.
+  const decorated = await client.page.evaluate(() =>
+    globalThis.__TAURI_INTERNALS__.invoke('plugin:window|is_decorated', { label: 'main' }),
+  );
+  if (decorated !== false) throw new Error('Native window restored system decorations');
+  const controls = client.page.locator('.window-controls button');
+  await controls.nth(1).click();
+  await client.page.waitForFunction(() =>
+    globalThis.__TAURI_INTERNALS__.invoke('plugin:window|is_maximized', { label: 'main' }),
+  );
+  await controls.nth(1).click();
+  await client.page.waitForFunction(
+    async () =>
+      !(await globalThis.__TAURI_INTERNALS__.invoke('plugin:window|is_maximized', {
+        label: 'main',
+      })),
+  );
+  await controls.nth(0).click();
+  await client.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'normal' } });
+  await client.page.locator('.window-titlebar').waitFor({ state: 'visible' });
+  writeFileSync(
+    join(runDir, 'window-controls.json'),
+    JSON.stringify({ decorated, maximize: true, restore: true, minimizeRequested: true }),
+  );
+
   await client.page.locator('.statusbar button').click();
   await client.page.getByRole('dialog').waitFor({ state: 'visible' });
   const about = await client.send('Runtime.evaluate', {

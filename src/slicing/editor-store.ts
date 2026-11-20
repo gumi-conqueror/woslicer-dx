@@ -89,11 +89,23 @@ export const useEditorStore = defineStore('editor', () => {
     const track = capability.kind === 'single-track' ? document.value.tracks[0] : null;
     return { gainDb: track?.gainDb ?? 0, muted: track?.muted ?? false, solo: track?.solo ?? false };
   });
+  // Fader previews affect monitoring immediately, without adding undo entries.
+  const volumePreview = shallowRef<number | null>(null);
+  const cueVolumePreview = shallowRef<number | null>(null);
+  function setVolumePreview(value: number | null): void {
+    if (value === null || Number.isFinite(value))
+      volumePreview.value = value === null ? null : Math.max(0, Math.min(1, value));
+  }
+  function setCueVolumePreview(value: number | null): void {
+    if (value === null || Number.isFinite(value))
+      cueVolumePreview.value = value === null ? null : Math.max(0, Math.min(1, value));
+  }
   // Master route: master mute or track mute wins over solo; gains sum in dB.
   const masterAmp = computed(() => {
     const global = document.value.global;
     if (global.masterMuted || trackPlayback.value.muted) return 0;
-    return dbToAmp(clampGainDb(global.masterGainDb + trackPlayback.value.gainDb));
+    const gain = volumePreview.value === null ? global.masterGainDb : ampToDb(volumePreview.value);
+    return dbToAmp(clampGainDb(gain + trackPlayback.value.gainDb));
   });
   const volume = computed({
     get: () => dbToAmp(document.value.global.masterGainDb),
@@ -113,6 +125,7 @@ export const useEditorStore = defineStore('editor', () => {
       });
     },
   });
+  const cueAmp = computed(() => cueVolumePreview.value ?? cueVolume.value);
   const playbackRate = computed({
     get: () => document.value.global.playbackRate,
     set: (value) => {
@@ -177,6 +190,8 @@ export const useEditorStore = defineStore('editor', () => {
     selectedTicks.value = selectedTicks.value.filter((t) => ticks.value.includes(t));
   }
   function cancelDraft(): void {
+    volumePreview.value = null;
+    cueVolumePreview.value = null;
     cancelActiveDraft?.();
     previewTicks.value = null;
   }
@@ -224,6 +239,7 @@ export const useEditorStore = defineStore('editor', () => {
     return changed;
   }
   function redo(): boolean {
+    cancelDraft();
     if (limited.value) return false;
     const changed = project.value.redo();
     if (changed) publish();
@@ -421,6 +437,9 @@ export const useEditorStore = defineStore('editor', () => {
     playing,
     playheadSample,
     masterAmp,
+    cueAmp,
+    setVolumePreview,
+    setCueVolumePreview,
     volume,
     cueVolume,
     playbackRate,

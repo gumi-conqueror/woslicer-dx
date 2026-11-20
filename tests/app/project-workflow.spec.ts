@@ -8,7 +8,14 @@ import { expectViewportLayout } from './layout-assertions';
 
 async function pick(page: Page, label: string, name: string, bytes: Uint8Array): Promise<void> {
   const choosing = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: label, exact: true }).click();
+  if (label === 'Open' || label === 'Open .wosdx...') {
+    await page.getByRole('button', { name: 'Project', exact: true }).click();
+    await page
+      .getByRole('menuitem', { name: label === 'Open' ? 'Open WAV/OGG...' : label, exact: true })
+      .click();
+  } else {
+    await page.getByRole('button', { name: label, exact: true }).click();
+  }
   await (
     await choosing
   ).setFiles({ name, mimeType: 'application/octet-stream', buffer: Buffer.from(bytes) });
@@ -57,7 +64,8 @@ test('opens and exports an original BMH file without changing its bytes', async 
   expect(readBmh(new Uint8Array(await readFile(legacyPath))).divisions[0].name).not.toBe(name);
   await expect(rename).toHaveValue(name);
   const savingDx = page.waitForEvent('download');
-  await page.getByRole('button', { name: /Save \.wosdx/ }).click();
+  await page.getByRole('button', { name: 'Project', exact: true }).click();
+  await page.getByRole('menuitem', { name: /Save \.wosdx/ }).click();
   const dxPath = await (await savingDx).path();
   if (!dxPath) throw new Error('Missing DX project download');
   const dx = await readFile(dxPath);
@@ -115,7 +123,8 @@ test('opens, saves and relinks a project at native browser scale', async ({ page
   await page.keyboard.press('z');
   await expect(page.getByLabel('Unsaved changes', { exact: true })).toBeVisible();
   const downloading = page.waitForEvent('download');
-  await page.getByRole('button', { name: /Save \.wosdx/ }).click();
+  await page.getByRole('button', { name: 'Project', exact: true }).click();
+  await page.getByRole('menuitem', { name: /Save \.wosdx/ }).click();
   const download = await downloading;
   const path = await download.path();
   if (!path) throw new Error('Missing project download');
@@ -133,7 +142,8 @@ test('opens, saves and relinks a project at native browser scale', async ({ page
   await expect(page.getByLabel('Unsaved changes', { exact: true })).toHaveCount(0);
   await page.locator('.timeline-viewport').focus();
   await page.keyboard.press('z');
-  await page.getByRole('button', { name: 'Open .wosdx...', exact: true }).click();
+  await page.getByRole('button', { name: 'Project', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Open .wosdx...', exact: true }).click();
   await expect(page.getByRole('dialog')).toContainText('Unsaved project changes will be replaced.');
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeHidden();

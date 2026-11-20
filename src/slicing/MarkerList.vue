@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, shallowRef, watch, useTemplateRef } from 'vue';
+import { computed, onMounted, onBeforeUnmount, shallowRef, watch, useTemplateRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { MEASURE_TICKS, tickToSampleExport } from '../core/timebase';
 import { useWorkspace } from '../workspace/workspace';
@@ -9,9 +9,21 @@ const editor = workspace.editor;
 // Virtual list: a window of rows is derived from the viewport scroll offset.
 const viewport = useTemplateRef<HTMLDivElement>('viewport');
 const offset = shallowRef(0);
+const viewportHeight = shallowRef(0);
 const rowHeight = 32;
 const first = computed(() => Math.max(0, Math.floor(offset.value / rowHeight) - 3));
-const rows = computed(() => editor.ticks.slice(first.value, first.value + 22));
+const rows = computed(() =>
+  editor.ticks.slice(first.value, first.value + Math.ceil(viewportHeight.value / rowHeight) + 6),
+);
+let observer: ResizeObserver | undefined;
+onMounted(() => {
+  viewportHeight.value = viewport.value?.clientHeight ?? 0;
+  observer = new ResizeObserver(([entry]) => {
+    if (entry) viewportHeight.value = entry.contentRect.height;
+  });
+  if (viewport.value) observer.observe(viewport.value);
+});
+onBeforeUnmount(() => observer?.disconnect());
 const selected = computed(() => new Set(editor.selectedTicks));
 // Viewport scroll drives the rendered window.
 function scroll(event: Event): void {
@@ -104,7 +116,10 @@ watch(
 <style scoped>
 /* Panel padding and marker action buttons. */
 .marker-list {
-  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
 }
 .marker-actions {
   display: flex;
@@ -116,10 +131,10 @@ watch(
   margin: 0;
 }
 
-/* Virtual scroll scaffold: fixed-height viewport, spacer, offset window. */
+/* The viewport consumes the pane's remaining height; rows follow its measured size. */
 .marker-viewport {
-  height: 384px;
-  max-height: 40vh;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -140,6 +155,9 @@ watch(
   border-radius: 0;
   justify-content: flex-start;
   font-variant-numeric: tabular-nums;
+}
+.marker-row + .marker-row {
+  margin-left: 0;
 }
 .marker-row.selected {
   color: var(--el-color-primary);

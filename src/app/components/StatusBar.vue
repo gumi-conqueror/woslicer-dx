@@ -60,6 +60,8 @@ const status = computed(() =>
   border-top: 1px solid var(--el-border-color);
   color: var(--el-text-color-secondary);
   font-size: 12px;
+  background: var(--wos-chrome);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Status message fills the remaining width; error state recolors it. */

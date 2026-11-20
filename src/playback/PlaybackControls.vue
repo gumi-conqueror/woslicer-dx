@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import { ElButton, ElCheckbox, ElOption, ElSelect, ElSlider } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { useEditorStore, type CueMode } from '../slicing/editor-store';
@@ -7,6 +7,8 @@ import { PLAYBACK_RATES, formatRate } from '../core/rate';
 import { ampToDb, dbToAmp, dbToSlider, sliderToDb } from '../core/volume';
 import { usePlayback } from './index';
 import { useSliderDraft } from './use-slider-draft';
+import { shortcutLabel } from '../app/shortcuts';
+import AppIcon from '../ui/AppIcon.vue';
 
 const editor = useEditorStore();
 const playback = usePlayback();
@@ -24,21 +26,34 @@ const {
   displayValue: volumeDisplay,
   onUpdate: onVolumeUpdate,
   commit: commitVolume,
+  reset: resetVolume,
 } = useSliderDraft(
   () => volume.value,
   (position) => {
     editor.setVolume(dbToAmp(sliderToDb(position)));
   },
+  (position) => editor.setVolumePreview(position === null ? null : dbToAmp(sliderToDb(position))),
 );
 const {
   displayValue: cueDisplay,
   onUpdate: onCueVolumeUpdate,
   commit: commitCueVolume,
+  reset: resetCueVolume,
 } = useSliderDraft(
   () => cueVolume.value,
   (position) => {
     editor.setCueVolume(dbToAmp(sliderToDb(position)));
   },
+  (position) =>
+    editor.setCueVolumePreview(position === null ? null : dbToAmp(sliderToDb(position))),
+);
+watch(
+  () => [editor.docRevision, editor.documentGeneration, editor.source],
+  () => {
+    resetVolume();
+    resetCueVolume();
+  },
+  { flush: 'sync' },
 );
 // Cue monitor modes offered by the select.
 const cues: { value: CueMode; label: string }[] = [
@@ -70,18 +85,19 @@ const formatVolume = (position: number) => `${sliderToDb(position).toFixed(1)} d
       :disabled="disabled"
       :type="editor.playing ? 'primary' : 'default'"
       :aria-pressed="editor.playing"
-      :title="t('chrome.titlePlay')"
+      :title="`${t('chrome.titlePlay')} (${shortcutLabel('play-pause')})`"
       @click="playback.togglePlayPause()"
-      >{{ t('chrome.play') }}</ElButton
+      ><AppIcon :name="editor.playing ? 'pause' : 'play'" />{{ t('chrome.play') }}</ElButton
     >
     <ElButton
       :disabled="disabled"
       @click="playback.stop()"
-      >{{ t('chrome.stop') }}</ElButton
+      ><AppIcon name="stop" />{{ t('chrome.stop') }}</ElButton
     >
-    <!-- master volume: drag drafts locally, commits once on release -->
+    <!-- Drag previews the live audio route; release creates one document edit. -->
     <ElSlider
       class="volume-slider"
+      :disabled="editor.limited"
       :model-value="volumeDisplay"
       :format-tooltip="formatVolume"
       :aria-label="t('chrome.titleVolume')"
@@ -127,6 +143,7 @@ const formatVolume = (position: number) => `${sliderToDb(position).toFixed(1)} d
     <ElSlider
       class="volume-slider"
       :model-value="cueDisplay"
+      :disabled="editor.limited"
       :format-tooltip="formatVolume"
       :aria-label="t('chrome.titleCueVolume')"
       :title="t('chrome.titleCueVolume')"
@@ -148,8 +165,14 @@ const formatVolume = (position: number) => `${sliderToDb(position).toFixed(1)} d
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
+  justify-content: center;
   min-width: 0;
+}
+.playback-controls :deep(.app-icon) {
+  width: 13px;
+  height: 13px;
+  margin-right: 6px;
 }
 
 /* Override Element Plus adjacent-button margin inside the strip. */

@@ -77,6 +77,8 @@ describe('workspace and editor business operations', () => {
       playback,
       onClose() {},
       onAbout() {},
+      onHelp() {},
+      onCalibrate() {},
     });
     const overlay = document.createElement('div');
     overlay.setAttribute('role', 'dialog');
@@ -190,6 +192,8 @@ describe('workspace and editor business operations', () => {
         playback,
         onClose() {},
         onAbout() {},
+        onHelp() {},
+        onCalibrate() {},
       });
       gestures.begin(point);
       gestures.move({ ...point, x: 120 });
@@ -614,6 +618,27 @@ describe('workspace and editor business operations', () => {
     await f.workspace.flushSession();
     expect(parseEditorSession(f.session)?.project.slicing.markers).toEqual([5]);
     expect(parseEditorSession(f.session)?.project.timing.bpm).toBe(200);
+  });
+  it('propagates an in-flight recovery failure to a second flush during exit', async () => {
+    const f = setup();
+    let rejectWrite: (error: Error) => void = () => {};
+    f.platform.writeSession = () =>
+      new Promise<void>((_resolve, reject) => {
+        rejectWrite = reject;
+      });
+    f.workspace.actions.setMarker(5);
+    const autosave = f.workspace.flushSession();
+    await Promise.resolve();
+    const exitSave = f.workspace.flushSession();
+    const expectedAutosave = expect(autosave).rejects.toThrow('storage unavailable');
+    const expectedExit = expect(exitSave).rejects.toThrow('storage unavailable');
+    rejectWrite(new Error('storage unavailable'));
+    try {
+      await expectedAutosave;
+      await expectedExit;
+    } finally {
+      f.platform.writeSession = async () => {};
+    }
   });
   it('keeps newer edits pending when an older write settles first', async () => {
     const f = setup();

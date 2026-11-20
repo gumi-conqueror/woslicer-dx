@@ -41,6 +41,16 @@ export const APPLICATION_MENU = [
     commands: [
       { id: 'zoom-in', key: 'menu.zoomIn' },
       { id: 'zoom-out', key: 'menu.zoomOut' },
+    ],
+  },
+  {
+    label: 'menu.tools',
+    commands: [{ id: 'calibrate', key: 'chrome.calibrate' }],
+  },
+  {
+    label: 'menu.help',
+    commands: [
+      { id: 'help', key: 'menu.guide' },
       { id: 'about', key: 'menu.about' },
     ],
   },
@@ -68,7 +78,10 @@ export function menuCommandEnabled(id: MenuCommand, editor: MenuEditorState): bo
     case 'zoom-in':
     case 'zoom-out':
     case 'about':
+    case 'help':
       return true;
+    case 'calibrate':
+      return editor.source !== null;
     case 'open-audio':
     case 'import-wos':
     case 'import-legacy':

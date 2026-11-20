@@ -48,7 +48,16 @@ fn allowed_navigation(url: &tauri::Url) -> bool {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_window_state::Builder::default().build())
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                // Old sessions saved decorated=true. Window chrome is an app
+                // policy, so restoring user geometry must not override it.
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::all()
+                        - tauri_plugin_window_state::StateFlags::DECORATIONS,
+                )
+                .build(),
+        )
         .manage(clipboard::NativeClipboard::default())
         .invoke_handler(tauri::generate_handler![
             about::open_about_link,
@@ -83,6 +92,8 @@ pub fn run() {
                     .title(app.package_info().name.clone())
                     .inner_size(1440.0, 900.0)
                     .min_inner_size(960.0, 600.0)
+                    .decorations(false)
+                    .shadow(true)
                     .on_navigation(allowed_navigation)
                     .on_new_window(|_, _| NewWindowResponse::Deny)
                     .on_page_load(|window, payload| {

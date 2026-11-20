@@ -16,7 +16,7 @@ import EditorToolbar from '../../src/app/components/EditorToolbar.vue';
 import WorkspacePanels from '../../src/app/components/WorkspacePanels.vue';
 import AboutDialog from '../../src/app/components/AboutDialog.vue';
 import ApplicationMenu from '../../src/app/components/ApplicationMenu.vue';
-import { APPLICATION_MENU, isMenuCommand } from '../../src/app/menu';
+import { APPLICATION_MENU, isMenuCommand, menuCommandEnabled } from '../../src/app/menu';
 import { setupI18n } from '../../src/i18n/setup';
 import { useEditorStore } from '../../src/slicing/editor-store';
 import { useBmhelperStore } from '../../src/bmhelper/store';
@@ -94,27 +94,26 @@ describe('application controls', () => {
       instance.dispose();
     }
   });
-  it('keeps legacy WOS import/export visible without audio and provides calibration when media exists', async () => {
+  it('keeps settings in the toolbar and places calibration and help in their menus', async () => {
     const instance = setup();
-    const wrapper = mount(EditorToolbar, {
-      props: { calibrating: false },
-      global: instance.global,
-    });
+    const wrapper = mount(EditorToolbar, { global: instance.global });
     try {
-      const button = (label: string) => {
-        const found = wrapper.findAll('button').find((item) => item.text() === label);
-        if (!found) throw new Error(`missing ${label}`);
-        return found;
-      };
-      expect(button('Import .wos settings...').attributes('disabled')).toBeUndefined();
-      expect(button('Export .wos...').attributes('disabled')).toBeUndefined();
-      await button('Import .wos settings...').trigger('click');
-      expect(wrapper.emitted('command')).toEqual([['import-wos']]);
-      expect(button('Calibrate').attributes('disabled')).toBeDefined();
+      expect(wrapper.findComponent(DocumentOptions).exists()).toBe(true);
+      expect(wrapper.text()).not.toContain('Calibrate');
+      expect(
+        APPLICATION_MENU.find((group) => group.label === 'menu.tools')?.commands.map(
+          (item) => item.id,
+        ),
+      ).toEqual(['calibrate']);
+      expect(
+        APPLICATION_MENU.find((group) => group.label === 'menu.help')?.commands.map(
+          (item) => item.id,
+        ),
+      ).toEqual(['help', 'about']);
+      expect(menuCommandEnabled('calibrate', instance.editor)).toBe(false);
       instance.editor.setSource(source);
       await nextTick();
-      await button('Calibrate').trigger('click');
-      expect(wrapper.emitted('calibrate')).toHaveLength(1);
+      expect(menuCommandEnabled('calibrate', instance.editor)).toBe(true);
     } finally {
       wrapper.unmount();
       instance.dispose();

@@ -18,7 +18,8 @@ test('keeps a constant waveform one device pixel thick across zoom and fractiona
       await page.addInitScript(() => localStorage.setItem('woslicer.theme', 'dark'));
       await page.goto('http://127.0.0.1:4184/');
       const choosing = page.waitForEvent('filechooser');
-      await page.getByRole('button', { name: 'Open', exact: true }).click();
+      await page.getByRole('button', { name: 'Project', exact: true }).click();
+      await page.getByRole('menuitem', { name: 'Open WAV/OGG...', exact: true }).click();
       await (
         await choosing
       ).setFiles({ name: 'constant.wav', mimeType: 'audio/wav', buffer: Buffer.from(wav) });

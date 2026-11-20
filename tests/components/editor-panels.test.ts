@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils';
 import ElementPlus, { ElCheckbox, ElInput, ElInputNumber } from 'element-plus';
 import { createI18n } from 'vue-i18n';
@@ -29,6 +29,7 @@ function setup() {
   return { f, options };
 }
 afterEach(async () => {
+  vi.restoreAllMocks();
   for (const wrapper of wrappers.splice(0)) wrapper.unmount();
   for (const f of fixtures.splice(0)) await f.dispose();
 });
@@ -118,11 +119,13 @@ describe('editor panels with real Element Plus controls', () => {
     expect(f.editor.clipStartNumber).toBe(1);
   });
   it('virtualizes large cut lists and selects a clicked cut', async () => {
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(640);
     const { f, options } = setup();
     f.editor.addTicks(Array.from({ length: 10000 }, (_, i) => i));
     const wrapper = mount(MarkerList, options);
     wrappers.push(wrapper);
-    expect(wrapper.findAll('.marker-row').length).toBeLessThanOrEqual(22);
+    await flushPromises();
+    expect(wrapper.findAll('.marker-row')).toHaveLength(26);
     await wrapper.findAll('.marker-row')[5].trigger('click');
     expect(f.editor.cursorTick).toBe(5);
     expect(f.editor.selectedTicks).toEqual([5]);

@@ -2,6 +2,27 @@
 
 **English** · [中文](CHANGELOG.zh-CN.md)
 
+## Unreleased
+
+### Added
+
+- The desktop window has an integrated title bar with drag, minimize, maximize and close controls.
+- The editor uses coordinated light and dark colors, a track header and a collapsible side panel.
+- Exiting with unsaved changes asks for confirmation and waits for the session recovery save.
+
+- Help includes an offline guide to mouse controls, shortcuts and calibration.
+
+### Changed
+
+- Calibration is in Tools; About and the guide are in Help. The settings bar no longer repeats file menu actions.
+
+### Fixed
+
+- Old saved window settings no longer restore the system title bar.
+- Cut rows align consistently and the list fills the available panel height.
+- The side tab bar keeps its width when switching to BMHelper.
+- Playback and cue volumes update while dragging their sliders, with one undo entry per drag.
+
 ## 1.0.2 — 2026-11-19
 
 No user-facing functional changes.

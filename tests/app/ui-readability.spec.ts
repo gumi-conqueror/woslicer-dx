@@ -30,7 +30,14 @@ test.skip(
 
 async function pick(page: Page, label: string, name: string, bytes: Uint8Array): Promise<void> {
   const choosing = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: label, exact: true }).click();
+  if (label === 'Open' || label === 'Open .wosdx...') {
+    await page.getByRole('button', { name: 'Project', exact: true }).click();
+    await page
+      .getByRole('menuitem', { name: label === 'Open' ? 'Open WAV/OGG...' : label, exact: true })
+      .click();
+  } else {
+    await page.getByRole('button', { name: label, exact: true }).click();
+  }
   await (
     await choosing
   ).setFiles({ name, mimeType: 'application/octet-stream', buffer: Buffer.from(bytes) });
@@ -208,7 +215,7 @@ test('ui readability baseline: about dialog', async ({ page }, info) => {
   await page.goto('/');
   await expect(page.getByRole('menubar')).toBeVisible();
   // Element Plus renders the group trigger as role=button; items are menuitems.
-  await page.getByRole('button', { name: 'View', exact: true }).click();
+  await page.getByRole('button', { name: 'Help', exact: true }).click();
   await page.getByRole('menuitem', { name: 'About', exact: true }).click();
   await awaitDialogPainted(page);
   await expect(page.getByRole('menuitem', { name: 'About', exact: true })).toBeHidden();
@@ -221,7 +228,8 @@ test('ui readability baseline: calibration dialog', async ({ page }, info) => {
   await page.goto('/');
   await expect(page.getByRole('menubar')).toBeVisible();
   await openAudio(page);
-  await page.getByRole('button', { name: 'Calibrate', exact: true }).click();
+  await page.getByRole('button', { name: 'Tools', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Calibrate', exact: true }).click();
   await awaitDialogPainted(page);
   await saveShot(page, info.project.name, 'calibration-dialog.png');
   expect(errors).toEqual([]);

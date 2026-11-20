@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { CANCEL, matchesBindings } from '../app/shortcuts';
 import { computed, onBeforeUnmount, onMounted, shallowRef, useTemplateRef, watch } from 'vue';
 import { useDevicePixelRatio, useResizeObserver } from '@vueuse/core';
 import { ElSlider } from 'element-plus';
@@ -163,7 +164,7 @@ function cancelGesture(): void {
 }
 // Escape aborts an active gesture before any other key handling.
 function keydown(event: KeyboardEvent): void {
-  if (event.key === 'Escape' && gestures.cancel()) {
+  if (matchesBindings(event, CANCEL) && gestures.cancel()) {
     activePointer = null;
     event.preventDefault();
     event.stopPropagation();
@@ -273,7 +274,13 @@ onBeforeUnmount(() => {
         v-if="!editor.source"
         class="timeline-empty"
       >
-        {{ t('chrome.emptySub') }}
+        <div class="empty-prompt">
+          <span
+            class="empty-wave"
+            aria-hidden="true"
+            >▂ ▅ ▃ ▇ ▅ ▂</span
+          ><strong>{{ t('chrome.emptyTitle') }}</strong><span>{{ t('chrome.emptySub') }}</span>
+        </div>
       </div>
     </div>
     <!-- overview: click/drag pans the viewport across the whole song -->
@@ -351,6 +358,30 @@ onBeforeUnmount(() => {
   pointer-events: none;
   color: var(--el-text-color-secondary);
   font-size: 13px;
+}
+.empty-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 24px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 6px;
+  background: var(--el-bg-color);
+  max-width: calc(100% - 32px);
+  text-align: center;
+  box-shadow: 0 4px 24px #00000012;
+}
+.empty-prompt strong {
+  color: var(--el-text-color-primary);
+  font-size: 15px;
+  font-weight: 500;
+}
+.empty-wave {
+  color: var(--el-color-primary);
+  letter-spacing: 2px;
+  font-size: 25px;
+  line-height: 1.5;
 }
 
 /* Overview strip and scrollbar close the column below the viewport. */

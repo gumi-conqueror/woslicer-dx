@@ -3,6 +3,7 @@ import { ElButton, ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-pl
 import { useI18n } from 'vue-i18n';
 import { useEditorStore } from '../../slicing/editor-store';
 import { APPLICATION_MENU, isMenuCommand, menuCommandEnabled, type MenuCommand } from '../menu';
+import { shortcutLabel } from '../shortcuts';
 
 const emit = defineEmits<{ command: [command: MenuCommand] }>();
 const { t } = useI18n();
@@ -37,8 +38,11 @@ function dispatch(value: unknown): void {
             v-for="item in group.commands"
             :key="item.id"
             :command="item.id"
+            :aria-label="t(item.key)"
             :disabled="!menuCommandEnabled(item.id, editor)"
-            >{{ t(item.key) }}</ElDropdownItem
+            ><span class="menu-command"
+              ><span>{{ t(item.key) }}</span><kbd>{{ shortcutLabel(item.id) }}</kbd></span
+            ></ElDropdownItem
           >
         </ElDropdownMenu>
       </template>
@@ -51,16 +55,27 @@ function dispatch(value: unknown): void {
   display: flex;
   align-items: center;
   gap: 2px;
+  flex-shrink: 0;
   min-height: 32px;
-  padding: 0 8px;
-  border-bottom: 1px solid var(--el-border-color);
-  background: var(--el-bg-color);
 }
 
 /* Element Plus button override: remove default margin/padding inside the bar. */
 .application-menu :deep(.el-button) {
   margin: 0;
-  padding: 5px 10px;
-  color: var(--el-text-color-primary);
+  padding: 5px 8px;
+  color: var(--el-text-color-regular);
+}
+
+.menu-command {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 24px;
+  width: 100%;
+}
+kbd {
+  color: var(--el-text-color-secondary);
+  font: inherit;
+  font-size: 11px;
 }
 </style>
