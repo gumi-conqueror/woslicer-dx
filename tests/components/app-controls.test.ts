@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils';
 import { createPinia, disposePinia } from 'pinia';
 import { nextTick } from 'vue';
-import { ElInputNumber, ElSelect, ElOption, ElDropdown, ElDropdownItem } from 'element-plus';
+import { ElInputNumber, ElSelect, ElOption } from 'element-plus';
 import { describe, expect, it, vi } from 'vitest';
 import { clearMocks, mockIPC } from '@tauri-apps/api/mocks';
 import DocumentOptions from '../../src/app/components/DocumentOptions.vue';
@@ -102,7 +102,7 @@ describe('application controls', () => {
         APPLICATION_MENU.find((group) => group.label === 'menu.help')?.commands.map(
           (item) => item.id,
         ),
-      ).toEqual(['help', 'about']);
+      ).toEqual(['help', 'troubleshoot', 'open-data-folder', 'about']);
       expect(menuCommandEnabled('calibrate', instance.editor)).toBe(false);
       instance.editor.setSource(source);
       await nextTick();
@@ -139,20 +139,12 @@ describe('application controls', () => {
       instance.dispose();
     }
   });
-  it('updates menu availability as the project changes and validates dropdown commands', async () => {
+  it('updates menu availability as the project changes and emits selected commands', async () => {
     const instance = setup();
     const wrapper = mount(ApplicationMenu, { global: instance.global });
     try {
-      const dropdowns = wrapper.findAllComponents(ElDropdown);
-      for (const dropdown of dropdowns) {
-        await dropdown.find('button').trigger('click');
-      }
       const disabled = (command: string) => {
-        const item = wrapper
-          .findAllComponents(ElDropdownItem)
-          .find((candidate) => candidate.props('command') === command);
-        if (!item) throw new Error('Missing menu command: ' + command);
-        return item.props('disabled');
+        return wrapper.get<HTMLButtonElement>(`[data-command="${command}"]`).element.disabled;
       };
       instance.editor.setTicks([24]);
       await nextTick();
@@ -176,11 +168,7 @@ describe('application controls', () => {
       instance.editor.setLimited(false);
       await nextTick();
       expect(disabled('open-audio')).toBe(false);
-      const dropdown = wrapper.findComponent(ElDropdown);
-      dropdown.vm.$emit('command', 'save-project');
-      dropdown.vm.$emit('command', 'toggle-marker');
-      dropdown.vm.$emit('command', 'unknown');
-      dropdown.vm.$emit('command', null);
+      await wrapper.get('[data-command="save-project"]').trigger('click');
       expect(wrapper.emitted('command')).toEqual([['save-project']]);
     } finally {
       wrapper.unmount();

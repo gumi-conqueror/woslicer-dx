@@ -1,6 +1,7 @@
 //! Offline native capabilities; all audio processing remains in the application.
 
 mod about;
+mod app_data;
 mod clipboard;
 mod files;
 mod session;
@@ -62,6 +63,8 @@ pub fn run() {
         .manage(clipboard::NativeClipboard::default())
         .invoke_handler(tauri::generate_handler![
             about::open_about_link,
+            app_data::app_data_folders,
+            app_data::open_data_folder,
             files::open_file,
             files::reopen_file,
             files::open_project_media,

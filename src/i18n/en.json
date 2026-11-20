@@ -366,7 +366,9 @@
     "newProjectWos": "New project from .wos...",
     "importLegacy": "Import legacy recovery...",
     "tools": "Tools",
-    "guide": "User guide and shortcuts"
+    "guide": "User guide and shortcuts",
+    "troubleshoot": "Troubleshoot",
+    "openDataFolder": "Open data folder"
   },
   "dialogs": {
     "loadAudio": "Load WAV / OGG",
@@ -426,5 +428,48 @@
       "navigation": "Navigation",
       "output": "Output"
     }
+  },
+  "input": {
+    "keyboard": "Keyboard / mouse",
+    "gamepad": "Controller",
+    "xbox": "Xbox controller",
+    "guideChoice": "Control reference",
+    "confirm": "Confirm",
+    "back": "Back",
+    "menuMode": "Enter / leave menu mode",
+    "previousMenu": "Previous menu",
+    "nextMenu": "Next menu",
+    "previousItem": "Previous item",
+    "nextItem": "Next item",
+    "altNavigation": "Press and release Alt to focus the menu bar, then press the marked letter. Alt + a menu letter opens it directly. Arrow keys navigate, Enter selects, Esc goes back and Alt exits. These letters stay the same in every language.",
+    "gamepadNotice": "The current controller layout has not yet been evaluated in everyday use.",
+    "gamepadScope": "Activate this window, then use the D-pad or left stick to navigate. Hold a direction or trigger to repeat. Leave text fields and dialogs before editing. Use the buttons above to choose the keyboard or controller reference.",
+    "dialogNavigation": "In dialogs, the D-pad or left stick moves focus, A activates the focused control, and B closes the dialog. Navigate to the reference buttons above and press A to change this view.",
+    "scrollHelp": "Scroll the help or troubleshooting page up / down"
+  },
+  "support": {
+    "intro": "Copy these local diagnostics when reporting a problem. They contain build, display and controller details, but no audio, project contents or file paths. Nothing is sent automatically.",
+    "refresh": "Refresh diagnostics",
+    "copy": "Copy diagnostics",
+    "copied": "Diagnostics copied.",
+    "folderdata": "Session data",
+    "folderlocal": "WebView data",
+    "folderconfig": "Configuration",
+    "foldercache": "Cache",
+    "audio": "No sound or missing audio",
+    "audioBody": "Check the system output device, playback volume and cue volume. If a project cannot find its audio, use Project → Relink audio and select the original file. Reopen the audio if decoding failed.",
+    "gamepadBody": "Connect the Xbox controller, activate this window and press a button. Check the controller list above with Refresh diagnostics. Menu enters menu mode; View opens the guide. Use the guide’s buttons to inspect either input layout. Close text fields or dialogs before editing. If no controller appears, check the operating system connection and reconnect it.",
+    "recovery": "Session recovery",
+    "recoveryDesktop": "Save the current project before restarting. If recovery repeatedly fails, exit the application and move session-v2.json out of the session data folder as a backup. Restart, then open a saved project. Do not delete your audio or project files.",
+    "recoveryWeb": "Save the current project before reloading. Browser recovery may require you to relink the original audio. If recovery repeatedly fails, back up your project and follow the site-data cleanup instructions below. Clearing site data removes recovery and preferences.",
+    "uninstall": "Uninstall and remove application data",
+    "backupFirst": "Save any project you want to keep. Cleanup removes unsaved session recovery and preferences.",
+    "desktopLocate": "Before exiting, open Help → Troubleshoot and note every listed data folder. On Windows, both Roaming and Local application folders are used. Help → Open data folder opens session data.",
+    "desktopRemove": "Exit all copies of woslicer-dx. Uninstall an installed copy through the operating system. For a portable copy, delete its extracted application folder.",
+    "desktopData": "After the application has exited, delete its listed data folders to remove recovery, file permissions, window settings, WebView storage and cache.",
+    "webClose": "Close every tab and installed web-app window for this site. Remove an installed site app or shortcut if you created one; choose its data-removal option when available.",
+    "webData": "In browser settings, find this site under cookies / site data or site permissions, then delete all its stored data. This includes cookies, local storage and databases. Select this site only; do not clear other sites’ data.",
+    "webCache": "To also remove downloaded page resources, clear cached images and files in the browser’s browsing-data settings. Browsers may apply cache cleanup to the whole profile. Do not select unrelated data categories.",
+    "personalFiles": "Downloaded projects, exported audio and your original files are separate. Keep them, or remove the files you no longer need yourself."
   }
 }

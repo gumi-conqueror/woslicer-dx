@@ -157,13 +157,16 @@ test('Japanese strings keep the original woslicerIII terminology', () => {
   }
   // The AI-translation drift must not come back either. 開く stays legitimate
   // when the BMHelper port opens a PROJECT file with the original's own
-  // wording (プロジェクトを開く); only the audio-open drift is banned.
+  // wording (プロジェクトを開く), or opens a data folder; only audio-open drift is banned.
   for (const banned of ['マーカー', '書き出し', '開く']) {
     const occurrences: string[] = [];
     for (const [section, data] of Object.entries(DATA.ja)) {
       if (section === 'scopeRange') continue;
       for (const [key, raw] of Object.entries(data as Record<string, unknown>)) {
-        const value = typeof raw === 'string' ? raw.replace(/プロジェクトを開く/g, '') : null;
+        const value =
+          typeof raw === 'string'
+            ? raw.replace(/プロジェクトを開く|データフォルダーを開く/g, '')
+            : null;
         if (value !== null && value.includes(banned)) occurrences.push(`${section}.${key}`);
       }
     }

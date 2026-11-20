@@ -20,6 +20,8 @@ interface CommandOptions {
   onClose: () => void | Promise<void>;
   onAbout: () => void | Promise<void>;
   onHelp: () => void | Promise<void>;
+  onTroubleshoot?: () => void | Promise<void>;
+  onOpenDataFolder?: () => void | Promise<void>;
   onCalibrate: () => void | Promise<void>;
   onOpenProject?: () => void | Promise<void>;
   onNewProjectFromWos?: () => void | Promise<void>;
@@ -32,6 +34,8 @@ export function createCommands({
   onClose,
   onAbout,
   onHelp,
+  onTroubleshoot,
+  onOpenDataFolder,
   onCalibrate,
   onOpenProject = () => workspace.openProject(),
   onNewProjectFromWos = () => workspace.newProjectFromWos(),
@@ -96,6 +100,12 @@ export function createCommands({
         return;
       case 'help':
         await onHelp();
+        return;
+      case 'troubleshoot':
+        await onTroubleshoot?.();
+        return;
+      case 'open-data-folder':
+        await onOpenDataFolder?.();
         return;
       case 'calibrate':
         await onCalibrate();

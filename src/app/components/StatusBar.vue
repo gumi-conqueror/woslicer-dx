@@ -5,6 +5,9 @@ import { useI18n } from 'vue-i18n';
 import { MEASURE_TICKS } from '../../core/timebase';
 import type { BuildIdentity } from '../../platform/contracts';
 import { useEditorStore } from '../../slicing/editor-store';
+import { useInputState } from '../input-state';
+import AppIcon from '../../ui/AppIcon.vue';
+const input = useInputState();
 defineProps<{ identity: BuildIdentity | null }>();
 const emit = defineEmits<{ about: [] }>();
 const editor = useEditorStore();
@@ -38,6 +41,14 @@ const status = computed(() =>
     }}</span>
     <span>{{ t('chrome.tabCuts') }}: {{ editor.ticks.length }}</span>
     <!-- about entry, shown only with build identity -->
+    <span
+      class="input-device"
+      :data-device="input.device"
+      role="img"
+      :aria-label="t(`input.${input.device}`)"
+      :title="t(`input.${input.device}`)"
+      ><AppIcon :name="input.device"
+    /></span>
     <ElButton
       v-if="identity"
       link
@@ -72,5 +83,9 @@ const status = computed(() =>
 }
 .status-error .status-message {
   color: var(--el-color-danger);
+}
+.input-device {
+  display: inline-flex;
+  align-items: center;
 }
 </style>

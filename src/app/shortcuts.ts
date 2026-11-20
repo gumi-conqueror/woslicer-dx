@@ -1,4 +1,26 @@
 import type { AppCommand } from './command-types';
+import type { GamepadControl } from './gamepad-controls';
+
+// Direct controller bindings cover frequent editing operations. Other commands
+// remain available through menu mode; the dispatcher and help read this table.
+export const GAMEPAD_SHORTCUTS: readonly { control: GamepadControl; command: AppCommand }[] = [
+  { control: 'a', command: 'play-pause' },
+  { control: 'b', command: 'preview' },
+  { control: 'x', command: 'place-breakpoint' },
+  { control: 'y', command: 'toggle-marker' },
+  { control: 'lb', command: 'undo' },
+  { control: 'rb', command: 'redo' },
+  { control: 'lt', command: 'zoom-out' },
+  { control: 'rt', command: 'zoom-in' },
+  { control: 'left', command: 'cursor-left-grid' },
+  { control: 'right', command: 'cursor-right-grid' },
+  { control: 'up', command: 'cursor-up-measure' },
+  { control: 'down', command: 'cursor-down-measure' },
+  { control: 'view', command: 'help' },
+];
+export function gamepadShortcut(command: AppCommand): GamepadControl | undefined {
+  return GAMEPAD_SHORTCUTS.find((item) => item.command === command)?.control;
+}
 
 interface KeyBinding {
   keys: readonly string[];

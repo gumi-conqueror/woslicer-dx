@@ -2,29 +2,23 @@
 
 **English** · [中文](CHANGELOG.zh-CN.md)
 
-## Unreleased
+## 1.1.0 — 2026-11-21
 
 ### Added
 
-- The desktop window has an integrated title bar with drag, minimize, maximize and close controls.
-- The editor uses coordinated light and dark colors and a track header with an interactive waveform overview.
-- New modules open at the far right and move older modules left. Modules can fill the workspace; when space runs out, the oldest open modules close automatically without a horizontal scrollbar.
-- Exiting with unsaved changes asks for confirmation and waits for the session recovery save.
-
-- Help includes an offline guide to mouse controls, shortcuts and calibration.
+- A frameless desktop layout with a waveform overview and side panels. When space runs out, the oldest open panel closes.
+- Alt menu navigation and Xbox controls for frequent editing actions. Menu hints follow the active input device.
+- Help includes an operation guide, troubleshooting and desktop/web data cleanup instructions.
+- Exiting with unsaved changes asks for confirmation.
 
 ### Changed
 
-- Calibration is in Tools; About and the guide are in Help. The settings bar no longer repeats file menu actions.
-- Audio loading animates the whole track thumbnail without text or changes to the track layout.
+- Calibration moves to Tools; About and the guide move to Help.
 
 ### Fixed
 
-- Old saved window settings no longer restore the system title bar.
-- Cut rows align consistently and the list fills the available panel height.
-- The module switch bar keeps its width when opening BMHelper.
-- The desktop WebView's default context menus and browser shortcuts are disabled; editor shortcuts remain available.
-- Playback and cue volumes update while dragging their sliders, with one undo entry per drag.
+- Cut lists fit the panel height, and opening BMHelper keeps the module bar width stable.
+- Playback and cue volumes update while dragging their sliders.
 
 ## 1.0.2 — 2026-11-19
 
@@ -38,31 +32,27 @@ No user-facing functional changes.
 
 ### Fixed
 
-- Waveforms remain sharp when zoomed on high-DPI displays. The timeline stays within the window when resized.
-- Zooming out from individual samples keeps the waveform connected. RMS shading stays inside its outline.
-- Short Ogg files load completely instead of failing with an invalid channel count.
-- The web app starts without a build-information loading error. About shows the version, commit and build time offline.
+- Waveforms stay sharp and connected when zoomed. The timeline fits resized windows.
+- Short Ogg files load completely.
+- The web app starts correctly and shows build information offline.
 
 ## 1.0.0 — 2026-11-13
 
 ### Added
 
-- A visible banner shows the current stage while restoring a session or loading audio.
-- DX projects preserve Unicode BMHelper division names and ZZ/FF numbering mode. BMH export follows the original character substitutions and warns when names change.
-- Save and reopen `.wosdx` projects with cuts, settings and BMHelper work. Moved audio files can be linked again.
-- Open multi-track projects for viewing and save the original file unchanged.
-- Import `.wos` timing and cuts into the current project or use them to start a new one.
-- Import saved sessions from older versions, with a preview before replacing your work.
+- Save cuts, settings and BMHelper work in `.wosdx` projects; relink moved audio.
+- Preserve Unicode division names and ZZ/FF numbering in DX projects.
+- View multi-track projects and save them unchanged.
+- Import `.wos` settings and older saved sessions.
+- Show loading and session recovery progress.
 
 ### Fixed
 
-- BMH files now open and save in the original BMHelper beta 4′ format, including Japanese division names.
-- Desktop projects save absolute audio paths and reconnect available media when opened. Relinking a moved file updates its saved path.
-- Projects can save BMHelper work above the previous 16 MiB limit. Large MIDI note lists no longer fail with a stack overflow during saving.
-- BMHelper follows project undo, redo and reopening, so its panel and exports use the current project contents.
-
-- 32-bit WAV files now show their original bit depth and format. Processing and output remain 16-bit.
-- The app keeps damaged recovery files until you agree to discard them. Failed recovery saves show a warning and keep your work ready to retry.
+- Read and write the original BMHelper beta 4′ format, including Japanese names. BMH export warns when it must substitute name characters.
+- Desktop projects reconnect saved audio paths and remember relinked files.
+- Save large BMHelper projects and keep their contents in sync with undo, redo and reopening.
+- Show the original format of 32-bit WAV files; processing and output remain 16-bit.
+- Preserve damaged recovery files until discarded, and report failed recovery saves.
 
 ## 0.3.0 — 2026-11-08
 
