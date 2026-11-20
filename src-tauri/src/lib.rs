@@ -1,9 +1,11 @@
 //! Offline native capabilities; all audio processing remains in the application.
 
 mod about;
+mod app_data;
 mod clipboard;
 mod files;
 mod session;
+mod webview;
 
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder, webview::NewWindowResponse};
 
@@ -48,10 +50,21 @@ fn allowed_navigation(url: &tauri::Url) -> bool {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_window_state::Builder::default().build())
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                // Old sessions saved decorated=true. Window chrome is an app
+                // policy, so restoring user geometry must not override it.
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::all()
+                        - tauri_plugin_window_state::StateFlags::DECORATIONS,
+                )
+                .build(),
+        )
         .manage(clipboard::NativeClipboard::default())
         .invoke_handler(tauri::generate_handler![
             about::open_about_link,
+            app_data::app_data_folders,
+            app_data::open_data_folder,
             files::open_file,
             files::reopen_file,
             files::open_project_media,
@@ -83,6 +96,13 @@ pub fn run() {
                     .title(app.package_info().name.clone())
                     .inner_size(1440.0, 900.0)
                     .min_inner_size(960.0, 600.0)
+                    .decorations(false)
+                    .shadow(true)
+                    .devtools(false)
+                    .zoom_hotkeys_enabled(false)
+                    .initialization_script(
+                        "window.addEventListener('contextmenu', event => event.preventDefault());",
+                    )
                     .on_navigation(allowed_navigation)
                     .on_new_window(|_, _| NewWindowResponse::Deny)
                     .on_page_load(|window, payload| {
@@ -91,6 +111,11 @@ pub fn run() {
                         }
                     })
                     .build()?;
+            #[cfg(windows)]
+            window.with_webview(|webview| {
+                webview::disable_browser_controls(webview)
+                    .expect("failed to disable WebView browser controls");
+            })?;
             window.show()?;
             Ok(())
         })

@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, shallowRef } from 'vue';
+import { onMounted, onUnmounted, ref, shallowRef, useTemplateRef } from 'vue';
 import { ElConfigProvider, ElMessageBox } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { pinia, localization } from './runtime';
 import { createCommands } from './commands';
 import ApplicationMenu from './components/ApplicationMenu.vue';
+import WindowTitlebar from './components/WindowTitlebar.vue';
 import { getPlatform, getBuildIdentity } from '../platform';
 import type { BuildIdentity } from '../platform/contracts';
 import type { AppCommand } from './command-types';
@@ -18,8 +19,13 @@ import CalibrationDialog from '../calibration/CalibrationDialog.vue';
 import EditorToolbar from './components/EditorToolbar.vue';
 import WorkspacePanels from './components/WorkspacePanels.vue';
 import StatusBar from './components/StatusBar.vue';
-import MediaLoading from './components/MediaLoading.vue';
+import HelpDialog from './components/HelpDialog.vue';
 import AboutDialog from './components/AboutDialog.vue';
+import TroubleshootDialog from './components/TroubleshootDialog.vue';
+import { useInputControls, navigateDialog } from './use-input-controls';
+import { gamepadNavigation } from './gamepad-controls';
+import { GAMEPAD_SHORTCUTS } from './shortcuts';
+import { openDataFolder } from '../platform/app-data';
 
 // Assembly: platform, stores, workspace and playback providers.
 const platform = getPlatform();
@@ -42,6 +48,9 @@ const { t } = useI18n({ useScope: 'global' });
 const { elementLocale } = localization;
 const calibrating = ref(false);
 const aboutOpen = ref(false);
+const helpOpen = ref(false);
+const troubleshootOpen = ref(false);
+const applicationMenu = useTemplateRef<InstanceType<typeof ApplicationMenu>>('applicationMenu');
 const closing = ref(false);
 const dragActive = ref(false);
 const panelGeneration = ref(0);
@@ -54,6 +63,14 @@ const commands = createCommands({
   onClose: closeWorkspace,
   onOpenProject: openProject,
   onNewProjectFromWos: newProjectFromWos,
+  onCalibrate: calibrate,
+  onHelp: () => {
+    helpOpen.value = true;
+  },
+  onTroubleshoot: () => {
+    troubleshootOpen.value = true;
+  },
+  onOpenDataFolder: openDataFolder,
   onAbout: () => {
     aboutOpen.value = true;
   },
@@ -110,6 +127,22 @@ async function confirmProjectReplacement(): Promise<boolean> {
     cancelButtonText: t('chrome.closeCancel'),
   });
 }
+async function beforeWindowClose(): Promise<boolean> {
+  if (closing.value) return false;
+  if (
+    editor.isDirty &&
+    !(await confirmAction({
+      body: t('window.closeBody'),
+      title: t('window.closeTitle'),
+      confirmButtonText: t('window.close'),
+      cancelButtonText: t('chrome.closeCancel'),
+    }))
+  )
+    return false;
+  playback.stop();
+  await workspace.flushSession();
+  return true;
+}
 async function confirmDiscardRecovery(): Promise<boolean> {
   return confirmAction({
     body: t('chrome.discardRecoveryBody'),
@@ -157,8 +190,38 @@ async function newProjectFromWos(): Promise<void> {
 }
 // Keyboard gating, calibration entry and tap offset.
 function keydown(event: KeyboardEvent): void {
-  if (!calibrating.value && !aboutOpen.value && !closing.value) commands.onKeyDown(event);
+  if (
+    !calibrating.value &&
+    !aboutOpen.value &&
+    !helpOpen.value &&
+    !troubleshootOpen.value &&
+    !closing.value
+  )
+    commands.onKeyDown(event);
 }
+useInputControls((control) => {
+  if (navigateDialog(control)) return;
+  if (
+    calibrating.value ||
+    aboutOpen.value ||
+    helpOpen.value ||
+    troubleshootOpen.value ||
+    closing.value ||
+    loading.value
+  )
+    return;
+  const navigation = gamepadNavigation(control);
+  if (navigation && applicationMenu.value?.navigate(navigation)) return;
+  if (applicationMenu.value?.isActive()) return;
+  // Text editing keeps its focus; menu/help remain reachable from a controller.
+  if (
+    control !== 'view' &&
+    document.activeElement?.closest('input,textarea,select,[contenteditable="true"]')
+  )
+    return;
+  const shortcut = GAMEPAD_SHORTCUTS.find((item) => item.control === control);
+  if (shortcut) void execute(shortcut.command);
+});
 function calibrate(): void {
   if (!editor.source) {
     editor.setStatus('calibrationNeedsSource', true);
@@ -227,7 +290,10 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <ElConfigProvider :locale="elementLocale">
+  <ElConfigProvider
+    :locale="elementLocale"
+    size="small"
+  >
     <main
       class="app-shell"
       @dragenter.prevent="dragActive = true"
@@ -236,27 +302,33 @@ onUnmounted(() => {
       @drop="drop"
     >
       <!-- menu -->
-      <ApplicationMenu @command="execute" />
-      <!-- toolbar: file actions, undo, calibration, preferences, document options -->
-      <EditorToolbar
-        :calibrating="calibrating"
-        @command="execute"
-        @calibrate="calibrate"
-      />
-      <MediaLoading
-        v-if="loading"
-        :activity="loading"
-      />
-      <!-- workspace: playback strip and timeline on the left, side panels on the right -->
+      <WindowTitlebar
+        :before-close="beforeWindowClose"
+        @error="report"
+      >
+        <ApplicationMenu
+          ref="applicationMenu"
+          :disabled="
+            calibrating || aboutOpen || helpOpen || troubleshootOpen || closing || Boolean(loading)
+          "
+          :desktop="platform.kind === 'tauri'"
+          @command="execute"
+        />
+      </WindowTitlebar>
+      <EditorToolbar />
+      <div
+        class="playback-strip"
+        :inert="calibrating"
+      >
+        <PlaybackControls />
+      </div>
+      <!-- The transport is global. The current editor owns one audio lane. -->
       <section class="workspace">
         <div class="editor-column">
-          <div
-            class="playback-strip"
-            :inert="calibrating"
-          >
-            <PlaybackControls />
-          </div>
-          <TimelineEditor class="timeline" />
+          <TimelineEditor
+            class="timeline"
+            :loading="loading"
+          />
         </div>
         <WorkspacePanels :key="panelGeneration" />
       </section>
@@ -272,6 +344,11 @@ onUnmounted(() => {
         :offset-ms="editor.tapOffsetMs"
         :bpm="editor.doc.bpm"
         @apply="applyOffset"
+      />
+      <HelpDialog v-model="helpOpen" />
+      <TroubleshootDialog
+        v-model="troubleshootOpen"
+        :identity="identity"
       />
       <AboutDialog
         v-model="aboutOpen"
@@ -293,14 +370,6 @@ onUnmounted(() => {
 @import 'element-plus/theme-chalk/dark/css-vars.css';
 @import './styles.css';
 
-/*
- * App-owned, intentionally unscoped layout rules moved verbatim from src/app/styles.css.
- * Unscoped on purpose: `.workspace > .side-panel` is a cascade contract crossing the
- * App/WorkspacePanels parent-child boundary and must beat the child's equal-specificity
- * scoped CSS by source order; this position (after every child's scoped CSS) is
- * equivalent to the original styles.css position.
- */
-
 /* App shell: full-height column that hosts menu, toolbar, workspace and status bar. */
 .app-shell {
   position: relative;
@@ -314,20 +383,28 @@ onUnmounted(() => {
 /* Workspace split: editor column (playback strip + timeline) beside the side panel. */
 .workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 30%);
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px;
+  padding: 4px;
   flex: 1;
   min-height: 0;
+  background: var(--wos-workspace);
 }
 .editor-column {
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  border: 1px solid var(--el-border-color);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--el-bg-color);
 }
 .playback-strip {
   flex-shrink: 0;
-  padding: 8px 10px;
+  padding: 8px 14px;
   border-bottom: 1px solid var(--el-border-color);
+  background: var(--wos-chrome);
 }
 .timeline {
   flex: 1;
@@ -348,13 +425,6 @@ onUnmounted(() => {
   pointer-events: none;
 }
 
-/* Narrow window: the side panel becomes a fixed-width column. */
-@media (max-width: 900px) {
-  .workspace {
-    grid-template-columns: minmax(0, 1fr) 310px;
-  }
-}
-
 /* Very narrow window: workspace stacks vertically; .side-panel is owned by WorkspacePanels.vue. */
 @media (max-width: 680px) {
   .app-shell {
@@ -370,8 +440,10 @@ onUnmounted(() => {
   }
   .workspace > .side-panel {
     min-height: 250px;
-    border-left: 0;
-    border-top: 1px solid var(--el-border-color);
+    width: 100%;
+  }
+  .workspace > .side-panel.is-collapsed {
+    min-height: 48px;
   }
 }
 </style>

@@ -228,11 +228,11 @@ describe('waveform drawing algorithms', () => {
     const editor = useEditorStore();
     editor.setScrollTick(192);
     editor.pxPerTick = 2;
-    drawOverview(context, editor, 1000, paletteFor('dark'));
+    drawOverview(context, editor, 1000, 600, paletteFor('dark'));
     expect(record.context.strokeRect).toHaveBeenCalledWith(
       (192 / MAX_TICKS) * 1000 + 0.5,
       0.5,
-      (500 / MAX_TICKS) * 1000,
+      (300 / MAX_TICKS) * 1000,
       35,
     );
   });
@@ -403,7 +403,11 @@ describe('Vue timeline ownership', () => {
     const revisionBefore = editor.docRevision;
     // Master: several drag updates, one stale change payload, one commit.
     master.vm.$emit('update:modelValue', 50);
+    expect(editor.masterAmp).toBeCloseTo(dbToAmp(sliderToDb(50)), 12);
+    expect(editor.docRevision).toBe(revisionBefore);
     master.vm.$emit('update:modelValue', 42);
+    expect(editor.masterAmp).toBeCloseTo(dbToAmp(sliderToDb(42)), 12);
+    expect(setVolume).not.toHaveBeenCalled();
     master.vm.$emit('change', 100);
     expect(setVolume).toHaveBeenCalledOnce();
     expect(editor.volume).toBeCloseTo(dbToAmp(sliderToDb(42)), 12);
@@ -411,6 +415,8 @@ describe('Vue timeline ownership', () => {
     expect(editor.cueVolume).toBe(cueBefore);
     // Cue: its own draft, stale change payload ignored, master untouched.
     cue.vm.$emit('update:modelValue', 30);
+    expect(editor.cueAmp).toBeCloseTo(dbToAmp(sliderToDb(30)), 12);
+    expect(editor.cueVolume).toBe(cueBefore);
     cue.vm.$emit('change', 99);
     expect(setCueVolume).toHaveBeenCalledOnce();
     expect(editor.cueVolume).toBeCloseTo(dbToAmp(sliderToDb(30)), 12);

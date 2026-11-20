@@ -32,6 +32,8 @@ fn main() {
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(
         tauri_build::AppManifest::new().commands(&[
             "open_about_link",
+            "app_data_folders",
+            "open_data_folder",
             "open_file",
             "reopen_file",
             "open_project_media",

@@ -18,21 +18,27 @@ export function createSessionPersistence(
     pending = false;
   let timer: ReturnType<typeof setTimeout> | null = null;
   let writes: Promise<void> = Promise.resolve();
+  let activeAttempt: Promise<void> | null = null;
   function cancelTimer(): void {
     if (timer !== null) clearTimeout(timer);
     timer = null;
   }
   function flush(): Promise<void> {
     cancelTimer();
-    if (paused || disposed || !pending) return writes;
+    if (paused || disposed || !pending) return activeAttempt ?? writes;
     pending = false;
     const snapshot = captureEditorSession(editor);
     const attempt = writes.then(() => platform.writeSession(snapshot));
+    activeAttempt = attempt;
     // Keep the queue usable after failure while returning this attempt's error to its caller.
-    writes = attempt.catch((error: unknown) => {
-      if (!paused && !disposed) pending = true;
-      onWriteError(error);
-    });
+    writes = attempt
+      .catch((error: unknown) => {
+        if (!paused && !disposed) pending = true;
+        onWriteError(error);
+      })
+      .finally(() => {
+        if (activeAttempt === attempt) activeAttempt = null;
+      });
     return attempt;
   }
   const stop = watch(

@@ -36,29 +36,7 @@ Windows x64 is the primary desktop package. Other Windows architectures, Linux a
 
 Desktop projects store absolute audio paths and reconnect available files when opened. Use **Relink audio** after moving a file. Browsers require manual relinking. A banner shows session recovery and audio loading stages.
 
-| Key | Action |
-| --- | --- |
-| Space | Play / pause |
-| Enter / `,` / `.` | Add a cut at the playhead or cursor |
-| Z | Toggle a cut at the cursor |
-| Arrow keys | Move by grid / measure. Shift+Left/Right moves one tick. |
-| P / O | Preview current / previous slice |
-| Q / W | Decrease / increase grid density |
-| `[` / `]` | Decrease / increase monitoring speed |
-| Ctrl+C / X / V | Copy / cut / paste selected markers |
-| Ctrl+Z / Ctrl+Shift+Z | Undo / redo |
-| M | Export all slices |
-| Ctrl+O / Ctrl+Shift+O / Ctrl+S | Open audio / open a `.wosdx` project / save the project |
-| T / Y | Import / export `.wos` settings |
-| V / B | Write / read BMSE clipboard |
-
-- Drag with the left button to add cuts.
-- Drag with the right button to erase cuts.
-- Hold Shift or Ctrl while dragging to select cuts.
-- Drag a cut to move the selection.
-- Use Ctrl+wheel to zoom.
-- Drag with the middle button to pan.
-- Hold Alt to bypass snapping.
+Open **Help → User guide and shortcuts** for the workflow, mouse controls, keyboard reference and calibration instructions. Help is available offline.
 
 ## Project links
 

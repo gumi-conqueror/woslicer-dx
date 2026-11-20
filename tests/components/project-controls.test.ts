@@ -6,7 +6,7 @@ import { fixture, audioFile } from '../app/workspace-fixture';
 import { workspaceKey } from '../../src/workspace/workspace';
 import { encodeProject } from '../../src/project/codec';
 import SourceInfo from '../../src/app/components/SourceInfo.vue';
-import EditorToolbar from '../../src/app/components/EditorToolbar.vue';
+import WindowTitlebar from '../../src/app/components/WindowTitlebar.vue';
 
 it('shows missing media, relinks through the actual button, and displays the saved state', async () => {
   const f = fixture();
@@ -16,7 +16,10 @@ it('shows missing media, relinks through the actual button, and displays the sav
     provide: { [workspaceKey]: f.workspace },
   };
   const source = mount(SourceInfo, { global });
-  const toolbar = mount(EditorToolbar, { props: { calibrating: false }, global });
+  const toolbar = mount(WindowTitlebar, {
+    props: { beforeClose: () => Promise.resolve(true) },
+    global,
+  });
   try {
     await f.workspace.loadAudio(audioFile());
     await flushPromises();
@@ -34,10 +37,6 @@ it('shows missing media, relinks through the actual button, and displays the sav
     await flushPromises();
     expect(source.text()).toContain('48000 Hz');
     expect(source.text()).not.toContain('Audio unavailable');
-    const save = toolbar.findAll('button').find((button) => button.text() === 'Save .wosdx...');
-    if (!save) throw new Error('Missing project save button');
-    await save.trigger('click');
-    expect(toolbar.emitted('command')).toEqual([['save-project']]);
   } finally {
     source.unmount();
     toolbar.unmount();

@@ -7,7 +7,8 @@ import {
   tickToSampleExport,
 } from '../core/timebase';
 import { formatRate, stepPlaybackRate } from '../core/rate';
-import { isAppCommand, type AppCommand } from './command-types';
+import type { AppCommand } from './command-types';
+import { commandForKey } from './shortcuts';
 import type { EditorStore } from '../slicing/editor-store';
 import type { Workspace } from '../workspace/workspace';
 import type { Playback } from '../playback';
@@ -18,6 +19,10 @@ interface CommandOptions {
   playback: Playback;
   onClose: () => void | Promise<void>;
   onAbout: () => void | Promise<void>;
+  onHelp: () => void | Promise<void>;
+  onTroubleshoot?: () => void | Promise<void>;
+  onOpenDataFolder?: () => void | Promise<void>;
+  onCalibrate: () => void | Promise<void>;
   onOpenProject?: () => void | Promise<void>;
   onNewProjectFromWos?: () => void | Promise<void>;
 }
@@ -28,6 +33,10 @@ export function createCommands({
   playback,
   onClose,
   onAbout,
+  onHelp,
+  onTroubleshoot,
+  onOpenDataFolder,
+  onCalibrate,
   onOpenProject = () => workspace.openProject(),
   onNewProjectFromWos = () => workspace.newProjectFromWos(),
 }: CommandOptions) {
@@ -89,6 +98,18 @@ export function createCommands({
       case 'zoom-out':
         editor.zoomAt(editor.cursorTick, 0.8);
         return;
+      case 'help':
+        await onHelp();
+        return;
+      case 'troubleshoot':
+        await onTroubleshoot?.();
+        return;
+      case 'open-data-folder':
+        await onOpenDataFolder?.();
+        return;
+      case 'calibrate':
+        await onCalibrate();
+        return;
       case 'about':
         await onAbout();
         return;
@@ -129,6 +150,9 @@ export function createCommands({
         return;
       case 'toggle-marker':
         actions.toggleMarker();
+        return;
+      case 'place-breakpoint-free':
+        placeBreakpoint(true);
         return;
       case 'place-breakpoint':
         placeBreakpoint(false);
@@ -239,31 +263,6 @@ export function createCommands({
       );
     }
   }
-  const shortcuts: Record<string, AppCommand> = {
-    ' ': 'play-pause',
-    z: 'toggle-marker',
-    p: 'preview',
-    o: 'preview-previous',
-    '[': 'rate-down',
-    ']': 'rate-up',
-    q: 'grid-down',
-    w: 'grid-up',
-    m: 'export-all',
-    v: 'bmse-out',
-    b: 'bmse-in',
-    a: 'clip-number-down',
-    s: 'clip-number-up',
-    n: 'toggle-ff',
-    t: 'import-wos',
-    y: 'export-wos',
-    c: 'clear-markers',
-    '7': 'shift-all-minus',
-    '8': 'shift-all-plus',
-    Escape: 'clear-selection',
-    '+': 'zoom-in',
-    '=': 'zoom-in',
-    '-': 'zoom-out',
-  };
   function onKeyDown(event: KeyboardEvent): void {
     if (event.defaultPrevented || event.isComposing || event.key === 'Process') return;
     const target = event.target;
@@ -282,45 +281,8 @@ export function createCommands({
       )
     )
       return;
-    if (event.ctrlKey || event.metaKey) {
-      const key = event.key.toLowerCase();
-      const commands: Partial<Record<string, AppCommand>> = {
-        z: event.shiftKey ? 'redo' : 'undo',
-        y: 'redo',
-        c: 'select-copy',
-        x: 'select-cut',
-        v: 'select-paste',
-        a: 'select-all',
-        e: event.shiftKey ? 'export-all' : 'export-slice',
-        s: event.shiftKey ? 'export-wos' : 'save-project',
-        o: event.shiftKey ? 'open-project' : 'open-audio',
-      };
-      const command = commands[key];
-      if (command) {
-        event.preventDefault();
-        void run(command);
-      } else if (key === 'f') {
-        event.preventDefault();
-        void run('measure-paste');
-      }
-      return;
-    }
-    let command = shortcuts[event.key];
-    if (['Enter', ',', '.'].includes(event.key)) {
-      event.preventDefault();
-      placeBreakpoint(event.altKey);
-      return;
-    }
-    if (event.key.startsWith('Arrow')) {
-      const steps: Record<string, AppCommand> = {
-        ArrowLeft: event.shiftKey ? 'cursor-left-tick' : 'cursor-left-grid',
-        ArrowRight: event.shiftKey ? 'cursor-right-tick' : 'cursor-right-grid',
-        ArrowUp: 'cursor-up-measure',
-        ArrowDown: 'cursor-down-measure',
-      };
-      command = steps[event.key];
-    }
-    if (!command || !isAppCommand(command)) return;
+    const command = commandForKey(event);
+    if (!command) return;
     event.preventDefault();
     void run(command);
   }

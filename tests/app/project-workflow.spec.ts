@@ -8,7 +8,14 @@ import { expectViewportLayout } from './layout-assertions';
 
 async function pick(page: Page, label: string, name: string, bytes: Uint8Array): Promise<void> {
   const choosing = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: label, exact: true }).click();
+  if (label === 'Open' || label === 'Open .wosdx...') {
+    await page.getByRole('button', { name: 'Project', exact: true }).click();
+    await page
+      .getByRole('menuitem', { name: label === 'Open' ? 'Open WAV/OGG...' : label, exact: true })
+      .click();
+  } else {
+    await page.getByRole('button', { name: label, exact: true }).click();
+  }
   await (
     await choosing
   ).setFiles({ name, mimeType: 'application/octet-stream', buffer: Buffer.from(bytes) });
@@ -37,7 +44,7 @@ test('opens and exports an original BMH file without changing its bytes', async 
     Object.defineProperty(window, 'showSaveFilePicker', { value: undefined, configurable: true }),
   );
   await page.goto('/');
-  await page.getByRole('tab', { name: 'BMHelper', exact: true }).click();
+  await page.getByRole('button', { name: 'BMHelper', exact: true }).click();
   await pick(page, 'Open project', 'original-events.bmh', original);
   await expect(page.locator('.division-actions .el-select')).toContainText('コード分割');
   const downloading = page.waitForEvent('download');
@@ -57,7 +64,8 @@ test('opens and exports an original BMH file without changing its bytes', async 
   expect(readBmh(new Uint8Array(await readFile(legacyPath))).divisions[0].name).not.toBe(name);
   await expect(rename).toHaveValue(name);
   const savingDx = page.waitForEvent('download');
-  await page.getByRole('button', { name: /Save \.wosdx/ }).click();
+  await page.getByRole('button', { name: 'Project', exact: true }).click();
+  await page.getByRole('menuitem', { name: /Save \.wosdx/ }).click();
   const dxPath = await (await savingDx).path();
   if (!dxPath) throw new Error('Missing DX project download');
   const dx = await readFile(dxPath);
@@ -93,13 +101,37 @@ test('opens, saves and relinks a project at native browser scale', async ({ page
   });
   await page.goto('/');
   await expect(page.getByRole('menubar')).toBeVisible();
+  await expect(page.locator('.track-loading')).toHaveCount(0);
+  const playbackBefore = await page.locator('.playback-strip').boundingBox();
+  const panelsBefore = await page.locator('.side-panel').boundingBox();
+  const trackBefore = await page.locator('.track-header').boundingBox();
+  const overviewBefore = await page.locator('.track-overview-container').boundingBox();
+  const waveformBefore = await page.locator('.timeline-viewport').boundingBox();
   const pcm = Int16Array.from({ length: 48000 }, (_, i) => Math.round(Math.sin(i / 12) * 16000));
   const wav = encodeWav16([pcm], 48000, pcm.length);
   await pick(page, 'Open', 'tone.wav', wav);
-  const loading = page.locator('.media-loading');
+  const loading = page.locator('.track-header .track-loading');
   await expect(loading).toBeVisible();
-  await expect(loading).toContainText('Checking media');
-  await expect(loading).toContainText('tone.wav');
+  await expect(loading).toHaveAttribute('aria-label', 'Checking media…');
+  await expect(loading).toHaveText('');
+  await expect
+    .poll(() =>
+      loading.evaluate(
+        (element) =>
+          element
+            .getAnimations({ subtree: true })
+            .filter((animation) => animation.playState === 'running').length,
+      ),
+    )
+    .toBeGreaterThan(0);
+  expect(await loading.boundingBox()).toEqual(overviewBefore);
+  expect(await page.locator('.track-header').boundingBox()).toEqual(trackBefore);
+  expect(await page.locator('.timeline-viewport').boundingBox()).toEqual(waveformBefore);
+  await expect(page.locator('.track-name')).toHaveText('tone.wav');
+  await expect(page.locator('.timeline-viewport')).toHaveAttribute('aria-busy', 'true');
+  await expect(page.locator('.timeline-empty')).toHaveCount(0);
+  expect(await page.locator('.playback-strip').boundingBox()).toEqual(playbackBefore);
+  expect(await page.locator('.side-panel').boundingBox()).toEqual(panelsBefore);
   await expectViewportLayout(page);
   await expect(page.getByRole('menubar')).toBeVisible();
   expect(
@@ -109,13 +141,19 @@ test('opens, saves and relinks a project at native browser scale', async ({ page
   await page.evaluate(() => document.dispatchEvent(new Event('resume-media')));
   await expect(page.locator('.status-message')).toContainText('Ready: tone');
   await expect(loading).toBeHidden();
+  await expect(page.locator('.track-header .track-overview')).toBeVisible();
+  await expect(page.locator('.timeline-viewport')).toHaveAttribute('aria-busy', 'false');
+  expect(await page.locator('.track-header').boundingBox()).toEqual(trackBefore);
+  expect(await page.locator('.track-overview-container').boundingBox()).toEqual(overviewBefore);
+  expect(await page.locator('.timeline-viewport').boundingBox()).toEqual(waveformBefore);
   await page.locator('.timeline-viewport').focus();
   await page.keyboard.press('z');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('z');
   await expect(page.getByLabel('Unsaved changes', { exact: true })).toBeVisible();
   const downloading = page.waitForEvent('download');
-  await page.getByRole('button', { name: /Save \.wosdx/ }).click();
+  await page.getByRole('button', { name: 'Project', exact: true }).click();
+  await page.getByRole('menuitem', { name: /Save \.wosdx/ }).click();
   const download = await downloading;
   const path = await download.path();
   if (!path) throw new Error('Missing project download');
@@ -133,7 +171,8 @@ test('opens, saves and relinks a project at native browser scale', async ({ page
   await expect(page.getByLabel('Unsaved changes', { exact: true })).toHaveCount(0);
   await page.locator('.timeline-viewport').focus();
   await page.keyboard.press('z');
-  await page.getByRole('button', { name: 'Open .wosdx...', exact: true }).click();
+  await page.getByRole('button', { name: 'Project', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Open .wosdx...', exact: true }).click();
   await expect(page.getByRole('dialog')).toContainText('Unsaved project changes will be replaced.');
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeHidden();

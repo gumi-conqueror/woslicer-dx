@@ -18,11 +18,18 @@ See [Contributing](../CONTRIBUTING.md) for branch routes and pull request target
 | Cut list | `src/slicing/MarkerList.vue` owns selection controls. `editor-actions.ts` implements marker operations. |
 | BMHelper | `src/bmhelper/BMHelperPanel.vue` owns the panel. `store.ts` derives its content from the project payload and commits edits through the editor. |
 | Project open/save | `src/workspace/workspace.ts` coordinates file operations and recovery. `persistence.ts` serializes recovery writes. `src/project/schema.ts` defines Zod field schemas and derives document types. `codec.ts` owns version compatibility, normalization and business validation. |
-| Playback | `src/playback/PlaybackControls.vue` owns controls. `index.ts` manages audio playback and cleanup. |
+| Playback | `src/playback/PlaybackControls.vue` owns controls. Fader drafts preview the monitor gains, then commit one document edit on release. `index.ts` manages audio playback and cleanup. |
 | Document/output settings | `src/app/components/DocumentOptions.vue` and `src/export/OutputPanel.vue` read reactive editor projections and write undoable transactions through `src/slicing/editor-store.ts`. |
-| Language/theme and dialogs | `src/app/components/PreferencesControls.vue` uses `src/ui/preferences.ts`. About lives beside the toolbar. Calibration lives in `src/calibration/CalibrationDialog.vue`. |
+| Language/theme and dialogs | `src/app/components/PreferencesControls.vue` uses `src/ui/preferences.ts`. Help and About live in `src/app/components/` and open from the Help menu; calibration opens from Tools. Calibration lives in `src/calibration/CalibrationDialog.vue`. |
 
 `src/app/App.vue` assembles these features and owns project-replacement confirmations.
+`WindowTitlebar.vue` owns native window controls through `src/platform/desktop-window.ts`.
+Window-state restoration excludes `DECORATIONS`, so old saved borders cannot override
+the frameless builder. The native UI runner verifies the actual decoration state.
+`App.vue` confirms native exit and saves recovery data before the window closes.
+The transport is above the workspace. `TrackHeader.vue` identifies the current audio lane,
+and `WorkspacePanels.vue` owns the collapsible inspector. This layout leaves room for
+future lanes. Editing and playback still use the existing single-track model.
 `src/app/components/MediaLoading.vue` shows the current recovery or media-loading stage.
 The workspace owns this transient state. Each open request clears only its own indicator.
 The component accepts a media ID and file name, so a future track layout can place it beside its media.
@@ -37,7 +44,9 @@ project history and exports.
 ### Input, commands and platform boundaries
 
 Discrete user intents follow input → command → feature action. Keyboard shortcuts
-and menu buttons share `src/app/commands.ts`. The feature action owns document
+and menu buttons share `src/app/commands.ts`. `src/app/shortcuts.ts` owns key bindings,
+command labels and help groups. The dispatcher, menu hints, tooltips, calibration
+and `HelpDialog.vue` consume that registry; README files link to the in-app guide. The feature action owns document
 validation, undo and playback behavior. Continuous pointer gestures and local
 form edits stay with their feature rather than routing every movement through a
 global dispatcher. An action uses platform capabilities only when it needs files, clipboard, recovery storage or other host services.

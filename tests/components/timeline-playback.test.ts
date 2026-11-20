@@ -118,6 +118,23 @@ function fixture(length = 480000) {
 }
 
 describe('Pinia playback lifetime and audio clock', () => {
+  it('previews fader gain on live audio nodes and discards previews on undo or source replacement', () => {
+    const { editor, playback, context } = fixture();
+    playback.play();
+    const revision = editor.docRevision;
+    editor.setVolumePreview(0.25);
+    editor.setCueVolumePreview(0.4);
+    expect(required(context.gains[0]).gain.value).toBeCloseTo(0.25, 12);
+    expect(required(context.gains[1]).gain.value).toBeCloseTo(0.4, 12);
+    expect(editor.docRevision).toBe(revision);
+    editor.setVolume(0.25);
+    editor.undo();
+    expect(required(context.gains[0]).gain.value).toBeCloseTo(editor.volume, 12);
+    expect(required(context.gains[1]).gain.value).toBeCloseTo(editor.cueVolume, 12);
+    editor.setVolumePreview(0.1);
+    editor.setSource(null);
+    expect(required(context.gains[0]).gain.value).toBeCloseTo(editor.volume, 12);
+  });
   it('preserves a continuous source clock on rate changes without restarting the node', () => {
     const { editor, playback, context } = fixture();
     playback.play();
