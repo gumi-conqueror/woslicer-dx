@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { shortcutLabel } from '../app/shortcuts';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useWorkspace } from '../workspace/workspace';
@@ -100,14 +101,23 @@ const gate = computed({
         @click="workspace.exportSlice()"
         >{{ t('chrome.exportSliceAtCursor') }}</el-button
       >
-      <el-button @click="workspace.saveWos()">{{ t('chrome.saveWos') }}</el-button>
+      <el-button
+        :title="shortcutLabel('export-wos')"
+        @click="workspace.saveWos()"
+        >{{ t('chrome.saveWos') }}</el-button
+      >
       <el-button @click="workspace.importWosSettings()">{{ t('menu.importWos') }}</el-button>
       <el-button
         :disabled="!editor.ticks.length"
+        :title="shortcutLabel('bmse-out')"
         @click="workspace.bmseOut()"
         >{{ t('chrome.bmseOut') }}</el-button
       >
-      <el-button @click="workspace.bmseIn()">{{ t('chrome.bmseIn') }}</el-button>
+      <el-button
+        :title="shortcutLabel('bmse-in')"
+        @click="workspace.bmseIn()"
+        >{{ t('chrome.bmseIn') }}</el-button
+      >
     </div>
   </section>
 </template>

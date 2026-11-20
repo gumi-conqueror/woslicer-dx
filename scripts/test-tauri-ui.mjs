@@ -82,6 +82,7 @@ async function runProfile(profile, exe, runDir) {
   try {
     const work = (async () => {
       client = await connectPage(port);
+      client.page.setDefaultTimeout(5000);
       await verifyProfile(profile, client, runDir);
     })();
     const timeout = new Promise((_, reject) => {
@@ -91,6 +92,18 @@ async function runProfile(profile, exe, runDir) {
       );
     });
     await Promise.race([work, timeout]);
+  } catch (error) {
+    if (client) {
+      await client.page.screenshot({ path: join(runDir, 'failure.png') }).catch(() => {});
+      writeFileSync(
+        join(runDir, 'failure.txt'),
+        await client.page
+          .locator('body')
+          .innerText()
+          .catch(() => 'unavailable'),
+      );
+    }
+    throw error;
   } finally {
     clearTimeout(watchdog);
     if (client) {
@@ -200,6 +213,12 @@ async function verifyProfile(profile, client, runDir) {
   }
   if (exceptions > 0) throw new Error(`${exceptions} uncaught page exception(s)`);
 
+  const manifest = JSON.parse(readFileSync('dist/app-tauri/.vite/manifest.json', 'utf8'));
+  const entry = manifest['index.html']?.file;
+  const embeddedEntry = await client.page.locator('script[type="module"][src]').getAttribute('src');
+  if (!entry || !embeddedEntry?.endsWith(`/${entry}`))
+    throw new Error(`Native window embeds stale assets: ${embeddedEntry}, expected ${entry}`);
+
   const workerAsset = readdirSync('dist/app-tauri/assets').find((name) =>
     /^audio\.worker-.*\.js$/.test(name),
   );
@@ -229,6 +248,163 @@ async function verifyProfile(profile, client, runDir) {
     throw new Error(`Native Ogg worker failed: ${JSON.stringify(decoded.result)}`);
   }
   writeFileSync(join(runDir, 'ogg.json'), JSON.stringify(audio, null, 2));
+
+  // Exercise actual native permissions, including state changes initiated outside Vue.
+  const decorated = await client.page.evaluate(() =>
+    globalThis.__TAURI_INTERNALS__.invoke('plugin:window|is_decorated', { label: 'main' }),
+  );
+  if (decorated !== false) throw new Error('Native window restored system decorations');
+  const controls = client.page.locator('.window-controls button');
+  await controls.nth(1).click();
+  await client.page.waitForFunction(() =>
+    globalThis.__TAURI_INTERNALS__.invoke('plugin:window|is_maximized', { label: 'main' }),
+  );
+  await controls.nth(1).click();
+  await client.page.waitForFunction(
+    async () =>
+      !(await globalThis.__TAURI_INTERNALS__.invoke('plugin:window|is_maximized', {
+        label: 'main',
+      })),
+  );
+  await controls.nth(0).click();
+  await client.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'normal' } });
+  await client.page.locator('.window-titlebar').waitFor({ state: 'visible' });
+  writeFileSync(
+    join(runDir, 'window-controls.json'),
+    JSON.stringify({ decorated, maximize: true, restore: true, minimizeRequested: true }),
+  );
+
+  // Browser commands must not reload the document or consume editor shortcuts.
+  await client.page.evaluate(() => {
+    globalThis.document.body.dataset.inputProbe = 'retained';
+  });
+  await client.page.locator('.timeline-viewport').focus();
+  for (const key of ['F5', 'Control+r', 'Control+Shift+r', 'Control+p', 'Control+f', 'F12']) {
+    await client.page.keyboard.press(key);
+  }
+  const inputProbe = await client.page.evaluate(() => ({
+    retained: globalThis.document.body.dataset.inputProbe === 'retained',
+    contextMenuBlocked: !globalThis.document.body.dispatchEvent(
+      new globalThis.MouseEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true,
+        button: 2,
+      }),
+    ),
+  }));
+  if (!inputProbe.retained || !inputProbe.contextMenuBlocked)
+    throw new Error('Native WebView browser input was not disabled');
+  await client.page.keyboard.press('F1');
+  await client.page.getByRole('dialog').waitFor({ state: 'visible' });
+  await client.page.keyboard.press('Escape');
+  await client.page.getByRole('dialog').waitFor({ state: 'hidden' });
+  writeFileSync(
+    join(runDir, 'browser-input.json'),
+    JSON.stringify({ ...inputProbe, editorHelp: true }),
+  );
+
+  // The native host exposes fixed application folders, never renderer paths.
+  const folders = await client.page.evaluate(() =>
+    globalThis.__TAURI_INTERNALS__.invoke('app_data_folders'),
+  );
+  if (
+    folders.length < 2 ||
+    folders.some((folder) => !folder.path.endsWith('io.github.rirko.woslicer-dx'))
+  )
+    throw new Error('Native data-folder list is incomplete or points outside the application');
+  const rejectedPath = await client.page.evaluate(async () => {
+    try {
+      await globalThis.__TAURI_INTERNALS__.invoke('open_data_folder', { kind: 'C:/Windows' });
+      return false;
+    } catch {
+      return true;
+    }
+  });
+  if (!rejectedPath) throw new Error('Data-folder command accepted a renderer path');
+  await client.page.bringToFront();
+  await client.page.locator('.track-number').click();
+  await client.page.waitForFunction(
+    () => !globalThis.document.querySelector('.menu-trigger').disabled,
+  );
+  await client.page.keyboard.press('Alt');
+  await client.page.keyboard.press('h');
+  await client.page.locator('[data-command="open-data-folder"]').waitFor({ state: 'visible' });
+  await client.page.keyboard.press('t');
+  await client.page.locator('.support-content').waitFor({ state: 'visible' });
+  await client.page.locator('.data-folder').first().waitFor({ state: 'visible' });
+  await client.page.screenshot({ path: join(runDir, 'troubleshoot.png'), animations: 'disabled' });
+  await client.page.keyboard.press('Escape');
+  await client.page.getByRole('dialog').waitFor({ state: 'hidden' });
+  const gamepadApi = await client.page.evaluate(() => typeof navigator.getGamepads === 'function');
+  if (!gamepadApi) throw new Error('Gamepad API is unavailable in the native WebView');
+  await client.page.evaluate(() => {
+    const pad = {
+      index: 0,
+      connected: true,
+      mapping: 'standard',
+      id: 'Xbox test controller',
+      axes: [0, 0],
+      buttons: Array.from({ length: 17 }, () => ({ pressed: false, value: 0 })),
+    };
+    Object.defineProperty(navigator, 'getGamepads', { value: () => [pad] });
+    globalThis.addEventListener('test-gamepad', (event) => {
+      for (const [index, button] of pad.buttons.entries()) {
+        button.pressed = index === event.detail;
+        button.value = button.pressed ? 1 : 0;
+      }
+    });
+  });
+  const controller = async (button) => {
+    await client.page.evaluate(async (button) => {
+      globalThis.dispatchEvent(new CustomEvent('test-gamepad', { detail: button }));
+      await new Promise((resolve) =>
+        globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(resolve)),
+      );
+      globalThis.dispatchEvent(new CustomEvent('test-gamepad', { detail: -1 }));
+      await new Promise((resolve) =>
+        globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(resolve)),
+      );
+    }, button);
+  };
+  await controller(9);
+  await client.page.locator('.menu-popup:not([hidden])').waitFor({ state: 'visible' });
+  if ((await client.page.locator('.input-device').getAttribute('data-device')) !== 'gamepad')
+    throw new Error('Native controller did not change input hints');
+  await controller(15);
+  await controller(15);
+  await client.page.screenshot({ path: join(runDir, 'controller-menu.png') });
+  await controller(9);
+  await controller(8);
+  await client.page.locator('.guide-switch').waitFor({ state: 'visible' });
+  const choices = client.page.locator('.guide-switch button');
+  if ((await choices.nth(0).getAttribute('aria-pressed')) !== 'true')
+    throw new Error('Help automatically changed its input reference');
+  await choices.nth(0).focus();
+  await controller(15);
+  await controller(0);
+  if ((await choices.nth(1).getAttribute('aria-pressed')) !== 'true')
+    throw new Error('Controller cannot change the help reference');
+  await client.page.screenshot({
+    path: join(runDir, 'controller-help.png'),
+    animations: 'disabled',
+  });
+  await controller(1);
+  await client.page.getByRole('dialog').waitFor({ state: 'hidden' });
+  writeFileSync(
+    join(runDir, 'input-navigation.json'),
+    JSON.stringify(
+      {
+        altNavigation: true,
+        gamepadApi,
+        simulatedXboxNavigation: true,
+        manualHelpChoice: true,
+        folders,
+        rejectedPath,
+      },
+      null,
+      2,
+    ),
+  );
 
   await client.page.locator('.statusbar button').click();
   await client.page.getByRole('dialog').waitFor({ state: 'visible' });

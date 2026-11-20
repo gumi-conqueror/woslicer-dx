@@ -204,7 +204,7 @@ export function createPlayback(editor: EditorStore): Playback {
       { immediate: true, flush: 'sync' },
     );
     watch(
-      () => editor.cueVolume,
+      () => editor.cueAmp,
       (value) => cue.setVolume(value),
       { immediate: true, flush: 'sync' },
     );

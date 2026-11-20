@@ -1,14 +1,7 @@
 import { mount } from '@vue/test-utils';
 import { createPinia, disposePinia } from 'pinia';
 import { nextTick } from 'vue';
-import {
-  ElInputNumber,
-  ElSelect,
-  ElOption,
-  ElTabs,
-  ElDropdown,
-  ElDropdownItem,
-} from 'element-plus';
+import { ElInputNumber, ElSelect, ElOption } from 'element-plus';
 import { describe, expect, it, vi } from 'vitest';
 import { clearMocks, mockIPC } from '@tauri-apps/api/mocks';
 import DocumentOptions from '../../src/app/components/DocumentOptions.vue';
@@ -16,7 +9,7 @@ import EditorToolbar from '../../src/app/components/EditorToolbar.vue';
 import WorkspacePanels from '../../src/app/components/WorkspacePanels.vue';
 import AboutDialog from '../../src/app/components/AboutDialog.vue';
 import ApplicationMenu from '../../src/app/components/ApplicationMenu.vue';
-import { APPLICATION_MENU, isMenuCommand } from '../../src/app/menu';
+import { APPLICATION_MENU, isMenuCommand, menuCommandEnabled } from '../../src/app/menu';
 import { setupI18n } from '../../src/i18n/setup';
 import { useEditorStore } from '../../src/slicing/editor-store';
 import { useBmhelperStore } from '../../src/bmhelper/store';
@@ -94,27 +87,26 @@ describe('application controls', () => {
       instance.dispose();
     }
   });
-  it('keeps legacy WOS import/export visible without audio and provides calibration when media exists', async () => {
+  it('keeps settings in the toolbar and places calibration and help in their menus', async () => {
     const instance = setup();
-    const wrapper = mount(EditorToolbar, {
-      props: { calibrating: false },
-      global: instance.global,
-    });
+    const wrapper = mount(EditorToolbar, { global: instance.global });
     try {
-      const button = (label: string) => {
-        const found = wrapper.findAll('button').find((item) => item.text() === label);
-        if (!found) throw new Error(`missing ${label}`);
-        return found;
-      };
-      expect(button('Import .wos settings...').attributes('disabled')).toBeUndefined();
-      expect(button('Export .wos...').attributes('disabled')).toBeUndefined();
-      await button('Import .wos settings...').trigger('click');
-      expect(wrapper.emitted('command')).toEqual([['import-wos']]);
-      expect(button('Calibrate').attributes('disabled')).toBeDefined();
+      expect(wrapper.findComponent(DocumentOptions).exists()).toBe(true);
+      expect(wrapper.text()).not.toContain('Calibrate');
+      expect(
+        APPLICATION_MENU.find((group) => group.label === 'menu.tools')?.commands.map(
+          (item) => item.id,
+        ),
+      ).toEqual(['calibrate']);
+      expect(
+        APPLICATION_MENU.find((group) => group.label === 'menu.help')?.commands.map(
+          (item) => item.id,
+        ),
+      ).toEqual(['help', 'troubleshoot', 'open-data-folder', 'about']);
+      expect(menuCommandEnabled('calibrate', instance.editor)).toBe(false);
       instance.editor.setSource(source);
       await nextTick();
-      await button('Calibrate').trigger('click');
-      expect(wrapper.emitted('calibrate')).toHaveLength(1);
+      expect(menuCommandEnabled('calibrate', instance.editor)).toBe(true);
     } finally {
       wrapper.unmount();
       instance.dispose();
@@ -147,20 +139,12 @@ describe('application controls', () => {
       instance.dispose();
     }
   });
-  it('updates menu availability as the project changes and validates dropdown commands', async () => {
+  it('updates menu availability as the project changes and emits selected commands', async () => {
     const instance = setup();
     const wrapper = mount(ApplicationMenu, { global: instance.global });
     try {
-      const dropdowns = wrapper.findAllComponents(ElDropdown);
-      for (const dropdown of dropdowns) {
-        await dropdown.find('button').trigger('click');
-      }
       const disabled = (command: string) => {
-        const item = wrapper
-          .findAllComponents(ElDropdownItem)
-          .find((candidate) => candidate.props('command') === command);
-        if (!item) throw new Error('Missing menu command: ' + command);
-        return item.props('disabled');
+        return wrapper.get<HTMLButtonElement>(`[data-command="${command}"]`).element.disabled;
       };
       instance.editor.setTicks([24]);
       await nextTick();
@@ -184,18 +168,14 @@ describe('application controls', () => {
       instance.editor.setLimited(false);
       await nextTick();
       expect(disabled('open-audio')).toBe(false);
-      const dropdown = wrapper.findComponent(ElDropdown);
-      dropdown.vm.$emit('command', 'save-project');
-      dropdown.vm.$emit('command', 'toggle-marker');
-      dropdown.vm.$emit('command', 'unknown');
-      dropdown.vm.$emit('command', null);
+      await wrapper.get('[data-command="save-project"]').trigger('click');
       expect(wrapper.emitted('command')).toEqual([['save-project']]);
     } finally {
       wrapper.unmount();
       instance.dispose();
     }
   });
-  it('filters BMHelper cuts with one undo entry and preserves BPM and project across tabs', async () => {
+  it('filters BMHelper cuts with one undo entry and preserves BPM and project when its module is toggled', async () => {
     // WorkspacePanels reads the workspace through injection, so this test
     // mounts against the real workspace fixture instead of a bare pinia.
     const f = fixture();
@@ -217,7 +197,7 @@ describe('application controls', () => {
       f.editor.setDocumentOptions({ bpm: 120 });
       f.editor.setTicks([24]);
       f.editor.setSource(source);
-      wrapper.findComponent(ElTabs).vm.$emit('update:modelValue', 'bmhelper');
+      await wrapper.get('button[aria-label="BMHelper"]').trigger('click');
       await nextTick();
       wrapper
         .findComponent(BMHelperPanel)
@@ -233,9 +213,9 @@ describe('application controls', () => {
       expect(f.editor.ticks).toEqual([24]);
       const bmh = useBmhelperStore(f.pinia);
       bmh.name = 'retained';
-      wrapper.findComponent(ElTabs).vm.$emit('update:modelValue', 'source');
+      await wrapper.get('button[aria-label="BMHelper"]').trigger('click');
       await nextTick();
-      wrapper.findComponent(ElTabs).vm.$emit('update:modelValue', 'bmhelper');
+      await wrapper.get('button[aria-label="BMHelper"]').trigger('click');
       await nextTick();
       expect(bmh.name).toBe('retained');
       bmh.reset();

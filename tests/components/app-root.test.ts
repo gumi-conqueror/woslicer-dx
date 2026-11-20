@@ -1,9 +1,10 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, expect, it, vi } from 'vitest';
-import { nextTick } from 'vue';
+import { nextTick, type ComponentPublicInstance } from 'vue';
 import { ElMessageBox } from 'element-plus';
 import App from '../../src/app/App.vue';
-import EditorToolbar from '../../src/app/components/EditorToolbar.vue';
+import ApplicationMenu from '../../src/app/components/ApplicationMenu.vue';
+import WindowTitlebar from '../../src/app/components/WindowTitlebar.vue';
 import CalibrationDialog from '../../src/calibration/CalibrationDialog.vue';
 import { pinia, localization } from '../../src/app/runtime';
 import { useEditorStore } from '../../src/slicing/editor-store';
@@ -16,6 +17,7 @@ const effects = vi.hoisted(() => ({
   reset: vi.fn(async () => {}),
   openProject: vi.fn(async () => {}),
   disposeWorkspace: vi.fn(async () => {}),
+  flushSession: vi.fn(async () => {}),
   keydown: vi.fn(),
   execute: vi.fn(),
 }));
@@ -30,6 +32,7 @@ vi.mock('../../src/workspace/workspace', () => ({
     reset: effects.reset,
     openProject: effects.openProject,
     dispose: effects.disposeWorkspace,
+    flushSession: effects.flushSession,
   }),
   provideWorkspace: () => {},
 }));
@@ -46,11 +49,15 @@ vi.mock('../../src/app/commands', () => ({
     onClose: () => Promise<void>;
     onOpenProject: () => Promise<void>;
     onAbout: () => void;
+    onHelp: () => void;
+    onCalibrate: () => void;
   }) => ({
     execute: async (command: string) => {
       effects.execute(command);
       if (command === 'close-project') await options.onClose();
       if (command === 'open-project') await options.onOpenProject();
+      if (command === 'calibrate') options.onCalibrate();
+      if (command === 'help') options.onHelp();
       if (command === 'about') options.onAbout();
     },
     onKeyDown: effects.keydown,
@@ -74,6 +81,7 @@ function render() {
         PlaybackControls: true,
         CalibrationDialog: true,
         AboutDialog: true,
+        HelpDialog: true,
       },
     },
   });
@@ -94,6 +102,46 @@ it('mounts without Suspense or build metadata and releases owned subscriptions o
   window.dispatchEvent(new KeyboardEvent('keydown', { key: 'x' }));
   expect(effects.keydown).toHaveBeenCalledOnce();
 });
+it('cancels native exit with dirty work and flushes recovery after approval', async () => {
+  const editor = useEditorStore(pinia);
+  editor.setDocumentOptions({ bpm: 175 });
+  const confirm = vi
+    .spyOn(ElMessageBox, 'confirm')
+    .mockRejectedValueOnce('cancel')
+    .mockResolvedValueOnce('confirm');
+  const wrapper = render();
+  try {
+    const beforeClose = wrapper
+      .findComponent<ComponentPublicInstance<{ beforeClose: () => Promise<boolean> }>>(
+        WindowTitlebar,
+      )
+      .props('beforeClose');
+    expect(await beforeClose()).toBe(false);
+    expect(effects.flushSession).not.toHaveBeenCalled();
+    expect(await beforeClose()).toBe(true);
+    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(effects.flushSession).toHaveBeenCalledOnce();
+    expect(effects.stopAudio).toHaveBeenCalledOnce();
+  } finally {
+    wrapper.unmount();
+  }
+});
+it('does not approve native exit when the recovery flush fails', async () => {
+  const failure = new Error('Recovery unavailable');
+  effects.flushSession.mockRejectedValueOnce(failure);
+  const wrapper = render();
+  try {
+    await expect(
+      wrapper
+        .findComponent<ComponentPublicInstance<{ beforeClose: () => Promise<boolean> }>>(
+          WindowTitlebar,
+        )
+        .props('beforeClose')(),
+    ).rejects.toThrow(failure);
+  } finally {
+    wrapper.unmount();
+  }
+});
 it('opens calibration from toolbar, isolates keyboard dispatch, and applies its offset', async () => {
   const editor = useEditorStore(pinia);
   editor.setSource({
@@ -108,7 +156,7 @@ it('opens calibration from toolbar, isolates keyboard dispatch, and applies its 
   });
   const wrapper = render();
   try {
-    wrapper.findComponent(EditorToolbar).vm.$emit('calibrate');
+    wrapper.findComponent(ApplicationMenu).vm.$emit('command', 'calibrate');
     await nextTick();
     expect(effects.stopAudio).toHaveBeenCalledOnce();
     expect(wrapper.findComponent(CalibrationDialog).props('modelValue')).toBe(true);
@@ -128,7 +176,7 @@ it('coordinates confirmed workspace and BMHelper reset through the command dispa
   bmh.dirty = true;
   const wrapper = render();
   try {
-    wrapper.findComponent(EditorToolbar).vm.$emit('command', 'close-project');
+    wrapper.findComponent(ApplicationMenu).vm.$emit('command', 'close-project');
     await flushPromises();
     expect(effects.execute).toHaveBeenCalledWith('close-project');
     expect(effects.reset).toHaveBeenCalledOnce();
@@ -178,7 +226,7 @@ it('opens the project without a dialog while the document is clean', async () =>
   try {
     await flushPromises();
     expect(useEditorStore(pinia).isDirty).toBe(false);
-    wrapper.findComponent(EditorToolbar).vm.$emit('command', 'open-project');
+    wrapper.findComponent(ApplicationMenu).vm.$emit('command', 'open-project');
     await flushPromises();
     expect(confirmSpy).not.toHaveBeenCalled();
     expect(effects.openProject).toHaveBeenCalledOnce();
@@ -193,11 +241,11 @@ it('runs the confirmed project replacement and releases the lock afterwards', as
   try {
     await flushPromises();
     makeDirty();
-    wrapper.findComponent(EditorToolbar).vm.$emit('command', 'open-project');
+    wrapper.findComponent(ApplicationMenu).vm.$emit('command', 'open-project');
     await flushPromises();
     expect(confirmSpy).toHaveBeenCalledOnce();
     expect(effects.openProject).toHaveBeenCalledOnce();
-    wrapper.findComponent(EditorToolbar).vm.$emit('command', 'open-project');
+    wrapper.findComponent(ApplicationMenu).vm.$emit('command', 'open-project');
     await flushPromises();
     expect(confirmSpy).toHaveBeenCalledTimes(2);
     expect(effects.openProject).toHaveBeenCalledTimes(2);
@@ -213,13 +261,13 @@ it('keeps the workspace and reports nothing when the replacement is cancelled', 
   try {
     await flushPromises();
     makeDirty();
-    wrapper.findComponent(EditorToolbar).vm.$emit('command', 'open-project');
+    wrapper.findComponent(ApplicationMenu).vm.$emit('command', 'open-project');
     await flushPromises();
     expect(effects.openProject).not.toHaveBeenCalled();
     expect(editor.isError).toBe(false);
     // The lock is released: a later confirmation still runs.
     vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue('confirm');
-    wrapper.findComponent(EditorToolbar).vm.$emit('command', 'open-project');
+    wrapper.findComponent(ApplicationMenu).vm.$emit('command', 'open-project');
     await flushPromises();
     expect(confirmSpy).toHaveBeenCalledTimes(2);
     expect(effects.openProject).toHaveBeenCalledOnce();
@@ -235,7 +283,7 @@ it('treats closing the replacement dialog like cancellation', async () => {
   try {
     await flushPromises();
     makeDirty();
-    wrapper.findComponent(EditorToolbar).vm.$emit('command', 'open-project');
+    wrapper.findComponent(ApplicationMenu).vm.$emit('command', 'open-project');
     await flushPromises();
     expect(effects.openProject).not.toHaveBeenCalled();
     expect(editor.isError).toBe(false);
@@ -251,7 +299,7 @@ it('surfaces confirmation errors through the status bar', async () => {
   try {
     await flushPromises();
     makeDirty();
-    wrapper.findComponent(EditorToolbar).vm.$emit('command', 'open-project');
+    wrapper.findComponent(ApplicationMenu).vm.$emit('command', 'open-project');
     await flushPromises();
     expect(effects.openProject).not.toHaveBeenCalled();
     expect(editor.isError).toBe(true);
@@ -268,8 +316,8 @@ it('rejects reentry while a confirmation is pending and keeps one dialog', async
   try {
     await flushPromises();
     makeDirty();
-    wrapper.findComponent(EditorToolbar).vm.$emit('command', 'open-project');
-    wrapper.findComponent(EditorToolbar).vm.$emit('command', 'open-project');
+    wrapper.findComponent(ApplicationMenu).vm.$emit('command', 'open-project');
+    wrapper.findComponent(ApplicationMenu).vm.$emit('command', 'open-project');
     await flushPromises();
     expect(ElMessageBox.confirm).toHaveBeenCalledOnce();
     expect(effects.openProject).not.toHaveBeenCalled();
@@ -286,7 +334,7 @@ it('ignores a confirmation that resolves after unmount', async () => {
   const wrapper = render();
   await flushPromises();
   makeDirty();
-  wrapper.findComponent(EditorToolbar).vm.$emit('command', 'open-project');
+  wrapper.findComponent(ApplicationMenu).vm.$emit('command', 'open-project');
   wrapper.unmount();
   deferred.resolve('confirm');
   await flushPromises();
@@ -308,8 +356,8 @@ it('blocks repeated close commands and keyboard dispatch while a reset is pendin
   const wrapper = render();
   try {
     await flushPromises();
-    wrapper.findComponent(EditorToolbar).vm.$emit('command', 'close-project');
-    wrapper.findComponent(EditorToolbar).vm.$emit('command', 'close-project');
+    wrapper.findComponent(ApplicationMenu).vm.$emit('command', 'close-project');
+    wrapper.findComponent(ApplicationMenu).vm.$emit('command', 'close-project');
     await flushPromises();
     expect(confirmSpy).toHaveBeenCalledOnce();
     expect(effects.reset).toHaveBeenCalledOnce();
@@ -331,7 +379,7 @@ it('releases the close lock and surfaces the error when the reset fails', async 
   const wrapper = render();
   try {
     await flushPromises();
-    wrapper.findComponent(EditorToolbar).vm.$emit('command', 'close-project');
+    wrapper.findComponent(ApplicationMenu).vm.$emit('command', 'close-project');
     await flushPromises();
     expect(effects.reset).toHaveBeenCalledOnce();
     expect(editor.isError).toBe(true);
@@ -340,7 +388,7 @@ it('releases the close lock and surfaces the error when the reset fails', async 
     // The lock is released: a second close re-confirms and retries the reset.
     // (Workspace clearing after a successful reset is pinned by the dedicated
     // close test above; this file shares one pinia across tests.)
-    wrapper.findComponent(EditorToolbar).vm.$emit('command', 'close-project');
+    wrapper.findComponent(ApplicationMenu).vm.$emit('command', 'close-project');
     await flushPromises();
     expect(confirmSpy).toHaveBeenCalledTimes(2);
     expect(effects.reset).toHaveBeenCalledTimes(2);
@@ -358,12 +406,12 @@ it('keeps the workspace and releases the lock when the close dialog is cancelled
   const wrapper = render();
   try {
     await flushPromises();
-    wrapper.findComponent(EditorToolbar).vm.$emit('command', 'close-project');
+    wrapper.findComponent(ApplicationMenu).vm.$emit('command', 'close-project');
     await flushPromises();
     expect(effects.reset).not.toHaveBeenCalled();
     expect(bmh.name).toBe('discarded');
     vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue('confirm');
-    wrapper.findComponent(EditorToolbar).vm.$emit('command', 'close-project');
+    wrapper.findComponent(ApplicationMenu).vm.$emit('command', 'close-project');
     await flushPromises();
     expect(confirmSpy).toHaveBeenCalledTimes(2);
     expect(effects.reset).toHaveBeenCalledOnce();

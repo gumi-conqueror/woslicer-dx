@@ -4,6 +4,7 @@ export const APP_COMMANDS = [
   ...MENU_COMMANDS,
   'play-pause',
   'place-breakpoint',
+  'place-breakpoint-free',
   'preview',
   'preview-previous',
   'grid-down',

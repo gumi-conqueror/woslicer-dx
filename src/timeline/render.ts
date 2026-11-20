@@ -275,6 +275,7 @@ export function drawOverview(
   context: CanvasRenderingContext2D,
   state: TimelineSnapshot,
   width: number,
+  viewportWidth: number,
   palette: Readonly<Palette>,
 ): void {
   context.fillStyle = palette.panel;
@@ -308,7 +309,7 @@ export function drawOverview(
     );
   }
   const left = (state.scrollTick / MAX_TICKS) * width,
-    span = Math.max(2, (width / state.pxPerTick / MAX_TICKS) * width);
+    span = Math.max(2, (viewportWidth / state.pxPerTick / MAX_TICKS) * width);
   context.fillStyle = palette.viewportFill;
   context.fillRect(left, 0, span, OVERVIEW_HEIGHT);
   context.strokeStyle = palette.accent;

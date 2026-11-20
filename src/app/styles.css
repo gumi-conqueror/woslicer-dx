@@ -1,4 +1,67 @@
-/* Global reset and base typography. */
+/* Shared surface tokens keep native chrome, controls and editor panels consistent. */
+:root {
+  --wos-chrome: #e6e9e6;
+  --wos-workspace: #d6dbd7;
+  --wos-panel-header: #edf0ed;
+  --el-bg-color: #f7f9f6;
+  --el-bg-color-page: #e6e9e6;
+  --el-bg-color-overlay: #ffffff;
+  --el-text-color-primary: #242c27;
+  --el-text-color-regular: #414c44;
+  --el-text-color-secondary: #627066;
+  --el-text-color-placeholder: #748178;
+  --el-border-color: #c6cec7;
+  --el-border-color-light: #d4dbd5;
+  --el-border-color-lighter: #e1e6e1;
+  --el-fill-color: #dce3dc;
+  --el-fill-color-light: #eaf0e9;
+  --el-fill-color-lighter: #f0f4ef;
+  --el-fill-color-blank: #f7f9f6;
+  --el-color-primary: #527c35;
+  --el-color-primary-rgb: 82, 124, 53;
+  --el-color-primary-light-3: #739657;
+  --el-color-primary-light-5: #94af7e;
+  --el-color-primary-light-7: #bacbb0;
+  --el-color-primary-light-8: #d4dfcd;
+  --el-color-primary-light-9: #e5ecdf;
+  --el-color-primary-dark-2: #416329;
+  --el-border-radius-base: 4px;
+  --el-border-radius-small: 3px;
+  --el-font-size-base: 13px;
+  --el-font-size-small: 12px;
+}
+html.dark {
+  --wos-chrome: #202224;
+  --wos-workspace: #17191b;
+  --wos-panel-header: #2c2f32;
+  --el-bg-color: #25282b;
+  --el-bg-color-page: #202224;
+  --el-bg-color-overlay: #303438;
+  --el-text-color-primary: #e4e8e5;
+  --el-text-color-regular: #c7cfca;
+  --el-text-color-secondary: #9da9a1;
+  --el-text-color-placeholder: #8b9790;
+  --el-text-color-disabled: #737d77;
+  --el-border-color: #3b4140;
+  --el-border-color-light: #353b39;
+  --el-border-color-lighter: #303633;
+  --el-border-color-extra-light: #2c322f;
+  --el-fill-color: #3a4240;
+  --el-fill-color-light: #303634;
+  --el-fill-color-lighter: #2b302e;
+  --el-fill-color-blank: #25282b;
+  --el-fill-color-disabled: #242826;
+  --el-color-primary: #afcc83;
+  --el-color-primary-rgb: 175, 204, 131;
+  --el-color-primary-light-3: #91ad6c;
+  --el-color-primary-light-5: #728b55;
+  --el-color-primary-light-7: #4c5e3d;
+  --el-color-primary-light-8: #3b4931;
+  --el-color-primary-light-9: #303b2b;
+  --el-color-primary-dark-2: #c2dea0;
+  --el-mask-color: rgba(12, 15, 13, 0.65);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -13,10 +76,50 @@ body {
   font-family: system-ui, 'Segoe UI', sans-serif;
   color: var(--el-text-color-primary);
   background: var(--el-bg-color);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
 }
 button,
 input {
   font: inherit;
 }
-
-/* App-owned layout rules (shell, workspace, timeline, overlays, narrow windows) now live in src/app/App.vue. */
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: default;
+}
+button:focus-visible {
+  outline: 2px solid var(--el-color-primary);
+  outline-offset: -2px;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--el-border-color) transparent;
+}
+.el-button {
+  font-weight: 500;
+}
+html.dark .el-button--primary {
+  --el-button-text-color: #1e2818;
+  --el-button-hover-text-color: #172011;
+  --el-button-active-text-color: #172011;
+  --el-button-disabled-text-color: #b0bca5;
+}
+.el-slider {
+  --el-slider-height: 3px;
+  --el-slider-button-size: 10px;
+}
+.el-checkbox {
+  --el-checkbox-font-size: 12px;
+}
+.el-input__inner {
+  font-variant-numeric: tabular-nums;
+}
+.el-dialog,
+.el-message-box {
+  border: 1px solid var(--el-border-color);
+}
+.el-descriptions {
+  --el-descriptions-table-border: 1px solid var(--el-border-color-light);
+}

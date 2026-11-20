@@ -37,6 +37,11 @@ const table: ReadonlyArray<readonly [MenuCommand, MenuEditorState, boolean]> = [
   ['zoom-in', limited, true],
   ['zoom-out', limited, true],
   ['about', limited, true],
+  ['help', limited, true],
+  ['troubleshoot', limited, true],
+  ['open-data-folder', limited, true],
+  ['calibrate', state(), false],
+  ['calibrate', withSource, true],
   // Content and WOS transfer refuse read-only projects.
   ['open-audio', limited, false],
   ['open-audio', withSource, true],

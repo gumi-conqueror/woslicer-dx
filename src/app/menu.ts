@@ -9,39 +9,56 @@ export type MenuEditorState = Pick<
 export const APPLICATION_MENU = [
   {
     label: 'menu.project',
+    mnemonic: 'p',
     commands: [
-      { id: 'open-project', key: 'menu.openProject' },
+      { id: 'open-project', key: 'menu.openProject', mnemonic: 'o' },
       // Limited projects still save: the opened file's bytes are written unchanged.
-      { id: 'save-project', key: 'menu.saveProject' },
-      { id: 'relink-audio', key: 'menu.relinkAudio' },
-      { id: 'open-audio', key: 'menu.openAudio' },
-      { id: 'new-project-wos', key: 'menu.newProjectWos' },
-      { id: 'import-wos', key: 'menu.importWos' },
-      { id: 'import-legacy', key: 'menu.importLegacy' },
-      { id: 'export-wos', key: 'menu.exportWos' },
-      { id: 'close-project', key: 'chrome.close' },
-      { id: 'export-slice', key: 'menu.exportSlice' },
-      { id: 'export-all', key: 'menu.exportAll' },
+      { id: 'save-project', key: 'menu.saveProject', mnemonic: 's' },
+      { id: 'relink-audio', key: 'menu.relinkAudio', mnemonic: 'r' },
+      { id: 'open-audio', key: 'menu.openAudio', mnemonic: 'a' },
+      { id: 'new-project-wos', key: 'menu.newProjectWos', mnemonic: 'n' },
+      { id: 'import-wos', key: 'menu.importWos', mnemonic: 'i' },
+      { id: 'import-legacy', key: 'menu.importLegacy', mnemonic: 'l' },
+      { id: 'export-wos', key: 'menu.exportWos', mnemonic: 'w' },
+      { id: 'close-project', key: 'chrome.close', mnemonic: 'c' },
+      { id: 'export-slice', key: 'menu.exportSlice', mnemonic: 'e' },
+      { id: 'export-all', key: 'menu.exportAll', mnemonic: 'x' },
     ],
   },
   {
     label: 'menu.edit',
+    mnemonic: 'e',
     commands: [
-      { id: 'undo', key: 'menu.undo' },
-      { id: 'redo', key: 'menu.redo' },
-      { id: 'select-all', key: 'menu.selectAll' },
-      { id: 'clear-markers', key: 'menu.clearMarkers' },
-      { id: 'select-copy', key: 'menu.copySelection' },
-      { id: 'select-cut', key: 'menu.cutSelection' },
-      { id: 'select-paste', key: 'menu.pasteSelection' },
+      { id: 'undo', key: 'menu.undo', mnemonic: 'u' },
+      { id: 'redo', key: 'menu.redo', mnemonic: 'r' },
+      { id: 'select-all', key: 'menu.selectAll', mnemonic: 'a' },
+      { id: 'clear-markers', key: 'menu.clearMarkers', mnemonic: 'd' },
+      { id: 'select-copy', key: 'menu.copySelection', mnemonic: 'c' },
+      { id: 'select-cut', key: 'menu.cutSelection', mnemonic: 't' },
+      { id: 'select-paste', key: 'menu.pasteSelection', mnemonic: 'p' },
     ],
   },
   {
     label: 'menu.view',
+    mnemonic: 'v',
     commands: [
-      { id: 'zoom-in', key: 'menu.zoomIn' },
-      { id: 'zoom-out', key: 'menu.zoomOut' },
-      { id: 'about', key: 'menu.about' },
+      { id: 'zoom-in', key: 'menu.zoomIn', mnemonic: 'i' },
+      { id: 'zoom-out', key: 'menu.zoomOut', mnemonic: 'o' },
+    ],
+  },
+  {
+    label: 'menu.tools',
+    mnemonic: 't',
+    commands: [{ id: 'calibrate', key: 'chrome.calibrate', mnemonic: 'c' }],
+  },
+  {
+    label: 'menu.help',
+    mnemonic: 'h',
+    commands: [
+      { id: 'help', key: 'menu.guide', mnemonic: 'g' },
+      { id: 'troubleshoot', key: 'menu.troubleshoot', mnemonic: 't' },
+      { id: 'open-data-folder', key: 'menu.openDataFolder', mnemonic: 'd' },
+      { id: 'about', key: 'menu.about', mnemonic: 'a' },
     ],
   },
 ] as const;
@@ -68,7 +85,12 @@ export function menuCommandEnabled(id: MenuCommand, editor: MenuEditorState): bo
     case 'zoom-in':
     case 'zoom-out':
     case 'about':
+    case 'help':
+    case 'troubleshoot':
+    case 'open-data-folder':
       return true;
+    case 'calibrate':
+      return editor.source !== null;
     case 'open-audio':
     case 'import-wos':
     case 'import-legacy':

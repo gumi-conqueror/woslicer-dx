@@ -28,7 +28,7 @@ test('shows embedded build information under offline CSP and opens only clicked 
     'content',
     /connect-src 'none'/,
   );
-  await page.getByRole('button', { name: 'View', exact: true }).click();
+  await page.getByRole('button', { name: 'Help', exact: true }).click();
   await page.getByRole('menuitem', { name: 'About', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toContainText(identity.commit);
