@@ -9,7 +9,7 @@ const cli = fileURLToPath(new URL('../node_modules/@playwright/test/cli.js', imp
 
 const scenarios = [
   'ui readability baseline: main window',
-  'ui readability baseline: side panel tabs',
+  'ui readability baseline: side panel modules',
   'ui readability baseline: bmhelper dialogs',
   'ui readability baseline: about dialog',
   'ui readability baseline: calibration dialog',

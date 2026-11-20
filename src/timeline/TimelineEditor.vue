@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { CANCEL, matchesBindings } from '../app/shortcuts';
+import TrackHeader from '../app/components/TrackHeader.vue';
 import { computed, onBeforeUnmount, onMounted, shallowRef, useTemplateRef, watch } from 'vue';
 import { useDevicePixelRatio, useResizeObserver } from '@vueuse/core';
 import { ElSlider } from 'element-plus';
@@ -10,29 +11,22 @@ import { useUiPreferencesStore } from '../ui/preferences';
 import { paletteFor } from '../ui/palette';
 import { MAX_TICKS, tickToSampleExport } from '../core/timebase';
 import { createTimelineGestures, type TimelinePointer } from './gestures';
-import {
-  drawOverview,
-  drawOverlay,
-  drawRuler,
-  drawTimeline,
-  OVERVIEW_HEIGHT,
-  RULER_HEIGHT,
-  setupCanvas,
-} from './render';
+import { drawOverlay, drawRuler, drawTimeline, RULER_HEIGHT, setupCanvas } from './render';
 import { sampleToTick } from './waveform';
+import type { LoadingActivity } from '../workspace/workspace';
 
+defineProps<{ loading?: LoadingActivity | null }>();
 const editor = useEditorStore();
 const playback = usePlayback();
 const preferences = useUiPreferencesStore();
 const { t } = useI18n();
 // Canvas colors follow the UI theme.
 const palette = computed(() => paletteFor(preferences.theme));
-// Layer stack: ruler strip, wave + overlay canvases inside the viewport, overview strip.
+// Layer stack: track overview, ruler, wave and overlay inside the viewport.
 const viewport = useTemplateRef<HTMLElement>('viewport');
 const ruler = useTemplateRef<HTMLCanvasElement>('ruler');
 const wave = useTemplateRef<HTMLCanvasElement>('wave');
 const overlay = useTemplateRef<HTMLCanvasElement>('overlay');
-const overview = useTemplateRef<HTMLCanvasElement>('overview');
 const { pixelRatio } = useDevicePixelRatio();
 const dimensions = shallowRef({ width: 0, height: 0 });
 // Gestures own pointer semantics; this component owns the DOM, RAF and observer lifecycle.
@@ -40,16 +34,15 @@ const gestures = createTimelineGestures(editor);
 const { ghost, cursor } = gestures;
 // One pending animation frame coalesces redraws; fullDraw marks a full repaint of all
 // layers versus an overlay-only pass (playhead, hover ghost). activePointer is the
-// captured viewport pointer; overviewPointer the captured overview pointer.
+// captured viewport pointer.
 let frame = 0;
 let fullDraw = false;
 let activePointer: number | null = null;
-let overviewPointer: number | null = null;
 // Widest scroll offset in ticks: timeline length minus one viewport width.
 const scrollMaximum = computed(() =>
   Math.max(0, MAX_TICKS - dimensions.value.width / editor.pxPerTick),
 );
-// Coalesced repaint: one RAF redraws wave/ruler/overview when fullDraw, then the overlay.
+// Coalesced repaint: one RAF redraws wave/ruler when fullDraw, then the overlay.
 function invalidate(all = true): void {
   fullDraw ||= all;
   if (frame) return;
@@ -68,10 +61,6 @@ function invalidate(all = true): void {
       if (ruler.value) {
         const context = setupCanvas(ruler.value, { ...size, height: RULER_HEIGHT });
         if (context) drawRuler(context, editor, size.width, palette.value);
-      }
-      if (overview.value) {
-        const context = setupCanvas(overview.value, { ...size, height: OVERVIEW_HEIGHT });
-        if (context) drawOverview(context, editor, size.width, palette.value);
       }
     }
     if (overlay.value) {
@@ -200,27 +189,6 @@ function seek(event: PointerEvent): void {
       }),
     );
 }
-// Overview strip: click or drag centers the viewport on the clicked ratio of the song.
-function overviewSeek(event: PointerEvent): void {
-  const element = overview.value;
-  if (!element || element.clientWidth <= 0) return;
-  const ratio = (event.clientX - element.getBoundingClientRect().left) / element.clientWidth;
-  editor.setScrollTick(
-    Math.max(
-      0,
-      Math.min(
-        scrollMaximum.value,
-        ratio * MAX_TICKS - dimensions.value.width / editor.pxPerTick / 2,
-      ),
-    ),
-  );
-}
-function overviewDown(event: PointerEvent): void {
-  if (event.button !== 0) return;
-  overviewPointer = event.pointerId;
-  overview.value?.setPointerCapture(event.pointerId);
-  overviewSeek(event);
-}
 // Horizontal scroll slider accepts only the number branch of the payload.
 function scroll(value: number | number[]): void {
   if (typeof value === 'number') editor.setScrollTick(value);
@@ -239,6 +207,10 @@ onBeforeUnmount(() => {
     class="timeline"
     :aria-label="t('chrome.tabCuts')"
   >
+    <TrackHeader
+      :viewport-width="dimensions.width"
+      :loading="loading"
+    />
     <!-- ruler: click to seek, wheel zooms -->
     <canvas
       ref="ruler"
@@ -250,6 +222,7 @@ onBeforeUnmount(() => {
     <div
       ref="viewport"
       class="timeline-viewport"
+      :aria-busy="!!loading"
       tabindex="0"
       :style="{ cursor }"
       @pointerdown="pointerDown"
@@ -271,7 +244,7 @@ onBeforeUnmount(() => {
       />
       <!-- empty placeholder while no audio source is loaded -->
       <div
-        v-if="!editor.source"
+        v-if="!editor.source && !loading"
         class="timeline-empty"
       >
         <div class="empty-prompt">
@@ -283,16 +256,6 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </div>
-    <!-- overview: click/drag pans the viewport across the whole song -->
-    <canvas
-      ref="overview"
-      class="timeline-overview"
-      @pointerdown="overviewDown"
-      @pointermove="overviewPointer === $event.pointerId && overviewSeek($event)"
-      @pointerup="overviewPointer = null"
-      @pointercancel="overviewPointer = null"
-      @lostpointercapture="overviewPointer = null"
-    />
     <!-- horizontal scrollbar bound to scrollTick -->
     <ElSlider
       class="timeline-scroll"
@@ -307,7 +270,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-/* Timeline column: ruler, viewport, overview and scrollbar stacked vertically. */
+/* Timeline column: track, ruler, viewport and scrollbar stacked vertically. */
 .timeline {
   min-width: 0;
   min-height: 0;
@@ -384,15 +347,7 @@ onBeforeUnmount(() => {
   line-height: 1.5;
 }
 
-/* Overview strip and scrollbar close the column below the viewport. */
-.timeline-overview {
-  flex: 0 0 36px;
-  height: 36px;
-  min-height: 0;
-  min-width: 0;
-  cursor: pointer;
-  touch-action: none;
-}
+/* Horizontal scrollbar below the viewport. */
 .timeline-scroll {
   flex: 0 0 20px;
   width: calc(100% - 16px);

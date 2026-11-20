@@ -24,7 +24,7 @@ test('keeps a constant waveform one device pixel thick across zoom and fractiona
         await choosing
       ).setFiles({ name: 'constant.wav', mimeType: 'audio/wav', buffer: Buffer.from(wav) });
       await expect(page.locator('.status-message')).toContainText('Ready: constant');
-      await page.getByRole('tab', { name: 'Band detect', exact: true }).click();
+      await page.getByRole('button', { name: 'Band detect', exact: true }).click();
       await page
         .getByRole('checkbox', { name: 'RMS band (mean level inside the peaks)', exact: true })
         .uncheck();

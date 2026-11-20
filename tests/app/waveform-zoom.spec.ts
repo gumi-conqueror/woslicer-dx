@@ -75,7 +75,7 @@ test('keeps sine waves connected through 24 zoom-out levels from maximum', async
       await page.getByRole('menuitem', { name: 'Open WAV/OGG...', exact: true }).click();
       await (await choosing).setFiles({ name: 'sine.wav', mimeType: 'audio/wav', buffer: bytes });
       await expect(page.locator('.status-message')).toContainText('Ready: sine');
-      await page.getByRole('tab', { name: 'Band detect', exact: true }).click();
+      await page.getByRole('button', { name: 'Band detect', exact: true }).click();
       const rmsLabel = page.getByText('RMS band (mean level inside the peaks)', { exact: true });
       await expect(
         page.getByRole('checkbox', { name: 'RMS band (mean level inside the peaks)', exact: true }),

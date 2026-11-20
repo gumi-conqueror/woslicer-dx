@@ -6,7 +6,6 @@ import { pinia, localization } from './runtime';
 import { createCommands } from './commands';
 import ApplicationMenu from './components/ApplicationMenu.vue';
 import WindowTitlebar from './components/WindowTitlebar.vue';
-import TrackHeader from './components/TrackHeader.vue';
 import { getPlatform, getBuildIdentity } from '../platform';
 import type { BuildIdentity } from '../platform/contracts';
 import type { AppCommand } from './command-types';
@@ -20,7 +19,6 @@ import CalibrationDialog from '../calibration/CalibrationDialog.vue';
 import EditorToolbar from './components/EditorToolbar.vue';
 import WorkspacePanels from './components/WorkspacePanels.vue';
 import StatusBar from './components/StatusBar.vue';
-import MediaLoading from './components/MediaLoading.vue';
 import HelpDialog from './components/HelpDialog.vue';
 import AboutDialog from './components/AboutDialog.vue';
 
@@ -271,10 +269,6 @@ onUnmounted(() => {
         <ApplicationMenu @command="execute" />
       </WindowTitlebar>
       <EditorToolbar />
-      <MediaLoading
-        v-if="loading"
-        :activity="loading"
-      />
       <div
         class="playback-strip"
         :inert="calibrating"
@@ -284,8 +278,10 @@ onUnmounted(() => {
       <!-- The transport is global. The current editor owns one audio lane. -->
       <section class="workspace">
         <div class="editor-column">
-          <TrackHeader />
-          <TimelineEditor class="timeline" />
+          <TimelineEditor
+            class="timeline"
+            :loading="loading"
+          />
         </div>
         <WorkspacePanels :key="panelGeneration" />
       </section>

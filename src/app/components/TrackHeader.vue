@@ -3,46 +3,71 @@ import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useEditorStore } from '../../slicing/editor-store';
 import AppIcon from '../../ui/AppIcon.vue';
+import TrackOverview from '../../timeline/TrackOverview.vue';
+import type { LoadingActivity } from '../../workspace/workspace';
 
+const props = defineProps<{ viewportWidth: number; loading?: LoadingActivity | null }>();
 const editor = useEditorStore();
 const { t } = useI18n();
-const sourceName = computed(() => editor.source?.name ?? t('chrome.emptyTitle'));
+const sourceName = computed(
+  () => props.loading?.name ?? editor.source?.name ?? t('chrome.emptyTitle'),
+);
 </script>
 
 <template>
   <header class="track-header">
     <span class="track-number">01</span>
-    <AppIcon name="wave" />
-    <span
-      class="track-name"
-      :title="sourceName"
-      >{{ sourceName }}</span
-    >
-    <span class="track-format">{{
-      editor.source
-        ? `${editor.source.sampleRate / 1000} kHz · ${editor.source.channels} ch`
-        : 'WAV / OGG'
-    }}</span>
+    <div class="track-body">
+      <div class="track-info">
+        <AppIcon name="wave" />
+        <span
+          class="track-name"
+          :title="sourceName"
+          >{{ sourceName }}</span
+        >
+        <span
+          v-if="!loading"
+          class="track-format"
+          >{{
+            editor.source
+              ? `${editor.source.sampleRate / 1000} kHz · ${editor.source.channels} ch`
+              : 'WAV / OGG'
+          }}</span
+        >
+      </div>
+      <TrackOverview
+        :viewport-width="viewportWidth"
+        :loading="loading"
+      />
+    </div>
   </header>
 </template>
 
 <style scoped>
 .track-header {
   display: flex;
-  align-items: center;
-  gap: 9px;
   flex: none;
-  height: 36px;
-  padding: 0 12px 0 0;
   border-bottom: 1px solid var(--el-border-color);
   background: var(--wos-panel-header);
   font-size: 12px;
+}
+.track-body {
+  flex: 1;
+  min-width: 0;
+}
+.track-info {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 28px;
+  padding: 0 10px;
 }
 .track-number {
   display: grid;
   place-items: center;
   align-self: stretch;
   width: 34px;
+  flex: none;
   border-left: 3px solid var(--el-color-primary);
   color: var(--el-color-primary);
   font:

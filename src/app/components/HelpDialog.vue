@@ -17,6 +17,8 @@ const groups = ['project', 'edit', 'playback', 'navigation', 'output'] as const;
     <div class="help-content">
       <h3>{{ t('help.workflow') }}</h3>
       <p>{{ t('help.workflowBody') }}</p>
+      <h3>{{ t('help.workspace') }}</h3>
+      <p>{{ t('help.workspaceBody') }}</p>
       <h3>{{ t('help.mouse') }}</h3>
       <p>{{ t('help.mouseBody', { cancel: formatBindings(CANCEL) }) }}</p>
       <h3>{{ t('help.keyboard') }}</h3>

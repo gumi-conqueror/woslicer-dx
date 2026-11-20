@@ -1,14 +1,7 @@
 import { mount } from '@vue/test-utils';
 import { createPinia, disposePinia } from 'pinia';
 import { nextTick } from 'vue';
-import {
-  ElInputNumber,
-  ElSelect,
-  ElOption,
-  ElTabs,
-  ElDropdown,
-  ElDropdownItem,
-} from 'element-plus';
+import { ElInputNumber, ElSelect, ElOption, ElDropdown, ElDropdownItem } from 'element-plus';
 import { describe, expect, it, vi } from 'vitest';
 import { clearMocks, mockIPC } from '@tauri-apps/api/mocks';
 import DocumentOptions from '../../src/app/components/DocumentOptions.vue';
@@ -194,7 +187,7 @@ describe('application controls', () => {
       instance.dispose();
     }
   });
-  it('filters BMHelper cuts with one undo entry and preserves BPM and project across tabs', async () => {
+  it('filters BMHelper cuts with one undo entry and preserves BPM and project when its module is toggled', async () => {
     // WorkspacePanels reads the workspace through injection, so this test
     // mounts against the real workspace fixture instead of a bare pinia.
     const f = fixture();
@@ -216,7 +209,7 @@ describe('application controls', () => {
       f.editor.setDocumentOptions({ bpm: 120 });
       f.editor.setTicks([24]);
       f.editor.setSource(source);
-      wrapper.findComponent(ElTabs).vm.$emit('update:modelValue', 'bmhelper');
+      await wrapper.get('button[aria-label="BMHelper"]').trigger('click');
       await nextTick();
       wrapper
         .findComponent(BMHelperPanel)
@@ -232,9 +225,9 @@ describe('application controls', () => {
       expect(f.editor.ticks).toEqual([24]);
       const bmh = useBmhelperStore(f.pinia);
       bmh.name = 'retained';
-      wrapper.findComponent(ElTabs).vm.$emit('update:modelValue', 'source');
+      await wrapper.get('button[aria-label="BMHelper"]').trigger('click');
       await nextTick();
-      wrapper.findComponent(ElTabs).vm.$emit('update:modelValue', 'bmhelper');
+      await wrapper.get('button[aria-label="BMHelper"]').trigger('click');
       await nextTick();
       expect(bmh.name).toBe('retained');
       bmh.reset();

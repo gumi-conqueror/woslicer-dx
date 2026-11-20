@@ -228,11 +228,11 @@ describe('waveform drawing algorithms', () => {
     const editor = useEditorStore();
     editor.setScrollTick(192);
     editor.pxPerTick = 2;
-    drawOverview(context, editor, 1000, paletteFor('dark'));
+    drawOverview(context, editor, 1000, 600, paletteFor('dark'));
     expect(record.context.strokeRect).toHaveBeenCalledWith(
       (192 / MAX_TICKS) * 1000 + 0.5,
       0.5,
-      (500 / MAX_TICKS) * 1000,
+      (300 / MAX_TICKS) * 1000,
       35,
     );
   });

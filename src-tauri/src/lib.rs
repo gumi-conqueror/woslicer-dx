@@ -4,6 +4,7 @@ mod about;
 mod clipboard;
 mod files;
 mod session;
+mod webview;
 
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder, webview::NewWindowResponse};
 
@@ -94,6 +95,11 @@ pub fn run() {
                     .min_inner_size(960.0, 600.0)
                     .decorations(false)
                     .shadow(true)
+                    .devtools(false)
+                    .zoom_hotkeys_enabled(false)
+                    .initialization_script(
+                        "window.addEventListener('contextmenu', event => event.preventDefault());",
+                    )
                     .on_navigation(allowed_navigation)
                     .on_new_window(|_, _| NewWindowResponse::Deny)
                     .on_page_load(|window, payload| {
@@ -102,6 +108,11 @@ pub fn run() {
                         }
                     })
                     .build()?;
+            #[cfg(windows)]
+            window.with_webview(|webview| {
+                webview::disable_browser_controls(webview)
+                    .expect("failed to disable WebView browser controls");
+            })?;
             window.show()?;
             Ok(())
         })

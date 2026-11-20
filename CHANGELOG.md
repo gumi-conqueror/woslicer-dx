@@ -7,7 +7,8 @@
 ### Added
 
 - The desktop window has an integrated title bar with drag, minimize, maximize and close controls.
-- The editor uses coordinated light and dark colors, a track header and a collapsible side panel.
+- The editor uses coordinated light and dark colors and a track header with an interactive waveform overview.
+- New modules open at the far right and move older modules left. Modules can fill the workspace; when space runs out, the oldest open modules close automatically without a horizontal scrollbar.
 - Exiting with unsaved changes asks for confirmation and waits for the session recovery save.
 
 - Help includes an offline guide to mouse controls, shortcuts and calibration.
@@ -15,12 +16,14 @@
 ### Changed
 
 - Calibration is in Tools; About and the guide are in Help. The settings bar no longer repeats file menu actions.
+- Audio loading animates the whole track thumbnail without text or changes to the track layout.
 
 ### Fixed
 
 - Old saved window settings no longer restore the system title bar.
 - Cut rows align consistently and the list fills the available panel height.
-- The side tab bar keeps its width when switching to BMHelper.
+- The module switch bar keeps its width when opening BMHelper.
+- The desktop WebView's default context menus and browser shortcuts are disabled; editor shortcuts remain available.
 - Playback and cue volumes update while dragging their sliders, with one undo entry per drag.
 
 ## 1.0.2 — 2026-11-19

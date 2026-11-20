@@ -170,15 +170,17 @@ test('ui readability baseline: main window', async ({ page }, info) => {
   expect(errors).toEqual([]);
 });
 
-test('ui readability baseline: side panel tabs', async ({ page }, info) => {
+test('ui readability baseline: side panel modules', async ({ page }, info) => {
   const errors = guardErrors(page);
   await page.goto('/');
   await expect(page.getByRole('menubar')).toBeVisible();
   await openAudio(page);
   for (const tab of TABS) {
-    await page.getByRole('tab', { name: tab.label, exact: true }).click();
+    const toggle = page.getByRole('button', { name: tab.label, exact: true });
+    if ((await toggle.getAttribute('aria-pressed')) !== 'true') await toggle.click();
     await expect(page.locator(tab.ready)).toBeVisible();
     await saveShot(page, info.project.name, `tab-${tab.name}.png`);
+    await toggle.click();
   }
   expect(errors).toEqual([]);
 });
@@ -187,7 +189,7 @@ test('ui readability baseline: bmhelper dialogs', async ({ page }, info) => {
   const errors = guardErrors(page);
   await page.goto('/');
   await expect(page.getByRole('menubar')).toBeVisible();
-  await page.getByRole('tab', { name: 'BMHelper', exact: true }).click();
+  await page.getByRole('button', { name: 'BMHelper', exact: true }).click();
   await expect(page.locator('.bmhelper')).toBeVisible();
   const midi = writeSmfSequence({
     quantize: 480,
@@ -244,11 +246,47 @@ test('ui readability baseline: narrow 900', async ({ page }, info) => {
   await expect(page.locator('.timeline-viewport')).toBeVisible();
   await saveShot(page, info.project.name, 'narrow-900.png');
   await writeLayoutStyles(page, info.project.name, 'computed-styles-narrow-900.json');
-  // Pin the fixed 310px panel column that the 900px media query owns.
-  const columns = await page
-    .locator('.workspace')
-    .evaluate((element) => getComputedStyle(element).gridTemplateColumns);
-  expect(columns.endsWith('310px')).toBe(true);
+  for (const label of ['Output', 'Cuts', 'BMHelper', 'Band detect'])
+    await page.getByRole('button', { name: label, exact: true }).click();
+  // Modules use the full width and evict the oldest instead of scrolling.
+  const order = () =>
+    page
+      .locator('.workspace-module:visible')
+      .evaluateAll((elements) => elements.map((element) => element.id));
+  await expect.poll(order).toEqual(['panel-cuts', 'panel-bmhelper', 'panel-detect']);
+  const modules = await page.locator('.panel-modules').evaluate((element) => ({
+    width: element.clientWidth,
+    content: element.scrollWidth,
+    overflow: getComputedStyle(element).overflowX,
+  }));
+  expect(modules.content).toBeLessThanOrEqual(modules.width + 1);
+  expect(modules.overflow).toBe('hidden');
+  expect(
+    await page.locator('.side-panel').evaluate((element) => element.clientWidth),
+  ).toBeGreaterThan(850);
+  expect(await page.locator('.panel-switches').evaluate((element) => element.clientWidth)).toBe(46);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(900);
+  await saveShot(page, info.project.name, 'narrow-900-modules.png');
+  await page.setViewportSize({ width: 680, height: 720 });
+  await expect.poll(order).toEqual(['panel-bmhelper', 'panel-detect']);
+  await expect(page.getByRole('button', { name: 'Cuts', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await expect.poll(order).toEqual(['panel-bmhelper', 'panel-detect']);
+  for (const label of ['Output', 'Source', 'Cuts'])
+    await page.getByRole('button', { name: label, exact: true }).click();
+  await expect
+    .poll(order)
+    .toEqual(['panel-bmhelper', 'panel-detect', 'panel-output', 'panel-source', 'panel-cuts']);
+  await page.setViewportSize({ width: 900, height: 720 });
+  await expect.poll(order).toEqual(['panel-output', 'panel-source', 'panel-cuts']);
+  expect(
+    await page
+      .locator('.panel-modules')
+      .evaluate((element) => element.scrollWidth - element.clientWidth),
+  ).toBeLessThanOrEqual(1);
   expect(errors).toEqual([]);
 });
 

@@ -200,6 +200,12 @@ async function verifyProfile(profile, client, runDir) {
   }
   if (exceptions > 0) throw new Error(`${exceptions} uncaught page exception(s)`);
 
+  const manifest = JSON.parse(readFileSync('dist/app-tauri/.vite/manifest.json', 'utf8'));
+  const entry = manifest['index.html']?.file;
+  const embeddedEntry = await client.page.locator('script[type="module"][src]').getAttribute('src');
+  if (!entry || !embeddedEntry?.endsWith(`/${entry}`))
+    throw new Error(`Native window embeds stale assets: ${embeddedEntry}, expected ${entry}`);
+
   const workerAsset = readdirSync('dist/app-tauri/assets').find((name) =>
     /^audio\.worker-.*\.js$/.test(name),
   );
@@ -253,6 +259,35 @@ async function verifyProfile(profile, client, runDir) {
   writeFileSync(
     join(runDir, 'window-controls.json'),
     JSON.stringify({ decorated, maximize: true, restore: true, minimizeRequested: true }),
+  );
+
+  // Browser commands must not reload the document or consume editor shortcuts.
+  await client.page.evaluate(() => {
+    globalThis.document.body.dataset.inputProbe = 'retained';
+  });
+  await client.page.locator('.timeline-viewport').focus();
+  for (const key of ['F5', 'Control+r', 'Control+Shift+r', 'Control+p', 'Control+f', 'F12']) {
+    await client.page.keyboard.press(key);
+  }
+  const inputProbe = await client.page.evaluate(() => ({
+    retained: globalThis.document.body.dataset.inputProbe === 'retained',
+    contextMenuBlocked: !globalThis.document.body.dispatchEvent(
+      new globalThis.MouseEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true,
+        button: 2,
+      }),
+    ),
+  }));
+  if (!inputProbe.retained || !inputProbe.contextMenuBlocked)
+    throw new Error('Native WebView browser input was not disabled');
+  await client.page.keyboard.press('F1');
+  await client.page.getByRole('dialog').waitFor({ state: 'visible' });
+  await client.page.keyboard.press('Escape');
+  await client.page.getByRole('dialog').waitFor({ state: 'hidden' });
+  writeFileSync(
+    join(runDir, 'browser-input.json'),
+    JSON.stringify({ ...inputProbe, editorHelp: true }),
   );
 
   await client.page.locator('.statusbar button').click();

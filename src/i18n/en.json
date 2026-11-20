@@ -387,6 +387,8 @@
   "help": {
     "workflow": "Getting started",
     "workflowBody": "Open or drop a WAV/OGG, set BPM and grid, then add cuts on the waveform. Use Output to name and export slices. Save a .wosdx project to continue later; use Relink audio if its source has moved.",
+    "workspace": "Tracks and modules",
+    "workspaceBody": "Click or drag the waveform overview in the track header to move through the timeline. Each newly opened module appears beside the right-hand switches and moves older modules left. Click its switch again or close it to hide it. Modules can use the full workspace width. When space runs out, the oldest open modules close automatically; there is no horizontal scrollbar. Closed modules keep unfinished form input.",
     "mouse": "Mouse controls",
     "mouseBody": "Left-drag to add cuts; right-drag to erase. Drag a cut to move the selection. Shift-drag adds a range; Ctrl/Cmd-drag toggles a range. Middle-drag pans, Ctrl/Cmd+wheel zooms, and Alt bypasses snapping. {cancel} cancels an active drag.",
     "keyboard": "Keyboard shortcuts",
