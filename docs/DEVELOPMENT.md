@@ -128,6 +128,25 @@ promising a fixed reduction for every platform.
 
 ### Release size tradeoffs
 
+Vite runs `scripts/build-fonts.mjs` for both frontend variants and the development
+server. It subsets local IBM Plex Sans fonts from translations, UI source
+literals and Element Plus locale text. Generated WOFF2 files stay in the ignored
+`src/app/generated/fonts/` directory. Builds include only these subsets, with their
+license in NOTICE. Restart the development server after adding new characters.
+The build renames subset families to WOS UI because Plex is a Reserved Font Name.
+It retains hinting, layout features and copyright metadata. CJK faces include
+weights 400, 500, 600 and 700. The Latin face retains its variable weight axis.
+The SC source package has an install-time telemetry script. CI disables it with
+`IBM_TELEMETRY_DISABLED=true`. Set the same environment variable before installing
+dependencies in other environments. No font package scripts enter the app bundle.
+The document language selects the regional font. Editable fields use `sans-serif`
+so user text can use system fallback fonts. Do not use `system-ui` for UI chrome.
+
+After a frontend build, run `node scripts/verify-fonts.mjs` to check all four
+languages at 100%, 125% and 150% scale. Each isolated profile has a 30-second
+deadline. The check records light/dark screenshots and verifies local glyphs at
+12px in every bundled weight. Results are in `test-artifacts/fonts/`.
+
 The release settings are independent of audio precision: decoding, DSP and WAV
 encoding run in TypeScript, and the OGG decoder is prebuilt WASM. Rust profile
 changes optimize the native host, not those algorithms.

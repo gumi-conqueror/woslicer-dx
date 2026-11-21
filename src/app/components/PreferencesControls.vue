@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ElOption, ElSegmented, ElSelect } from 'element-plus';
 import { useI18n } from 'vue-i18n';
-import { LANGUAGES, LANGUAGE_LABELS } from '../../core/language';
+import { DOC_LANG, LANGUAGES, LANGUAGE_LABELS } from '../../core/language';
 import { useUiPreferencesStore } from '../../ui/preferences';
 // Language and theme come from the ui preferences store.
 const preferences = useUiPreferencesStore();
@@ -25,7 +25,9 @@ const { t } = useI18n();
         :key="language"
         :value="language"
         :label="LANGUAGE_LABELS[language]"
-      />
+      >
+        <span :lang="DOC_LANG[language]">{{ LANGUAGE_LABELS[language] }}</span>
+      </ElOption>
     </ElSelect>
     <!-- theme -->
     <ElSegmented

@@ -13,6 +13,7 @@
 - Preserve Tauri isolation and the restrictive content security policy (CSP) in both release variants. About links use a command that accepts fixed link identifiers only. Do not expose arbitrary URL, shell or open capabilities, or broad inter-process communication (IPC) access. Keep the default WebView installation behavior.
 - External installers, build tools and dependencies may use the network. Bind test servers and DevTools to loopback addresses.
 - Use MIT for project code. Keep LICENSE and necessary credits in NOTICE. Use npm and Cargo metadata for dependencies; do not maintain duplicate license databases or source archives.
+- Build language-specific font subsets from UI text. Do not use `system-ui` for UI chrome. Editable text fields may use `sans-serif` or `system-ui` so user text is not limited to the bundled glyphs.
 
 ## Implementation and validation
 
