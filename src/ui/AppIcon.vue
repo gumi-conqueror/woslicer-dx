@@ -9,6 +9,7 @@ const paths = {
   undo: 'M8 4 3 9l5 5M3 9h10a7 7 0 0 1 7 7v3',
   redo: 'm16 4 5 5-5 5m5-5H11a7 7 0 0 0-7 7v3',
   play: 'm8 4 12 8-12 8Z',
+  record: 'M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16Z',
   pause: 'M8 4v16M16 4v16',
   stop: 'M5 5h14v14H5Z',
   cuts: 'M8 3v18M16 3v18M3 8h5m8 8h5',

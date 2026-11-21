@@ -64,6 +64,7 @@ describe('workspace and editor business operations', () => {
       togglePlayPause() {},
       seekSample() {},
       currentSample: () => 0,
+      positionAt: () => ({ sample: 0, playing: false }),
       setRate() {},
       previewSlice() {},
       getAudioContext() {
@@ -179,6 +180,7 @@ describe('workspace and editor business operations', () => {
         togglePlayPause() {},
         seekSample() {},
         currentSample: () => 0,
+        positionAt: () => ({ sample: 0, playing: false }),
         setRate() {},
         previewSlice() {},
         getAudioContext() {

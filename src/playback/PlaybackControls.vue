@@ -9,6 +9,13 @@ import { usePlayback } from './index';
 import { useSliderDraft } from './use-slider-draft';
 import { shortcutLabel } from '../app/shortcuts';
 import AppIcon from '../ui/AppIcon.vue';
+import { useInputState } from '../app/input-state';
+const input = useInputState();
+const emit = defineEmits<{ command: [command: 'toggle-recording'] }>();
+function toggleRecording(event: MouseEvent): void {
+  emit('command', 'toggle-recording');
+  if (event.detail > 0 && event.currentTarget instanceof HTMLElement) event.currentTarget.blur();
+}
 
 const editor = useEditorStore();
 const playback = usePlayback();
@@ -80,6 +87,16 @@ const formatVolume = (position: number) => `${sliderToDb(position).toFixed(1)} d
     role="group"
     :aria-label="t('chrome.titlePlay')"
   >
+    <ElButton
+      class="recording-toggle"
+      :disabled="disabled || editor.limited"
+      :type="input.recording ? 'danger' : 'default'"
+      :aria-pressed="input.recording"
+      :title="t('recording.modeHint')"
+      @click="toggleRecording"
+    >
+      <AppIcon name="record" />{{ t('recording.mode') }}
+    </ElButton>
     <!-- transport: play/pause and stop -->
     <ElButton
       :disabled="disabled"

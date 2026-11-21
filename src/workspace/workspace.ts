@@ -462,6 +462,7 @@ export function createWorkspace(options: WorkspaceOptions) {
         draft.slicing.fadeoutMs = wos.slicing.fadeoutMs;
         draft.slicing.noisegateDb = wos.slicing.noisegateDb;
         draft.slicing.markers = wos.slicing.markers;
+        delete draft.slicing.markerKeys;
       });
       editor.setStatus('importedWosSettings', {
         file: file.name,
@@ -577,7 +578,7 @@ export function createWorkspace(options: WorkspaceOptions) {
       const parsed = parseBmseClipboard(await platform.readClipboard());
       if (disposed || version !== generation) return;
       const legal = parsed.ticks.filter(editor.legalTick);
-      editor.setTicks(legal);
+      editor.setTicks(legal, []);
       editor.setStatus('bmseClipboardImported', { count: legal.length });
     } catch (error) {
       if (!disposed && version === generation)

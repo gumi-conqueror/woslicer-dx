@@ -97,7 +97,7 @@ describe('application controls', () => {
         APPLICATION_MENU.find((group) => group.label === 'menu.tools')?.commands.map(
           (item) => item.id,
         ),
-      ).toEqual(['calibrate']);
+      ).toEqual(['toggle-recording', 'connect-yuancon', 'calibrate']);
       expect(
         APPLICATION_MENU.find((group) => group.label === 'menu.help')?.commands.map(
           (item) => item.id,

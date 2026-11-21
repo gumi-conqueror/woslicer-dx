@@ -3,6 +3,8 @@ import { createPinia, setActivePinia } from 'pinia';
 import { useEditorStore, type CueMode } from '../../src/slicing/editor-store';
 import { createPlayback, type Playback } from '../../src/playback';
 import { renderSlice } from '../../src/core/slicer';
+import { createCommands } from '../../src/app/commands';
+import { setupWorkspace, audioFile } from '../app/workspace-fixture';
 
 class AudioNodeDouble {
   connect = vi.fn();
@@ -118,6 +120,96 @@ function fixture(length = 480000) {
 }
 
 describe('Pinia playback lifetime and audio clock', () => {
+  it('places queued input before rate, pause and seek boundaries at its captured position', async () => {
+    let now = 1000;
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
+    const { editor, workspace } = setupWorkspace();
+    await workspace.loadAudio(audioFile('queued.wav', 480000));
+    const playback = createPlayback(editor);
+    owners.push(playback);
+    const context = required(contexts.at(-1));
+    const commands = createCommands({
+      editor,
+      workspace,
+      playback,
+      onClose() {},
+      onAbout() {},
+      onCalibrate() {},
+    });
+    editor.snap = false;
+    editor.tapOffsetMs = 0;
+    playback.play();
+    await Promise.resolve();
+    now = 2000;
+    context.currentTime = 1;
+    playback.setRate(0.5);
+    now = 3000;
+    context.currentTime = 2;
+    playback.pause();
+    now = 3100;
+    context.currentTime = 2.1;
+    playback.seekSample(240000);
+    now = 3200;
+    context.currentTime = 2.2;
+    await commands.execute('recording-tap', { time: 1500, keys: [1, 3] });
+    await commands.execute('recording-tap', { time: 2500, keys: [5] });
+    await commands.execute('recording-tap', { time: 3050, keys: [7] });
+    expect(editor.ticks).toEqual([48, 120, 144]);
+    expect(editor.markerKeys).toEqual([
+      { tick: 48, keys: [1, 3] },
+      { tick: 120, keys: [5] },
+      { tick: 144, keys: [7] },
+    ]);
+    expect(playback.currentSample()).toBe(240000);
+    expect(editor.playing).toBe(false);
+    expect(playback.positionAt(3150)).toEqual({ sample: 240000, playing: false });
+    editor.setSource(null);
+    expect(playback.positionAt(1500)).toBeNull();
+  });
+  it('records at the playhead and seeks fixed seconds without changing playback state', async () => {
+    const { editor, workspace } = setupWorkspace();
+    await workspace.loadAudio(audioFile('recording.wav', 480000));
+    const playback = createPlayback(editor);
+    owners.push(playback);
+    const context = required(contexts.at(-1));
+    const commands = createCommands({
+      editor,
+      workspace,
+      playback,
+      onClose() {},
+      onAbout() {},
+      onHelp() {},
+      onCalibrate() {},
+    });
+    editor.snap = false;
+    editor.tapOffsetMs = 100;
+    editor.setCursorTick(900);
+    playback.seekSample(60000);
+    await commands.execute('recording-tap');
+    expect(editor.ticks).toEqual([120]);
+    expect(playback.currentSample()).toBe(60000);
+    expect(editor.playing).toBe(false);
+    playback.play();
+    context.currentTime = 0.25;
+    await commands.execute('seek-backward');
+    expect(playback.currentSample()).toBe(48000);
+    expect(editor.playing).toBe(true);
+    context.currentTime = 0.75;
+    commands.onKeyDown(new KeyboardEvent('keydown', { key: 'z' }), true);
+    expect(editor.ticks).toEqual([120, 134]);
+    context.currentTime = 0.9;
+    commands.onKeyDown(new KeyboardEvent('keydown', { key: 'z', repeat: true }), true);
+    expect(editor.ticks).toEqual([120, 134]);
+    commands.onKeyDown(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true }), true);
+    expect(editor.ticks).toEqual([120]);
+    playback.pause();
+    playback.seekSample(0);
+    await commands.execute('seek-backward');
+    expect(playback.currentSample()).toBe(0);
+    await commands.execute('seek-forward');
+    expect(playback.currentSample()).toBe(24000);
+    expect(editor.playing).toBe(false);
+  });
   it('previews fader gain on live audio nodes and discards previews on undo or source replacement', () => {
     const { editor, playback, context } = fixture();
     playback.play();

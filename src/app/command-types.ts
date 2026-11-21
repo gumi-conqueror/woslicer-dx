@@ -3,6 +3,9 @@ import { MENU_COMMANDS } from './menu';
 export const APP_COMMANDS = [
   ...MENU_COMMANDS,
   'play-pause',
+  'recording-tap',
+  'seek-backward',
+  'seek-forward',
   'place-breakpoint',
   'place-breakpoint-free',
   'preview',

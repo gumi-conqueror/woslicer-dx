@@ -263,10 +263,12 @@ defineExpose({ navigate, isActive: () => active.value >= 0 });
             v-if="input.device === 'gamepad'"
             class="menu-hint"
             ><GamepadIcon
-              v-if="gamepadShortcut(item.id)"
-              :control="gamepadShortcut(item.id) ?? 'a'"
+              v-if="gamepadShortcut(item.id, input.recording)"
+              :control="gamepadShortcut(item.id, input.recording) ?? 'a'"
           /></span>
-          <kbd v-else>{{ shortcutLabel(item.id) }}</kbd>
+          <kbd v-else-if="input.device === 'keyboard'">{{
+            shortcutLabel(item.id, input.recording)
+          }}</kbd>
         </button>
         <div
           v-if="input.device === 'gamepad'"

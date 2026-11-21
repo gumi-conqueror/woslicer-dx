@@ -19,6 +19,7 @@ See [Contributing](../CONTRIBUTING.md) for branch routes and pull request target
 | BMHelper | `src/bmhelper/BMHelperPanel.vue` owns the panel. `store.ts` derives its content from the project payload and commits edits through the editor. |
 | Project open/save | `src/workspace/workspace.ts` coordinates file operations and recovery. `persistence.ts` serializes recovery writes. `src/project/schema.ts` defines Zod field schemas and derives document types. `codec.ts` owns version compatibility, normalization and business validation. |
 | Playback | `src/playback/PlaybackControls.vue` owns controls. Fader drafts preview the monitor gains, then commit one document edit on release. `index.ts` manages audio playback and cleanup. |
+| Record and YuanCon | `src/app/recording-bindings.ts` owns the preset and help mappings. `use-yuancon-recording.ts` connects the application-owned device session to recording commands. `src/input/yuancon/` owns the device profile and connection state. `YuanconDialog.vue` displays that session. |
 | Document/output settings | `src/app/components/DocumentOptions.vue` and `src/export/OutputPanel.vue` read reactive editor projections and write undoable transactions through `src/slicing/editor-store.ts`. |
 | Language/theme and dialogs | `src/app/components/PreferencesControls.vue` uses `src/ui/preferences.ts`. Help and About live in `src/app/components/` and open from the Help menu; calibration opens from Tools. Calibration lives in `src/calibration/CalibrationDialog.vue`. |
 
@@ -51,14 +52,32 @@ validation, undo and playback behavior. Continuous pointer gestures and local
 form edits stay with their feature rather than routing every movement through a
 global dispatcher. An action uses platform capabilities only when it needs files, clipboard, recovery storage or other host services.
 
-Gamepad and dedicated BMS controller adapters are not implemented. When adding an adapter, map device events to the same intents and actions.
-Keep device polling, focus rules and connection lifetime in the input adapter. Choose a native adapter only
-when the actual device protocol requires it, rather than introducing a general
-hardware framework in advance.
+`src/app/use-input-controls.ts` reads standard gamepads and routes menu navigation.
+YuanCon uses `src/platform/input/`: desktop builds select the native HID backend;
+web builds select WebHID. `src-tauri/src/input.rs` opens only listed YuanCon joystick
+interfaces and reads them on a dedicated thread. It removes identical consecutive
+reports and sends every change through a Tauri channel. Both backends separate the
+report ID from its payload and use the same TypeScript decoder. The seven key bits
+remain distinct; the recording preset maps all seven to marker input.
+
+The native adapter aligns its monotonic clock with `performance.now()` using the
+shortest of five IPC round trips. `src/playback/input-timeline.ts` keeps recent
+playback boundaries so delayed marker input uses its capture position across
+rate changes, pauses and seeks. History expires after 30 seconds and resets when
+the audio source changes. Focus and recording-context changes reject older input.
+These are host receipt times, not measured mechanical contact times. Hardware
+timing and platform device permissions still require physical-device checks.
+
+`tests/fixtures/input/yuancon-capture.json` contains the 1,481 state snapshots from
+the supplied capture after identical consecutive reports were removed. It keeps
+only relative times, seven-key masks and turntable values. The source archive hash
+identifies the recording. Rust and TypeScript replay it to check 795 key presses,
+795 releases and 31 turntable runs. The sample has no labeled mechanical actions;
+it does not establish a tail-noise filter or physical key order.
 
 Web and Tauri share the Vue interface, editing rules and audio worker. The Rust
 host in `src-tauri/src/` handles native file access and transfers (`files.rs`),
-clipboard interoperability (`clipboard.rs`), recovery storage (`session.rs`) and
+clipboard interoperability (`clipboard.rs`), HID input (`input.rs`), recovery storage (`session.rs`) and
 window setup (`lib.rs`). It does not implement audio processing or editing rules.
 
 ## Local setup and checks

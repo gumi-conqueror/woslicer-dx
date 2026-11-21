@@ -30,6 +30,7 @@ to the schema and cross-field business rules to the codec. The parser rejects in
 | `slicing.fadeoutMs` | Integer milliseconds. |
 | `slicing.noisegateDb`, `slicing.noisegateEnabled` | Threshold in dB and a separate enable flag. |
 | `slicing.markers` | Ticks at 192 ticks per measure, from 0 through 49,151. The codec sorts ticks and rejects duplicates. |
+| `slicing.markerKeys` | Optional `{tick, keys}` entries for recorded markers. `keys` contains unique integers 1–7, including chords. Entries must reference existing marker ticks. |
 | `slicing.bandDetection` | `bands {low,mid,high}`, `thresholdDb`, `minGapUnits`, `snap`. Detection settings are separate from waveform visibility. |
 | `output` | `baseName`, `clipStartNumber`, `useFfNumbering`. |
 | `global` | `masterGainDb`, `masterMuted`, `cueGainDb`, `cueMode`, `playbackRate`, `views`. |
@@ -39,6 +40,31 @@ to the schema and cross-field business rules to the codec. The parser rejects in
 | `track.views` | `rms` and `bands` accept `null` (inherit), `true` or `false`. Spectrum is `"reserved"`. |
 | `clip` | `clipId`, `mediaId`, `timelineStartSeconds`, `sourceOffsetFrames`, `frameCount`. |
 | `bmhelper` | `null` or `{format: "bmhelper", source, divisions}` containing structured BMHelper work. |
+
+### Recorded marker keys
+
+The optional `slicing.markerKeys` field extends v1 without changing the numeric
+`slicing.markers` array. For example, `[{"tick":96,"keys":[1,3,5]}]` records a
+three-key chord at tick 96. Missing entries mean that a marker has no recorded
+key identity. The codec sorts entries and keys, rejects duplicate ticks or keys,
+and omits an empty collection.
+
+Keyboard Z/S/X/D/C/F/V maps to 1–7. Xbox left/up/right/X/A/Y/B maps to 1–7;
+D-pad down does not place a marker in Record mode. YuanCon HID bits 0–6 map to
+1–7 by default. The capture shows press counts 124/48/172/87/164/69/131, which
+is consistent with alternating four lower and three upper keys. It does not
+establish physical left-to-right order. The numbered device preview lets the
+user check that order on the controller.
+
+Only new presses create markers; held keys do not become new notes when another
+key is pressed. Presses at the same resolved tick merge their key sets. Moves,
+quantization, internal clipboard operations, undo and recovery retain the sets.
+Replacing markers from WOS, BMSE, MIDI or edge detection clears old key attributes.
+
+Earlier DX readers report `markerKeys` as an unknown field and discard it when
+they save an editable project. Current readers accept projects without the field.
+Legacy `.wos` and original `.bmh` formats remain unchanged and do not store these
+attributes. WOS export retains the marker positions.
 
 ### BMHelper data
 

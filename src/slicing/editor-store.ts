@@ -2,6 +2,7 @@ import type { DecodedWav } from '../core/wav';
 import { computed, markRaw, shallowRef, triggerRef } from 'vue';
 import { defineStore } from 'pinia';
 import { normalizeSelection } from '../core/markers';
+import { remapMarkerKeys, type MarkerKeys } from '../project/marker-keys';
 import { ProjectEditor } from '../project/editor';
 import { createEmptyProject, projectCapability } from '../project/codec';
 import type { ProjectDocument, ProjectFileV1, OutputRecipe } from '../project/schema';
@@ -183,6 +184,7 @@ export const useEditorStore = defineStore('editor', () => {
   const bandEstimate = shallowRef<number | null>(null),
     bandBusy = shallowRef(false);
   const ticks = computed(() => document.value.slicing.markers);
+  const markerKeys = computed(() => document.value.slicing.markerKeys ?? []);
   const canUndo = computed(() => project.value.canUndo);
   const canRedo = computed(() => project.value.canRedo);
   function publish(): void {
@@ -251,9 +253,14 @@ export const useEditorStore = defineStore('editor', () => {
   function setLastFile(value: { reference: string; name: string } | null): void {
     lastFile.value = value;
   }
-  function setTicks(value: readonly number[]): boolean {
+  function setTicks(value: readonly number[], keys: MarkerKeys = markerKeys.value): boolean {
     return transact((draft) => {
       draft.slicing.markers = normalizeSelection(value);
+      const retained = new Set(draft.slicing.markers);
+      draft.slicing.markerKeys = remapMarkerKeys(
+        keys.filter((entry) => retained.has(entry.tick)),
+        (tick) => tick,
+      );
     }).changed;
   }
   function addTicks(value: readonly number[]): number {
@@ -461,6 +468,7 @@ export const useEditorStore = defineStore('editor', () => {
     bandEstimate,
     bandBusy,
     ticks,
+    markerKeys,
     canUndo,
     canRedo,
     transact,

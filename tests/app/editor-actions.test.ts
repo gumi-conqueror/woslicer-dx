@@ -21,6 +21,59 @@ afterEach(() => {
 });
 
 describe('marker editing actions', () => {
+  it('merges chords, persists them through recovery, and restores deletion with undo', async () => {
+    const { editor, actions } = fixture();
+    const { captureEditorSession, parseEditorSession } =
+      await import('../../src/workspace/session');
+    actions.setMarker(24, true, [1, 3]);
+    actions.setMarker(24, true, [3, 5]);
+    expect(editor.markerKeys).toEqual([{ tick: 24, keys: [1, 3, 5] }]);
+    expect(actions.setMarker(24, true, [5])).toBe(false);
+    const session = parseEditorSession(JSON.parse(JSON.stringify(captureEditorSession(editor))));
+    expect(session?.project.slicing.markerKeys).toEqual(editor.markerKeys);
+    actions.setMarker(24, false);
+    expect(editor.markerKeys).toEqual([]);
+    actions.undo();
+    expect(editor.markerKeys).toEqual([{ tick: 24, keys: [1, 3, 5] }]);
+    actions.redo();
+    expect(editor.document.slicing).not.toHaveProperty('markerKeys');
+  });
+  it('retains key identities through move, quantize, copy, cut and measure paste', () => {
+    const { editor, actions } = fixture();
+    actions.setMarker(10, true, [1, 3]);
+    actions.setMarker(18, true, [7]);
+    editor.setSelectedTicks([10, 18]);
+    actions.moveSelection(2);
+    expect(editor.markerKeys).toEqual([
+      { tick: 12, keys: [1, 3] },
+      { tick: 20, keys: [7] },
+    ]);
+    editor.grid = 8;
+    actions.quantizeSelection();
+    expect(editor.markerKeys).toEqual([{ tick: 24, keys: [1, 3, 7] }]);
+    actions.cutSelection();
+    expect(editor.markerKeys).toEqual([]);
+    editor.setCursorTick(48);
+    expect(actions.pasteSelection()).toBe(true);
+    expect(editor.markerKeys).toEqual([{ tick: 48, keys: [1, 3, 7] }]);
+    actions.measureCopy();
+    actions.setMarker(240, true, [2]);
+    editor.setCursorTick(192);
+    actions.measurePaste();
+    expect(editor.markerKeys).toEqual([
+      { tick: 48, keys: [1, 3, 7] },
+      { tick: 240, keys: [1, 3, 7] },
+    ]);
+    actions.shiftAll(-48);
+    expect(editor.markerKeys).toEqual([
+      { tick: 0, keys: [1, 3, 7] },
+      { tick: 192, keys: [1, 3, 7] },
+    ]);
+    actions.clearMarkers();
+    expect(editor.markerKeys).toEqual([]);
+    actions.undo();
+    expect(editor.markerKeys).toHaveLength(2);
+  });
   it('places a marker once and keeps repeated placement out of undo history', () => {
     const { editor, actions } = fixture();
     expect(actions.setMarker(384)).toBe(true);

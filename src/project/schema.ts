@@ -24,6 +24,16 @@ const text = (max = 4096, min = 1) =>
   });
 const integer = (min: number, max: number) => z.int().min(min).max(max);
 const gain = z.number().min(PROJECT_MIN_GAIN_DB).max(PROJECT_MAX_GAIN_DB);
+const markerKeySchema = z.union([
+  z.literal(1),
+  z.literal(2),
+  z.literal(3),
+  z.literal(4),
+  z.literal(5),
+  z.literal(6),
+  z.literal(7),
+]);
+export type MarkerKey = z.infer<typeof markerKeySchema>;
 
 // Read only this envelope before deciding whether v1 validation applies.
 export const projectHeaderSchema = z.object({
@@ -102,6 +112,15 @@ export const projectV1Schema = z.object({
     noisegateDb: z.number().min(-200).max(0),
     noisegateEnabled: z.boolean(),
     markers: z.array(integer(0, MAX_TICKS - 1)).max(PROJECT_MAX_MARKERS),
+    markerKeys: z
+      .array(
+        z.object({
+          tick: integer(0, MAX_TICKS - 1),
+          keys: z.array(markerKeySchema).min(1).max(7),
+        }),
+      )
+      .max(PROJECT_MAX_MARKERS)
+      .optional(),
     bandDetection: z.object({
       bands: z.object({ low: z.boolean(), mid: z.boolean(), high: z.boolean() }),
       thresholdDb: z.number().min(0).max(120),

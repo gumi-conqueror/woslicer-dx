@@ -1,5 +1,12 @@
 Credits
 
+Native HID access: hidapi-rs (MIT), https://github.com/ruabmbua/hidapi-rs
+The bundled HIDAPI backend uses its original permissive license:
+HIDAPI - Multi-Platform library for communication with HID devices.
+Copyright 2009, Alan Ott, Signal 11 Software. All Rights Reserved.
+This software may be used by anyone for any reason so long as the copyright
+notice in the source files remains intact.
+
 Original tools: woslicer II/III by wosderge; Be-Music Helper by exclusion.
 
 Waveform peak helper: waveform-playlist by Naomi.

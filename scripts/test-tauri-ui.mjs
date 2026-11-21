@@ -303,6 +303,42 @@ async function verifyProfile(profile, client, runDir) {
     JSON.stringify({ ...inputProbe, editorHelp: true }),
   );
 
+  const hid = await client.page.evaluate(async () => {
+    const invoke = globalThis.__TAURI_INTERNALS__.invoke;
+    const before = await invoke('input_clock');
+    const devices = await invoke('yuancon_devices');
+    await invoke('yuancon_disconnect', { id: 'unused-ui-test-session' });
+    const after = await invoke('input_clock');
+    if (
+      !Array.isArray(devices) ||
+      devices.some((device) => typeof device.id !== 'string' || typeof device.name !== 'string')
+    )
+      throw new Error('Invalid native HID device list');
+    if (!Number.isFinite(before) || !Number.isFinite(after) || after < before)
+      throw new Error('Invalid native input clock');
+    return { devices: devices.length, clockAdvanced: after >= before };
+  });
+  await client.page.keyboard.press('Alt+t');
+  await client.page.keyboard.press('y');
+  const yuanconDialog = client.page.getByRole('dialog', {
+    name: 'YuanCon controller',
+    exact: true,
+  });
+  await yuanconDialog
+    .getByRole('combobox', { name: 'Select a YuanCon controller', exact: true })
+    .waitFor({ state: 'visible' });
+  if (hid.devices === 0) {
+    await yuanconDialog.getByRole('button', { name: 'Connect', exact: true }).click();
+    await yuanconDialog
+      .getByRole('alert')
+      .filter({ hasText: 'No supported YuanCon controller found' })
+      .waitFor({ state: 'visible' });
+  }
+  await yuanconDialog.screenshot({ path: join(runDir, 'yuancon-native.png') });
+  await client.page.keyboard.press('Escape');
+  await yuanconDialog.waitFor({ state: 'hidden' });
+  writeFileSync(join(runDir, 'native-hid.json'), JSON.stringify(hid, null, 2));
+
   // The native host exposes fixed application folders, never renderer paths.
   const folders = await client.page.evaluate(() =>
     globalThis.__TAURI_INTERNALS__.invoke('app_data_folders'),

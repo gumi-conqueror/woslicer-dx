@@ -6,6 +6,7 @@ import {
   encodeProject,
   parseProject,
   ProjectFormatError,
+  projectToWos,
 } from '../../src/project/codec';
 import { PROJECT_FILE_MAX_BYTES, type ProjectFileV1 } from '../../src/project/schema';
 import { bmhelperToDocument } from '../../src/project/bmhelper';
@@ -32,6 +33,37 @@ function project(): ProjectFileV1 {
 }
 
 describe('.wosdx project document', () => {
+  it('round-trips optional marker chords and keeps legacy WOS bytes unchanged', () => {
+    const value = project();
+    value.slicing.markers = [96, 24];
+    const legacy = writeWos(projectToWos(value));
+    value.slicing.markerKeys = [{ tick: 96, keys: [7, 1, 3] }];
+    const decoded = decodeProject(encodeProject(value));
+    if (decoded.kind !== 'supported') throw new Error('Expected supported project');
+    expect(decoded.unknownFields).toEqual([]);
+    expect(decoded.project.slicing.markers).toEqual([24, 96]);
+    expect(decoded.project.slicing.markerKeys).toEqual([{ tick: 96, keys: [1, 3, 7] }]);
+    expect(writeWos(projectToWos(decoded.project))).toEqual(legacy);
+    expect(decodeProject(encodeProject(project())).kind).toBe('supported');
+    expect(parseProject(project())).toMatchObject({ project: { slicing: { markers: [] } } });
+  });
+  it.each([
+    [{ tick: 24, keys: [0] }],
+    [{ tick: 24, keys: [8] }],
+    [{ tick: 24, keys: ['1'] }],
+    [{ tick: 24, keys: [] }],
+    [{ tick: 24, keys: [1, 1] }],
+    [{ tick: 25, keys: [1] }],
+    [
+      { tick: 24, keys: [1] },
+      { tick: 24, keys: [2] },
+    ],
+  ])('rejects invalid or detached marker keys: %j', (...markerKeys) => {
+    const value = project();
+    expect(() =>
+      parseProject({ ...value, slicing: { ...value.slicing, markers: [24], markerKeys } }),
+    ).toThrow(ProjectFormatError);
+  });
   it.each([
     null,
     [],

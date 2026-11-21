@@ -1,8 +1,12 @@
 import { onMounted, onUnmounted } from 'vue';
 import { createGamepadReader, type GamepadControl } from './gamepad-controls';
 import { useInputState } from './input-state';
+import { RECORDING_KEYS, type RecordingInput } from './recording-bindings';
 
-export function useInputControls(onControl: (control: GamepadControl) => void): void {
+export function useInputControls(
+  onControl: (control: GamepadControl, input?: RecordingInput) => void,
+  recordingActive: () => boolean = () => false,
+): void {
   const input = useInputState();
   const read = createGamepadReader();
   let frame = 0;
@@ -34,11 +38,21 @@ export function useInputControls(onControl: (control: GamepadControl) => void): 
       : '';
     if (enabled && activity !== lastActivity && /1/.test(activity)) input.device = 'gamepad';
     lastActivity = activity;
-    const actions = read(pad, now, enabled);
+    const recording = recordingActive();
+    const actions = read(pad, now, enabled, recording);
     if (!pad && input.device === 'gamepad') input.device = 'keyboard';
     if (actions.length) {
       input.device = 'gamepad';
-      for (const action of actions) onControl(action);
+      const taps = recording
+        ? RECORDING_KEYS.filter((binding) => actions.includes(binding.gamepad))
+        : [];
+      let tapped = false;
+      for (const action of actions) {
+        if (taps.some((binding) => binding.gamepad === action)) {
+          if (!tapped) onControl(action, { time: now, keys: taps.map((binding) => binding.key) });
+          tapped = true;
+        } else onControl(action);
+      }
     }
     frame = requestAnimationFrame(poll);
   }
