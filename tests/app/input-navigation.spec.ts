@@ -96,7 +96,7 @@ test('navigates menus with Alt and a controller while keeping the help view manu
   await expect(support).toBeVisible();
   await expect(support).toContainText('local storage');
   await expect(support.locator('pre')).toContainText('Xbox test controller');
-  await expect(support.getByRole('button', { name: 'Session data', exact: true })).toHaveCount(0);
+  await expect(support.getByRole('button', { name: 'Recovery data', exact: true })).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(support).toBeHidden();
   await page.keyboard.press('Alt+h');
@@ -124,13 +124,13 @@ test('navigates menus with Alt and a controller while keeping the help view manu
   await press(15);
   await expect(page.locator('.statusbar')).toContainText('tick 24');
   await press(2);
-  await expect(page.locator('.statusbar')).toContainText('Cuts: 1');
+  await expect(page.locator('.statusbar')).toContainText('Markers: 1');
   await press(3);
-  await expect(page.locator('.statusbar')).toContainText('Cuts: 0');
+  await expect(page.locator('.statusbar')).toContainText('Markers: 0');
   await press(4);
-  await expect(page.locator('.statusbar')).toContainText('Cuts: 1');
+  await expect(page.locator('.statusbar')).toContainText('Markers: 1');
   await press(5);
-  await expect(page.locator('.statusbar')).toContainText('Cuts: 0');
+  await expect(page.locator('.statusbar')).toContainText('Markers: 0');
   await press(0);
   await expect(page.getByRole('button', { name: 'Play', exact: true })).toHaveAttribute(
     'aria-pressed',

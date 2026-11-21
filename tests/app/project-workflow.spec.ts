@@ -8,10 +8,10 @@ import { expectViewportLayout } from './layout-assertions';
 
 async function pick(page: Page, label: string, name: string, bytes: Uint8Array): Promise<void> {
   const choosing = page.waitForEvent('filechooser');
-  if (label === 'Open' || label === 'Open .wosdx...') {
+  if (label === 'Open' || label === 'Open .wosdx…') {
     await page.getByRole('button', { name: 'Project', exact: true }).click();
     await page
-      .getByRole('menuitem', { name: label === 'Open' ? 'Open WAV/OGG...' : label, exact: true })
+      .getByRole('menuitem', { name: label === 'Open' ? 'Open WAV/OGG…' : label, exact: true })
       .click();
   } else {
     await page.getByRole('button', { name: label, exact: true }).click();
@@ -73,7 +73,7 @@ test('opens and exports an original BMH file without changing its bytes', async 
   const decoded = decodeProject(dx);
   if (decoded.kind !== 'supported') throw new Error('Unexpected project version');
   expect(decoded.project.bmhelper?.divisions[0].name).toBe(name);
-  await pick(page, 'Open .wosdx...', 'unicode.wosdx', dx);
+  await pick(page, 'Open .wosdx…', 'unicode.wosdx', dx);
   await expect(rename).toHaveValue(name);
 });
 
@@ -112,7 +112,7 @@ test('opens, saves and relinks a project at native browser scale', async ({ page
   await pick(page, 'Open', 'tone.wav', wav);
   const loading = page.locator('.track-header .track-loading');
   await expect(loading).toBeVisible();
-  await expect(loading).toHaveAttribute('aria-label', 'Checking media…');
+  await expect(loading).toHaveAttribute('aria-label', 'Checking audio…');
   await expect(loading).toHaveText('');
   await expect
     .poll(() =>
@@ -164,16 +164,16 @@ test('opens, saves and relinks a project at native browser scale', async ({ page
   expect(parsed.project.slicing.markers).toEqual([0, 24]);
   expect(parsed.project.media[0]?.integrity?.digest).toMatch(/^[0-9a-f]{64}$/);
   await expect(page.getByLabel('Unsaved changes', { exact: true })).toHaveCount(0);
-  await pick(page, 'Open .wosdx...', 'tone.wosdx', bytes);
+  await pick(page, 'Open .wosdx…', 'tone.wosdx', bytes);
   await expect(page.locator('.source-info')).toContainText('Audio unavailable: tone.wav');
-  await pick(page, 'Relink audio...', 'tone.wav', wav);
+  await pick(page, 'Relink audio…', 'tone.wav', wav);
   await expect(page.locator('.source-info')).toContainText('48000 Hz');
   await expect(page.getByLabel('Unsaved changes', { exact: true })).toHaveCount(0);
   await page.locator('.timeline-viewport').focus();
   await page.keyboard.press('z');
   await page.getByRole('button', { name: 'Project', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Open .wosdx...', exact: true }).click();
-  await expect(page.getByRole('dialog')).toContainText('Unsaved project changes will be replaced.');
+  await page.getByRole('menuitem', { name: 'Open .wosdx…', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('Unsaved project changes will be lost.');
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeHidden();
   await expect(page.locator('.source-info')).toContainText('48000 Hz');
@@ -223,7 +223,7 @@ for (const kind of ['pcm', 'float'] as const) {
       await page.goto('/');
       await pick(page, 'Open', 'source-32.wav', bytes);
       const details = page.locator('.source-info');
-      await expect(details).toContainText(kind === 'pcm' ? 'WAV PCM 32-bit' : 'WAV Float 32-bit');
+      await expect(details).toContainText(kind === 'pcm' ? 'WAV PCM 32-bit' : 'WAV float 32-bit');
       await expect(details).toContainText('Processing / output');
       await expect(details).toContainText('PCM 16-bit');
     },

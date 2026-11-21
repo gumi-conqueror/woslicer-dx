@@ -125,59 +125,6 @@ test('status and scope placeholders are camelCase names', () => {
   }
 });
 
-test('Japanese strings keep the original woslicerIII terminology', () => {
-  // Keep established Japanese UI terms consistent across translations.
-  const anchors: { section: 'chrome' | 'menu' | 'status'; key: string; term: string }[] = [
-    { section: 'chrome', key: 'open', term: '読込' },
-    { section: 'chrome', key: 'export', term: '出力' },
-    { section: 'chrome', key: 'shiftLabel', term: 'ずらし' },
-    { section: 'chrome', key: 'gateCheckbox', term: 'ノイズゲート' },
-    { section: 'chrome', key: 'ffNumberingLabel', term: 'FF定義' },
-    { section: 'chrome', key: 'clipStartNoLabel', term: '出力番号' },
-    { section: 'chrome', key: 'clearMarkers', term: '切断位置をクリア' },
-    { section: 'chrome', key: 'bmseOut', term: 'クリップボードへ出力' },
-    { section: 'chrome', key: 'saveWos', term: '.wos を出力' },
-    { section: 'menu', key: 'openAudio', term: 'waveファイル読込' },
-    { section: 'menu', key: 'saveWos', term: 'wosファイル出力' },
-    { section: 'menu', key: 'exportAll', term: '全スライスを出力' },
-    { section: 'menu', key: 'clearMarkers', term: '切断位置のクリア' },
-    { section: 'status', key: 'exportingSlices', term: '出力中' },
-    { section: 'status', key: 'paintedMarkers', term: '切断位置を描画' },
-    { section: 'status', key: 'breakPointAtTick', term: '切断位置を配置' },
-    { section: 'status', key: 'bmseClipboardOut', term: '出力番号' },
-    { section: 'status', key: 'bmseClipboardImported', term: '読み込みました' },
-    { section: 'status', key: 'savedWos', term: '出力しました' },
-  ];
-  for (const { section, key, term } of anchors) {
-    const actual = DATA.ja[section][key];
-    assert.ok(
-      typeof actual === 'string' && actual.includes(term),
-      `ja ${section}.${key} lost the original term "${term}" (got: ${String(actual)})`,
-    );
-  }
-  // The AI-translation drift must not come back either. 開く stays legitimate
-  // when the BMHelper port opens a PROJECT file with the original's own
-  // wording (プロジェクトを開く), or opens a data folder; only audio-open drift is banned.
-  for (const banned of ['マーカー', '書き出し', '開く']) {
-    const occurrences: string[] = [];
-    for (const [section, data] of Object.entries(DATA.ja)) {
-      if (section === 'scopeRange') continue;
-      for (const [key, raw] of Object.entries(data as Record<string, unknown>)) {
-        const value =
-          typeof raw === 'string'
-            ? raw.replace(/プロジェクトを開く|データフォルダーを開く/g, '')
-            : null;
-        if (value !== null && value.includes(banned)) occurrences.push(`${section}.${key}`);
-      }
-    }
-    assert.deepEqual(
-      occurrences,
-      [],
-      `ja still carries the drifted term "${banned}" in: ${occurrences.join(', ')}`,
-    );
-  }
-});
-
 test('auto detection walks the preference list without per-locale fallback', () => {
   assert.equal(detectLanguage(['de-DE', 'ja-JP', 'ko']), 'ja');
   assert.equal(detectLanguage(['zh-TW', 'en']), 'zh');

@@ -54,8 +54,8 @@ test('uses local regional fonts after language changes and leaves inputs unrestr
     else chromeHeights = heights;
     await expect(page.locator('.el-input__inner').first()).toHaveCSS('font-family', 'sans-serif');
     await expectViewportLayout(page);
-    if (language === 'ja') {
-      await page.screenshot({ path: test.info().outputPath('japanese-ui.png') });
+    if (language === 'ja' || language === 'ko') {
+      await page.screenshot({ path: test.info().outputPath(`${language}-ui.png`) });
     }
   }
   const fonts = await page.evaluate(() =>

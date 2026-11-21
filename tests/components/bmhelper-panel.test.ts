@@ -170,9 +170,9 @@ it('emits 48-per-beat cuts and uses platform clipboard and save actions', async 
     },
   });
   try {
-    await harness.findButton('Apply cuts to the timeline').trigger('click');
+    await harness.findButton('Apply markers to timeline').trigger('click');
     expect(harness.wrapper.emitted('applyCuts')).toEqual([[{ ticks: [0] }]]);
-    await harness.findButton('Copy cut positions').trigger('click');
+    await harness.findButton('Copy markers').trigger('click');
     await flushPromises();
     const division = harness.store.selectedDivision;
     if (!division) throw new Error('expected a selected division');
@@ -248,7 +248,7 @@ it('shows definition numbers and copies cuts, BMS sequence and definition text',
     const source = harness.store.project?.source;
     if (!division || !source) throw new Error('expected a selected division');
     expect(harness.wrapper.find('span.definitions').text()).toBe('01');
-    await harness.findButton('Copy cut positions').trigger('click');
+    await harness.findButton('Copy markers').trigger('click');
     await flushPromises();
     expect(platform.writeClipboard).toHaveBeenLastCalledWith(cutPositionsClipboard(division));
     await harness.findButton('Copy BMS sequence').trigger('click');
