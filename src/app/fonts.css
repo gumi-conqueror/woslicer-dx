@@ -1,0 +1,22 @@
+@import './generated/fonts/fonts.css';
+
+/* Bundle regional faces so UI language, not the OS locale, selects CJK glyphs. */
+:root {
+  --wos-font-family: 'WOS UI en', 'WOS UI zh', 'WOS UI ja', 'WOS UI ko', sans-serif;
+  --el-font-family: var(--wos-font-family);
+}
+[lang]:lang(zh) {
+  --wos-font-family: 'WOS UI zh', 'WOS UI en', 'WOS UI ja', 'WOS UI ko', sans-serif;
+}
+[lang]:lang(ja) {
+  --wos-font-family: 'WOS UI ja', 'WOS UI en', 'WOS UI zh', 'WOS UI ko', sans-serif;
+}
+[lang]:lang(ko) {
+  --wos-font-family: 'WOS UI ko', 'WOS UI en', 'WOS UI ja', 'WOS UI zh', sans-serif;
+}
+[lang]:lang(en) {
+  --wos-font-family: 'WOS UI en', 'WOS UI zh', 'WOS UI ja', 'WOS UI ko', sans-serif;
+}
+[lang] {
+  font-family: var(--wos-font-family);
+}

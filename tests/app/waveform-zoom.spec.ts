@@ -60,50 +60,57 @@ test('keeps sine waves connected through 24 zoom-out levels from maximum', async
     Math.round(Math.sin((i * 2 * Math.PI) / 96) * 24576),
   );
   const bytes = Buffer.from(encodeWav16([pcm], 48000, pcm.length));
-  for (const dpr of info.project.name === 'low' ? [1, 1.25] : [2, 1.5]) {
-    const context = await browser.newContext({
-      viewport: { width: 1000, height: 640 },
-      deviceScaleFactor: dpr,
-      locale: 'en-US',
-    });
-    try {
-      const page = await context.newPage();
-      await page.addInitScript(() => localStorage.setItem('woslicer.theme', 'dark'));
-      await page.goto('http://127.0.0.1:4184/');
-      const choosing = page.waitForEvent('filechooser');
-      await page.getByRole('button', { name: 'Project', exact: true }).click();
-      await page.getByRole('menuitem', { name: 'Open WAV/OGG...', exact: true }).click();
-      await (await choosing).setFiles({ name: 'sine.wav', mimeType: 'audio/wav', buffer: bytes });
-      await expect(page.locator('.status-message')).toContainText('Ready: sine');
-      await page.getByRole('button', { name: 'Band detect', exact: true }).click();
-      const rmsLabel = page.getByText('RMS band (mean level inside the peaks)', { exact: true });
-      await expect(
-        page.getByRole('checkbox', { name: 'RMS band (mean level inside the peaks)', exact: true }),
-      ).not.toBeChecked();
-      await zoom(page, -1, 100);
-      for (let level = 0; level <= 24; level++) {
-        if (level) await zoom(page, 1, 1);
-        const outline = await envelope(page);
-        expect(outline.gaps, `DPR ${dpr}, level ${level}`).toBe(0);
-        if ([8, 9, 10, 11, 16, 24].includes(level)) {
-          await rmsLabel.click();
-          // Wait for the canvas to paint the changed overlay setting.
-          await zoom(page, 1, 0);
-          expect(
-            (await envelope(page)).columns,
-            `RMS bounds at DPR ${dpr}, level ${level}`,
-          ).toEqual(outline.columns);
-          if (level === 10)
-            await page
-              .locator('canvas.timeline-canvas')
-              .first()
-              .screenshot({ path: info.outputPath(`zoom-10-dpr-${dpr}.png`) });
-          await rmsLabel.click();
-          await zoom(page, 1, 0);
+  const scales = info.project.name === 'low' ? [1, 1.25] : [2, 1.5];
+  // Each scale owns an isolated context; their frame waits can run together.
+  await Promise.all(
+    scales.map(async (dpr) => {
+      const context = await browser.newContext({
+        viewport: { width: 1000, height: 640 },
+        deviceScaleFactor: dpr,
+        locale: 'en-US',
+      });
+      try {
+        const page = await context.newPage();
+        await page.addInitScript(() => localStorage.setItem('woslicer.theme', 'dark'));
+        await page.goto('http://127.0.0.1:4184/');
+        const choosing = page.waitForEvent('filechooser');
+        await page.getByRole('button', { name: 'Project', exact: true }).click();
+        await page.getByRole('menuitem', { name: 'Open WAV/OGG…', exact: true }).click();
+        await (await choosing).setFiles({ name: 'sine.wav', mimeType: 'audio/wav', buffer: bytes });
+        await expect(page.locator('.status-message')).toContainText('Ready: sine');
+        await page.getByRole('button', { name: 'Band detect', exact: true }).click();
+        const rmsLabel = page.getByText('RMS band (mean level inside the peaks)', { exact: true });
+        await expect(
+          page.getByRole('checkbox', {
+            name: 'RMS band (mean level inside the peaks)',
+            exact: true,
+          }),
+        ).not.toBeChecked();
+        await zoom(page, -1, 100);
+        for (let level = 0; level <= 24; level++) {
+          if (level) await zoom(page, 1, 1);
+          const outline = await envelope(page);
+          expect(outline.gaps, `DPR ${dpr}, level ${level}`).toBe(0);
+          if ([8, 9, 10, 11, 16, 24].includes(level)) {
+            await rmsLabel.click();
+            // Wait for the canvas to paint the changed overlay setting.
+            await zoom(page, 1, 0);
+            expect(
+              (await envelope(page)).columns,
+              `RMS bounds at DPR ${dpr}, level ${level}`,
+            ).toEqual(outline.columns);
+            if (level === 10)
+              await page
+                .locator('canvas.timeline-canvas')
+                .first()
+                .screenshot({ path: info.outputPath(`zoom-10-dpr-${dpr}.png`) });
+            await rmsLabel.click();
+            await zoom(page, 1, 0);
+          }
         }
+      } finally {
+        await context.close();
       }
-    } finally {
-      await context.close();
-    }
-  }
+    }),
+  );
 });

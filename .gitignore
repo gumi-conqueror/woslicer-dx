@@ -3,6 +3,7 @@ node_modules/
 /dist/
 /release/
 /src/i18n/generated.ts
+/src/app/generated/
 # Tauri build and generated files are covered by src-tauri/.gitignore.
 
 # Test reports and local compatibility fixtures

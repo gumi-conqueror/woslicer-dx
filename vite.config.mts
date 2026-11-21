@@ -6,6 +6,7 @@ import { defineConfig, type Plugin } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import VueI18n from '@intlify/unplugin-vue-i18n/vite';
 import { resolveBuildProfile } from './scripts/build-profile.mjs';
+import { buildFonts } from './scripts/build-fonts.mjs';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 const release = resolveBuildProfile().profile === 'release';
@@ -21,7 +22,8 @@ const tauriIpcCsp: Plugin = {
   },
 };
 
-export default defineConfig(({ command }) => {
+export default defineConfig(async ({ command }) => {
+  await buildFonts(root);
   if (command === 'serve') {
     execFileSync(process.execPath, [resolve(root, 'scripts/tauri-build-info.mjs')], {
       stdio: 'inherit',
@@ -59,6 +61,8 @@ export default defineConfig(({ command }) => {
       reportCompressedSize: release,
       target: 'es2022',
       manifest: true,
+      // Small font subsets must remain files: font-src only allows 'self'.
+      assetsInlineLimit: (file: string) => (/\.woff2?$/i.test(file) ? false : undefined),
     },
     worker: { format: 'es' },
   };

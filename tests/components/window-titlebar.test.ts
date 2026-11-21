@@ -45,8 +45,8 @@ it('drags only from the title region and reflects native maximize changes', asyn
     native.isMaximized.mockResolvedValue(true);
     native.onResized.mock.calls[0]?.[0]();
     await flushPromises();
-    expect(wrapper.find('[aria-label="Restore window"]').exists()).toBe(true);
-    await wrapper.get('[aria-label="Minimize window"]').trigger('click');
+    expect(wrapper.find('[aria-label="Restore window size"]').exists()).toBe(true);
+    await wrapper.get('[aria-label="Minimize"]').trigger('click');
     expect(native.minimize).toHaveBeenCalledOnce();
     expect(native.startDragging).toHaveBeenCalledOnce();
   } finally {
@@ -65,7 +65,7 @@ it('keeps the window open on cancellation and waits for approval before destroyi
   );
   const wrapper = await render(beforeClose);
   try {
-    await wrapper.get('[aria-label="Exit application"]').trigger('click');
+    await wrapper.get('[aria-label="Exit app"]').trigger('click');
     expect(native.close).toHaveBeenCalledOnce();
     const closeRequested = native.onCloseRequested.mock.calls[0]?.[0];
     if (!closeRequested) throw new Error('Missing native close listener');

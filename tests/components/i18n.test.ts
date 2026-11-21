@@ -22,7 +22,7 @@ describe('application Vue I18n messages', () => {
   it.each([
     ['en', 'Open', 'Scope: selection'],
     ['zh', '打开', '范围：选区'],
-    ['ja', '読込', '範囲：選択'],
+    ['ja', '開く', '範囲：選択'],
     ['ko', '열기', '범위: 선택'],
   ])('renders chrome and scope messages in %s', (locale, open, scope) => {
     const { i18n } = translations(locale);
@@ -35,13 +35,13 @@ describe('application Vue I18n messages', () => {
 
   it('formats status parameters and switches the actual application locale', () => {
     const { i18n, preferences } = translations('en');
-    expect(i18n.global.t('status.paintedMarkers', { count: 3 })).toBe('Painted 3 marker(s)');
+    expect(i18n.global.t('status.paintedMarkers', { count: 3 })).toBe('Markers added: 3');
     preferences.setLanguage('zh');
-    expect(i18n.global.t('status.breakPointAtTick', { tick: 12 })).toBe('已在 tick 12 打点');
+    expect(i18n.global.t('status.breakPointAtTick', { tick: 12 })).toBe('已在 tick 12 添加切点');
     expect(i18n.global.t('chrome.framesCount', { count: '1,234' })).toBe('1,234 采样帧');
     preferences.setLanguage('ko');
     expect(i18n.global.t('status.movedMarkersBy', { count: 4, delta: -8 })).toBe(
-      '마커 4개를 -8 tick 이동',
+      '분할점 4개를 -8 tick 이동',
     );
   });
 
@@ -51,6 +51,6 @@ describe('application Vue I18n messages', () => {
     i18n.global.fallbackWarn = false;
     i18n.global.setLocaleMessage('zh', {});
     expect(i18n.global.t('chrome.open')).toBe('Open');
-    expect(i18n.global.t('status.paintedMarkers', { count: 3 })).toBe('Painted 3 marker(s)');
+    expect(i18n.global.t('status.paintedMarkers', { count: 3 })).toBe('Markers added: 3');
   });
 });
