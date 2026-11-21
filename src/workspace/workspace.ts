@@ -141,7 +141,7 @@ export function createWorkspace(options: WorkspaceOptions) {
         name: file.name,
         mediaId: preserveBaseName ? activeMedia(editor.document)?.mediaId : undefined,
       }),
-      revision = editor.docRevision;
+      documentGeneration = editor.documentGeneration;
     const previousPhase = editor.source ? { kind: 'ready' as const } : { kind: 'empty' as const };
     editor.setPhase({ kind: 'loading', name: file.name });
     editor.setStatus('parsingSourceFile');
@@ -154,7 +154,9 @@ export function createWorkspace(options: WorkspaceOptions) {
       pendingEngine = worker;
       const result = await worker.decode(file.name, file.bytes);
       if (disposed || request !== opening) return;
-      if (revision !== editor.docRevision)
+      // Parameter and marker edits remain valid during decoding. Only replacing
+      // the document invalidates this result; merge audio into the latest state.
+      if (documentGeneration !== editor.documentGeneration)
         throw new Error('Project changed during audio loading; select the audio again');
       const expected = preserveBaseName ? activeMedia(editor.document) : null;
       if (expected) {
@@ -164,7 +166,7 @@ export function createWorkspace(options: WorkspaceOptions) {
           if (!confirm || !(await confirm({ current: expected.name, selected: file.name })))
             throw new Error('Selected audio does not match the project media');
           if (disposed || request !== opening) return;
-          if (revision !== editor.docRevision)
+          if (documentGeneration !== editor.documentGeneration)
             throw new Error('Project changed during audio loading; select the audio again');
         }
         const pathChanged =
@@ -233,7 +235,7 @@ export function createWorkspace(options: WorkspaceOptions) {
     if (!requireEditable()) return;
     if (recoveryBlock && !(await releaseRecoveryBlock())) return;
     const version = generation,
-      revision = editor.docRevision,
+      documentGeneration = editor.documentGeneration,
       request = beginOpening({ stage: 'opening' });
     try {
       const file = await platform.openFile('audio');
@@ -241,7 +243,7 @@ export function createWorkspace(options: WorkspaceOptions) {
         file &&
         !disposed &&
         version === generation &&
-        revision === editor.docRevision &&
+        documentGeneration === editor.documentGeneration &&
         request === opening
       )
         await loadAudio(file);
@@ -255,11 +257,16 @@ export function createWorkspace(options: WorkspaceOptions) {
   async function relinkAudio(): Promise<void> {
     if (!requireEditable()) return;
     if (!activeMedia(editor.document)) return;
-    const revision = editor.docRevision,
+    const documentGeneration = editor.documentGeneration,
       request = beginOpening({ stage: 'opening', name: activeMedia(editor.document)?.name });
     try {
       const file = await platform.openFile('audio');
-      if (file && !disposed && revision === editor.docRevision && request === opening)
+      if (
+        file &&
+        !disposed &&
+        documentGeneration === editor.documentGeneration &&
+        request === opening
+      )
         await loadAudio(file, true);
     } catch (error) {
       if (!disposed && request === opening)
@@ -300,10 +307,15 @@ export function createWorkspace(options: WorkspaceOptions) {
       });
     if (!limited && media && file.reference && media.originHint?.kind === 'desktop') {
       const request = beginOpening({ stage: 'reading', name: media.name, mediaId: media.mediaId }),
-        revision = editor.docRevision;
+        documentGeneration = editor.documentGeneration;
       try {
         const audio = await platform.openProjectMedia(file.reference, media.mediaId);
-        if (audio && !disposed && request === opening && revision === editor.docRevision)
+        if (
+          audio &&
+          !disposed &&
+          request === opening &&
+          documentGeneration === editor.documentGeneration
+        )
           await loadAudio(audio, true);
       } catch {
         if (!disposed && request === opening)
@@ -372,12 +384,18 @@ export function createWorkspace(options: WorkspaceOptions) {
     const project = /\.wosdx$/i.test(file.name);
     if (!project && !requireEditable()) return;
     const request = beginOpening({ stage: 'reading', name: file.name }),
-      revision = editor.docRevision;
+      revision = editor.docRevision,
+      documentGeneration = editor.documentGeneration;
     try {
       if (file.size > (project ? PROJECT_FILE_MAX_BYTES : 2 * 1024 * 1024 * 1024))
         throw new Error(project ? 'Project exceeds 64 MiB' : 'Audio exceeds 2 GiB');
       const bytes = new Uint8Array(await file.arrayBuffer());
-      if (!disposed && request === opening && revision === editor.docRevision) {
+      if (
+        !disposed &&
+        request === opening &&
+        documentGeneration === editor.documentGeneration &&
+        (!project || revision === editor.docRevision)
+      ) {
         const opened = { name: file.name, bytes, reference: null };
         if (project) await acceptProject(opened);
         else await loadAudio(opened);
@@ -394,10 +412,10 @@ export function createWorkspace(options: WorkspaceOptions) {
         stage: 'reading',
         name: activeMedia(editor.document)?.name ?? editor.lastFile?.name,
       }),
-      revision = editor.docRevision;
+      documentGeneration = editor.documentGeneration;
     try {
       const file = await platform.reopenFile(reference);
-      if (!disposed && request === opening && revision === editor.docRevision)
+      if (!disposed && request === opening && documentGeneration === editor.documentGeneration)
         await loadAudio(file, preserveBaseName);
     } catch {
       if (!disposed && request === opening)

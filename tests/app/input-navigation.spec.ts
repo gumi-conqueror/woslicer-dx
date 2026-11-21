@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { expectViewportLayout } from './layout-assertions';
 import { encodeWav16 } from '../../src/core/wav';
 
-test('navigates menus with Alt and a controller while keeping the help view manual', async ({
+test('navigates menus during audio loading and keeps the help input view manual', async ({
   page,
 }) => {
   // Only the physical Gamepad API is substituted. Production polling, focus,
@@ -48,6 +48,39 @@ test('navigates menus with Alt and a controller while keeping the help view manu
         ),
     );
   };
+  // Hold the real decoder's script request so all navigation below happens
+  // during loading, independent of machine speed or audio file size.
+  let resumeDecoding = () => {};
+  const decoderReady = new Promise<void>((resolve) => {
+    resumeDecoding = resolve;
+  });
+  await page.route(/\/audio\.worker-[^/]+\.js$/, async (route) => {
+    await decoderReady;
+    await route.continue();
+  });
+  const choosing = page.waitForEvent('filechooser');
+  await page.keyboard.press('Alt+p');
+  await expect(page.getByRole('menu', { name: 'Project', exact: true })).toBeVisible();
+  await page.keyboard.press('a');
+  const samples = new Int16Array(48000 * 8);
+  await (
+    await choosing
+  ).setFiles({
+    name: 'controller.wav',
+    mimeType: 'audio/wav',
+    buffer: Buffer.from(encodeWav16([samples], 48000, samples.length)),
+  });
+  await expect(page.locator('.track-loading')).toBeVisible();
+  await page.getByRole('button', { name: 'Help', exact: true }).click();
+  await expect(page.getByRole('menu', { name: 'Help', exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'BMHelper', exact: true }).click();
+  await expect(page.locator('#panel-bmhelper')).toBeVisible();
+  const bpm = page.getByRole('spinbutton', { name: 'BPM', exact: true });
+  await bpm.fill('175');
+  await bpm.press('Tab');
+  await page.locator('.track-number').click();
   await page.keyboard.press('Alt');
   await expect(page.getByRole('button', { name: 'Project', exact: true })).toBeFocused();
   await page.keyboard.press('h');
@@ -107,20 +140,11 @@ test('navigates menus with Alt and a controller while keeping the help view manu
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
   await expectViewportLayout(page);
-  const choosing = page.waitForEvent('filechooser');
-  await page.keyboard.press('Alt+p');
-  await expect(page.getByRole('menu', { name: 'Project', exact: true })).toBeVisible();
-  await page.keyboard.press('a');
-  const samples = new Int16Array(48000 * 8);
-  await (
-    await choosing
-  ).setFiles({
-    name: 'controller.wav',
-    mimeType: 'audio/wav',
-    buffer: Buffer.from(encodeWav16([samples], 48000, samples.length)),
-  });
+  await expect(page.locator('.timeline-viewport')).toHaveAttribute('aria-busy', 'true');
+  resumeDecoding();
   await expect(page.locator('.track-name')).toContainText('controller');
   await expect(page.locator('.timeline-viewport')).toHaveAttribute('aria-busy', 'false');
+  await expect(bpm).toHaveValue('175');
   await press(15);
   await expect(page.locator('.statusbar')).toContainText('tick 24');
   await press(2);

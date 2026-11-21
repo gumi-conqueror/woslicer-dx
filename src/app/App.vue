@@ -206,8 +206,7 @@ useInputControls((control) => {
     aboutOpen.value ||
     helpOpen.value ||
     troubleshootOpen.value ||
-    closing.value ||
-    loading.value
+    closing.value
   )
     return;
   const navigation = gamepadNavigation(control);
@@ -308,9 +307,7 @@ onUnmounted(() => {
       >
         <ApplicationMenu
           ref="applicationMenu"
-          :disabled="
-            calibrating || aboutOpen || helpOpen || troubleshootOpen || closing || Boolean(loading)
-          "
+          :disabled="calibrating || aboutOpen || helpOpen || troubleshootOpen || closing"
           :desktop="platform.kind === 'tauri'"
           @command="execute"
         />
