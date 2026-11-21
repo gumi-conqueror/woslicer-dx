@@ -2,6 +2,18 @@
 
 **English** · [中文](CHANGELOG.zh-CN.md)
 
+## 1.1.1 — 2026-11-21
+
+### Fixed
+
+- Menus and controller input remain available while audio loads. Parameter and marker edits made during loading are preserved.
+- Playback controls remain available for the current audio while replacement audio loads.
+- Switching interface languages uses the correct fonts and keeps the menu bar height consistent.
+
+### Changed
+
+- Shorter, consistent interface labels and help text in English, Chinese, Japanese and Korean.
+
 ## 1.1.0 — 2026-11-21
 
 ### Added

@@ -83,6 +83,83 @@ it('clears cancelled and failed opens, and does not let an older open hide a new
   expect(f.editor.isError).toBe(true);
 });
 
+it('keeps edits made while audio is being read and decoded', async () => {
+  const reading = deferred<ReturnType<typeof audioFile>>();
+  const decoding = deferred<void>();
+  const f = setup(() => {
+    const engine = processorEngine();
+    return {
+      ...engine,
+      async decode(name, bytes) {
+        await decoding.promise;
+        return engine.decode(name, bytes);
+      },
+    };
+  });
+  f.platform.openFile = () => reading.promise;
+  const opening = f.workspace.openAudio();
+  f.editor.setDocumentOptions({ bpm: 175 });
+  reading.resolve(audioFile());
+  await vi.waitFor(() => expect(f.workspace.loading.value?.stage).toBe('decoding'));
+  f.editor.setVolume(0.5);
+  f.editor.setTicks([12, 24]);
+  decoding.resolve();
+  await opening;
+  expect(f.editor.source?.name).toBe('tone');
+  expect(f.editor.doc.bpm).toBe(175);
+  expect(f.editor.volume).toBeCloseTo(0.5);
+  expect(f.editor.ticks).toEqual([12, 24]);
+  expect(f.editor.isDirty).toBe(true);
+  expect(f.editor.isError).toBe(false);
+  expect(f.workspace.loading.value).toBeNull();
+});
+
+it.each(['project', 'recovery'] as const)(
+  'keeps edits and undo history while %s media is read and decoded',
+  async (mode) => {
+    const original = setup();
+    const file = { ...audioFile(), absolutePath: 'C:/Audio/tone.wav' };
+    await original.workspace.loadAudio(file);
+    const reading = deferred<ReturnType<typeof audioFile>>();
+    const decoding = deferred<void>();
+    const f = setup(() => {
+      const engine = processorEngine();
+      return {
+        ...engine,
+        async decode(name, bytes) {
+          await decoding.promise;
+          return engine.decode(name, bytes);
+        },
+      };
+    });
+    f.opened = {
+      name: 'project.wosdx',
+      reference: 'project-grant',
+      bytes: encodeProject(original.editor.document),
+    };
+    f.session = captureEditorSession(original.editor);
+    f.platform.openProjectMedia = () => reading.promise;
+    f.platform.reopenFile = () => reading.promise;
+    const opening = mode === 'project' ? f.workspace.openProject() : f.workspace.restoreSession();
+    await vi.waitFor(() => expect(f.workspace.loading.value?.stage).toBe('reading'));
+    f.editor.setDocumentOptions({ bpm: 175 });
+    reading.resolve(file);
+    await vi.waitFor(() => expect(f.workspace.loading.value?.stage).toBe('decoding'));
+    f.editor.setTicks([12, 24]);
+    decoding.resolve();
+    await opening;
+    expect(f.editor.source?.name).toBe('tone');
+    expect(f.editor.doc.bpm).toBe(175);
+    expect(f.editor.ticks).toEqual([12, 24]);
+    expect(f.editor.isDirty).toBe(true);
+    expect(f.editor.isError).toBe(false);
+    expect(f.editor.undo()).toBe(true);
+    expect(f.editor.ticks).toEqual([]);
+    expect(f.editor.doc.bpm).toBe(175);
+    expect(f.workspace.loading.value).toBeNull();
+  },
+);
+
 it('keeps missing project media editable and cancels a pending media read when closing', async () => {
   const f = setup();
   await f.workspace.loadAudio({ ...audioFile(), absolutePath: 'C:/Audio/tone.wav' });

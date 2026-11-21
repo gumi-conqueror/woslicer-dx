@@ -13,6 +13,7 @@
 - Preserve Tauri isolation and the restrictive content security policy (CSP) in both release variants. About links use a command that accepts fixed link identifiers only. Do not expose arbitrary URL, shell or open capabilities, or broad inter-process communication (IPC) access. Keep the default WebView installation behavior.
 - External installers, build tools and dependencies may use the network. Bind test servers and DevTools to loopback addresses.
 - Use MIT for project code. Keep LICENSE and necessary credits in NOTICE. Use npm and Cargo metadata for dependencies; do not maintain duplicate license databases or source archives.
+- Build language-specific font subsets from UI text. Do not use `system-ui` for UI chrome. Editable text fields may use `sans-serif` or `system-ui` so user text is not limited to the bundled glyphs.
 
 ## Implementation and validation
 
@@ -57,6 +58,8 @@
 - Keep original-language quotations or UI labels only when needed as reference evidence. Add an English explanation.
 - Use [ASD-STE100 guidance](.agents/skills/asd-ste100/SKILL.md) for English descriptions and instructions. Prefer short sentences, explicit actors and consistent terms. Preserve conditions, limits and uncertainty.
 - Apply the same clarity principles to Japanese and Korean descriptions. Keep natural grammar and established UI terms in each language. Do not apply English word-count rules to other languages. Use [Chinese technical writing](.agents/skills/zh-tech-writing/SKILL.md) for Chinese.
+- Use concise plain forms and nominal endings in Japanese and Korean UI text. Prefer established localized terms; keep conventional audio terms but avoid unnecessary transliteration. Use the same terms in menus, help and READMEs. Preserve conditions, placeholders and data-loss warnings when shortening text.
+- In English and Chinese UI text, use `marker` / `切点` for a split position and `slice` / `切片` for an audio segment. Use `project` / `工程`, `panel` / `面板`, `recovery data` / `恢复数据` and `playback` / `播放` consistently. Use `项目` for the software project itself. Match menu names in help instructions.
 - The root `package.json` contains the only editable application version. Use `npm version <major.minor.patch> --no-git-tag-version --ignore-scripts`. Update both changelogs. Run `npm run check:version`.
 - Bundle the version, full commit, dirty-tree marker and fixed UTC build time for About. See the [version policy](docs/VERSIONING.md).
 

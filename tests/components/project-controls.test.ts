@@ -59,7 +59,7 @@ it.each([
   { bytes: wavBytesDepth([0, 32767], 48000, 16), label: 'WAV PCM 16-bit' },
   { bytes: wavBytesDepth([0, 0x7fffff], 48000, 24), label: 'WAV PCM 24-bit' },
   { bytes: wavBytesDepth([0, 0x7fffffff], 48000, 32), label: 'WAV PCM 32-bit' },
-  { bytes: floatWav(), label: 'WAV Float 32-bit' },
+  { bytes: floatWav(), label: 'WAV float 32-bit' },
 ])(
   'shows the decoded source format separately from processing/output: $label',
   async ({ bytes, label }) => {

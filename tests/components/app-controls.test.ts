@@ -248,9 +248,9 @@ describe('application controls', () => {
     try {
       expect(wrapper.text()).toContain('0123456789abcdef0123456789abcdef01234567');
       expect(wrapper.text()).toContain('2026-01-01T00:00:00Z');
-      expect(wrapper.text()).toContain('modified working tree');
+      expect(wrapper.text()).toContain('Uncommitted changes');
       expect(wrapper.text()).toContain('v0.3.0');
-      expect(wrapper.text()).toContain('Project link unavailable in this local build.');
+      expect(wrapper.text()).toContain('No project link in this build.');
       const links = wrapper.findAll('.credits a');
       expect(links.map((link) => link.text())).toEqual([
         'woslicer II/III — wosderge',

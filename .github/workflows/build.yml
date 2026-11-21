@@ -16,6 +16,7 @@ permissions:
 
 env:
   WOSLICER_BUILD_PROFILE: release
+  IBM_TELEMETRY_DISABLED: 'true'
 
 concurrency:
   # Build and publication runs have separate concurrency groups.

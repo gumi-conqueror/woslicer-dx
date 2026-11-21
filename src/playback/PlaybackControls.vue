@@ -13,8 +13,8 @@ import AppIcon from '../ui/AppIcon.vue';
 const editor = useEditorStore();
 const playback = usePlayback();
 const { t } = useI18n();
-// Transport controls stay disabled until an audio source is loaded.
-const disabled = computed(() => !editor.source || editor.phase.kind === 'loading');
+// The current source remains playable while its replacement loads.
+const disabled = computed(() => !editor.source);
 // The store keeps linear amplitudes; sliders show a 0..100 position over a -60..0 dB fader.
 const volume = computed(() => dbToSlider(ampToDb(editor.volume)));
 const cueVolume = computed(() => dbToSlider(ampToDb(editor.cueVolume)));

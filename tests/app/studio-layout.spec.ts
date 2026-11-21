@@ -13,7 +13,7 @@ test('toggles ordered modules without losing drafts and integrates the track ove
   );
   const choosing = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Project', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Open WAV/OGG...', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Open WAV/OGG…', exact: true }).click();
   await (
     await choosing
   ).setFiles({
@@ -129,7 +129,7 @@ test('toggles ordered modules without losing drafts and integrates the track ove
       );
     }
   });
-  await page.getByRole('button', { name: 'Cuts', exact: true }).click();
+  await page.getByRole('button', { name: 'Markers', exact: true }).click();
   await page.setViewportSize({ width: 1280, height: 600 });
   const shortHeight = await page
     .locator('.marker-viewport')
@@ -153,7 +153,7 @@ test('toggles ordered modules without losing drafts and integrates the track ove
   await page.getByRole('menuitem', { name: 'User guide and shortcuts', exact: true }).click();
   const help = page.getByRole('dialog');
   await expect(help).toContainText('Ctrl/Cmd+S');
-  await expect(help).toContainText('Add cut without snapping');
+  await expect(help).toContainText('Add marker without snapping');
   await page.keyboard.press('Escape');
   await expect(help).toBeHidden();
   await page.locator('.timeline-viewport').focus();

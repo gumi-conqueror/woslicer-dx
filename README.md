@@ -13,9 +13,9 @@ An offline audio slicer for BMS, based on wosderge's woslicerIII.
 - Import WAV and OGG and export WAV slices. Source details show the original encoding. Audio processing and WAV output currently use 16-bit PCM.
 - Save and reopen `.wosdx` projects. Import or export legacy `.wos` settings and exchange markers with BMSE.
 - Timeline editing with snapping, selection, quantization and undo/redo.
-- Variable-speed monitoring, cue sounds and tap calibration.
-- Frequency-band display and automatic cut detection.
-- Built-in BMHelper divides key-sound MIDI into a recording sequence with WAVE definitions. Apply its cut positions to the timeline.
+- Variable-speed playback, cue sounds and tap calibration.
+- Frequency-band display and automatic marker detection.
+- Built-in BMHelper divides key-sound MIDI into a recording sequence with WAVE definitions. Apply its markers to the timeline.
 - Open and save original BMHelper beta 4′ `.bmh` files. DX projects preserve Unicode division names. BMH export uses the original CP932 character substitutions and warns when names change.
 - English, Chinese, Japanese and Korean UI. About shows the version, commit and build date.
 
@@ -34,9 +34,9 @@ Windows x64 is the primary desktop package. Other Windows architectures, Linux a
 
 ## Controls
 
-Desktop projects store absolute audio paths and reconnect available files when opened. Use **Relink audio** after moving a file. Browsers require manual relinking. A banner shows session recovery and audio loading stages.
+Desktop projects store absolute audio paths and relink available files when opened. Use **Relink audio** after moving a file. The web app requires manual relinking. The workspace shows recovery and audio loading progress.
 
-Open **Help → User guide and shortcuts** for the workflow, mouse controls, keyboard reference and calibration instructions. Help is available offline.
+Open **Help → User guide and shortcuts** for editing steps, mouse controls, shortcuts and tap calibration. Help works offline.
 
 ## Project links
 

@@ -359,11 +359,13 @@ describe('Vue timeline ownership', () => {
       sourceFormat: { kind: 'pcm' as const, bits: 16 },
       floatData: [new Float32Array(48000)],
     });
-    editor.setPhase({ kind: 'ready' });
+    editor.setPhase({ kind: 'loading', name: 'replacement.wav' });
     await nextTick();
     const first = controls.findAll('button')[0],
       second = controls.findAll('button')[1];
     if (!first || !second) throw new Error('Missing playback buttons');
+    expect(first.attributes('disabled')).toBeUndefined();
+    expect(second.attributes('disabled')).toBeUndefined();
     await first.trigger('click');
     await second.trigger('click');
     expect(playback.togglePlayPause).toHaveBeenCalledOnce();

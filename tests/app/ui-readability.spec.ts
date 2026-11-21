@@ -10,7 +10,7 @@ import { writeSmfSequence } from '../../src/core/smf';
 
 const TABS: ReadonlyArray<{ name: string; label: string; ready: string }> = [
   { name: 'source', label: 'Source', ready: '.source-info' },
-  { name: 'cuts', label: 'Cuts', ready: '.marker-list' },
+  { name: 'cuts', label: 'Markers', ready: '.marker-list' },
   { name: 'detect', label: 'Band detect', ready: '.detection-panel' },
   { name: 'output', label: 'Output', ready: '.output-panel' },
   { name: 'bmhelper', label: 'BMHelper', ready: '.bmhelper' },
@@ -30,10 +30,10 @@ test.skip(
 
 async function pick(page: Page, label: string, name: string, bytes: Uint8Array): Promise<void> {
   const choosing = page.waitForEvent('filechooser');
-  if (label === 'Open' || label === 'Open .wosdx...') {
+  if (label === 'Open' || label === 'Open .wosdx…') {
     await page.getByRole('button', { name: 'Project', exact: true }).click();
     await page
-      .getByRole('menuitem', { name: label === 'Open' ? 'Open WAV/OGG...' : label, exact: true })
+      .getByRole('menuitem', { name: label === 'Open' ? 'Open WAV/OGG…' : label, exact: true })
       .click();
   } else {
     await page.getByRole('button', { name: label, exact: true }).click();
@@ -246,7 +246,7 @@ test('ui readability baseline: narrow 900', async ({ page }, info) => {
   await expect(page.locator('.timeline-viewport')).toBeVisible();
   await saveShot(page, info.project.name, 'narrow-900.png');
   await writeLayoutStyles(page, info.project.name, 'computed-styles-narrow-900.json');
-  for (const label of ['Output', 'Cuts', 'BMHelper', 'Band detect'])
+  for (const label of ['Output', 'Markers', 'BMHelper', 'Band detect'])
     await page.getByRole('button', { name: label, exact: true }).click();
   // Modules use the full width and evict the oldest instead of scrolling.
   const order = () =>
@@ -269,13 +269,13 @@ test('ui readability baseline: narrow 900', async ({ page }, info) => {
   await saveShot(page, info.project.name, 'narrow-900-modules.png');
   await page.setViewportSize({ width: 680, height: 720 });
   await expect.poll(order).toEqual(['panel-bmhelper', 'panel-detect']);
-  await expect(page.getByRole('button', { name: 'Cuts', exact: true })).toHaveAttribute(
+  await expect(page.getByRole('button', { name: 'Markers', exact: true })).toHaveAttribute(
     'aria-pressed',
     'false',
   );
   await page.setViewportSize({ width: 1920, height: 1080 });
   await expect.poll(order).toEqual(['panel-bmhelper', 'panel-detect']);
-  for (const label of ['Output', 'Source', 'Cuts'])
+  for (const label of ['Output', 'Source', 'Markers'])
     await page.getByRole('button', { name: label, exact: true }).click();
   await expect
     .poll(order)

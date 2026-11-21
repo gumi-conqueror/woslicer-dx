@@ -21,6 +21,7 @@ export default tseslint.config(
       'src-tauri/target/**',
       'src-tauri/generated/**',
       'src/i18n/generated.ts',
+      'src/app/generated/**',
       '.pending-delete/**',
       '.smell-check/**',
       'test-artifacts/**',

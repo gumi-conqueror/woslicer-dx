@@ -1,3 +1,5 @@
+@import './fonts.css';
+
 /* Shared surface tokens keep native chrome, controls and editor panels consistent. */
 :root {
   --wos-chrome: #e6e9e6;
@@ -73,15 +75,27 @@ body,
   margin: 0;
 }
 body {
-  font-family: system-ui, 'Segoe UI', sans-serif;
+  font-family: var(--wos-font-family);
   color: var(--el-text-color-primary);
   background: var(--el-bg-color);
   font-size: 13px;
+  /* Regional font metrics must not resize menus and compact controls. */
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
+}
+/* User-entered text is not limited to the UI's generated font subsets. */
+input,
+textarea,
+.el-input__inner,
+.el-textarea__inner,
+[contenteditable='true'] {
+  font-family: sans-serif;
 }
 button {
   cursor: pointer;
@@ -99,6 +113,9 @@ button:focus-visible {
 }
 .el-button {
   font-weight: 500;
+}
+.el-segmented__item-label {
+  line-height: 1.5;
 }
 html.dark .el-button--primary {
   --el-button-text-color: #1e2818;
