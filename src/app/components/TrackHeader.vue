@@ -26,13 +26,9 @@ const sourceName = computed(
           >{{ sourceName }}</span
         >
         <span
-          v-if="!loading"
+          v-if="!loading && editor.source"
           class="track-format"
-          >{{
-            editor.source
-              ? `${editor.source.sampleRate / 1000} kHz · ${editor.source.channels} ch`
-              : 'WAV / OGG'
-          }}</span
+          >{{ `${editor.source.sampleRate / 1000} kHz · ${editor.source.channels} ch` }}</span
         >
       </div>
       <TrackOverview

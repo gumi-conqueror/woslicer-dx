@@ -10,8 +10,8 @@ pub(crate) enum AboutLink {
     Bmhelper,
     #[serde(rename = "waveformPlaylist")]
     WaveformPlaylist,
-    #[serde(rename = "codecParser")]
-    CodecParser,
+    #[serde(rename = "audioDecode")]
+    AudioDecode,
 }
 
 fn link_url(link: AboutLink) -> Result<String, String> {
@@ -23,7 +23,7 @@ fn link_url(link: AboutLink) -> Result<String, String> {
         AboutLink::Woslicer => (CREDIT_LINKS, "woslicer"),
         AboutLink::Bmhelper => (CREDIT_LINKS, "bmhelper"),
         AboutLink::WaveformPlaylist => (CREDIT_LINKS, "waveformPlaylist"),
-        AboutLink::CodecParser => (CREDIT_LINKS, "codecParser"),
+        AboutLink::AudioDecode => (CREDIT_LINKS, "audioDecode"),
     };
     let data: serde_json::Value = serde_json::from_str(json).map_err(|error| error.to_string())?;
     data[key]

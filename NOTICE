@@ -14,9 +14,10 @@ https://github.com/naomiaro/waveform-playlist
 Copyright (c) 2015 Naomi. The MIT license terms are in LICENSE.
 This copyright applies to the adapted waveform peak helper.
 
-Ogg parsing: codec-parser by Ethan Halsall.
-https://github.com/eshaz/codec-parser
-Copyright 2020–2023 Ethan Halsall. LGPL-3.0-or-later.
+Audio decoding: audio-decode / Symphonia.
+https://github.com/gumi-conqueror/audio-decode
+Embedded dependency licenses and exact source locations are included in
+THIRD_PARTY_NOTICES.txt and in the About dialog.
 
 UI fonts: IBM Plex Sans and IBM Plex Sans SC / JP / KR.
 https://github.com/IBM/plex

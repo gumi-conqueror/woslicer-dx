@@ -55,11 +55,11 @@ function floatWav(): Uint8Array {
 }
 
 it.each([
-  { bytes: wavBytesDepth([128, 255], 48000, 8), label: 'WAV PCM 8-bit' },
-  { bytes: wavBytesDepth([0, 32767], 48000, 16), label: 'WAV PCM 16-bit' },
-  { bytes: wavBytesDepth([0, 0x7fffff], 48000, 24), label: 'WAV PCM 24-bit' },
-  { bytes: wavBytesDepth([0, 0x7fffffff], 48000, 32), label: 'WAV PCM 32-bit' },
-  { bytes: floatWav(), label: 'WAV float 32-bit' },
+  { bytes: wavBytesDepth([128, 255], 48000, 8), label: 'PCM 8-bit' },
+  { bytes: wavBytesDepth([0, 32767], 48000, 16), label: 'PCM 16-bit' },
+  { bytes: wavBytesDepth([0, 0x7fffff], 48000, 24), label: 'PCM 24-bit' },
+  { bytes: wavBytesDepth([0, 0x7fffffff], 48000, 32), label: 'PCM 32-bit' },
+  { bytes: floatWav(), label: 'Float 32-bit' },
 ])(
   'shows the decoded source format separately from processing/output: $label',
   async ({ bytes, label }) => {
@@ -77,9 +77,9 @@ it.each([
       const rows = wrapper.findAll('tr');
       expect(rows.find((row) => row.text().includes('Source format'))?.text()).toContain(label);
       expect(rows.find((row) => row.text().includes('Processing / output'))?.text()).toContain(
-        'PCM 16-bit',
+        'Float32 / PCM 16-bit',
       );
-      expect(f.editor.source?.data[0]).toBeInstanceOf(Int16Array);
+      expect(f.editor.source?.data[0]).toBeInstanceOf(Float32Array);
     } finally {
       wrapper.unmount();
       localization.stop();

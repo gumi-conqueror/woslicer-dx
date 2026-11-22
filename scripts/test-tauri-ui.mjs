@@ -223,31 +223,51 @@ async function verifyProfile(profile, client, runDir) {
     /^audio\.worker-.*\.js$/.test(name),
   );
   if (!workerAsset) throw new Error('Built audio worker is missing');
-  const oggBytes = [...readFileSync('tests/fixtures/audio/generated-tone.ogg')];
-  const decoded = await client.send('Runtime.evaluate', {
-    expression: `new Promise((resolve, reject) => {
-      const worker = new Worker(new URL(${JSON.stringify(`assets/${workerAsset}`)}, location.href), { type: 'module' });
-      worker.onerror = event => { worker.terminate(); reject(new Error(event.message)); };
-      worker.onmessage = ({ data }) => {
-        worker.terminate();
-        if (data.kind !== 'decoded') { reject(new Error(JSON.stringify(data))); return; }
-        resolve({ channels: data.source.channels, sampleRate: data.source.sampleRate, length: data.source.length });
-      };
-      worker.postMessage({ kind: 'decode', id: 1, name: 'generated-tone.ogg', bytes: Uint8Array.from(${JSON.stringify(oggBytes)}) });
-    })`,
-    awaitPromise: true,
-    returnByValue: true,
-  });
-  const audio = decoded.result.result.value;
-  if (
-    decoded.result.exceptionDetails ||
-    audio?.channels !== 1 ||
-    audio.sampleRate !== 44100 ||
-    audio.length !== 13230
-  ) {
-    throw new Error(`Native Ogg worker failed: ${JSON.stringify(decoded.result)}`);
+  for (const [name, channels, sampleRate, length] of [
+    ['generated-tone.ogg', 1, 44100, 13230],
+    ['tone.wav', 2, 48000, 6000],
+    ['tone.flac', 2, 48000, 6000],
+    ['tone.mka', 2, 48000, 6000],
+  ]) {
+    const bytes = [...readFileSync('tests/fixtures/audio/' + name)];
+    const audio = await client.page.evaluate(
+      ({ workerAsset, name, bytes }) =>
+        new Promise((resolve, reject) => {
+          const worker = new globalThis.Worker(
+            new URL('assets/' + workerAsset, globalThis.location.href),
+            {
+              type: 'module',
+            },
+          );
+          worker.onerror = (event) => {
+            worker.terminate();
+            reject(new Error(event.message));
+          };
+          worker.onmessage = ({ data }) => {
+            worker.terminate();
+            if (data.kind !== 'decoded') {
+              reject(new Error(JSON.stringify(data)));
+              return;
+            }
+            resolve({
+              channels: data.source.channels,
+              sampleRate: data.source.sampleRate,
+              length: data.source.length,
+            });
+          };
+          worker.postMessage({ kind: 'decode', id: 1, name, bytes: Uint8Array.from(bytes) });
+        }),
+      { workerAsset, name, bytes },
+    );
+    if (
+      audio?.channels !== channels ||
+      audio.sampleRate !== sampleRate ||
+      audio.length !== length
+    ) {
+      throw new Error('Native audio worker failed for ' + name + ': ' + JSON.stringify(audio));
+    }
+    writeFileSync(join(runDir, name + '.json'), JSON.stringify(audio, null, 2));
   }
-  writeFileSync(join(runDir, 'ogg.json'), JSON.stringify(audio, null, 2));
 
   // Exercise actual native permissions, including state changes initiated outside Vue.
   const decorated = await client.page.evaluate(() =>

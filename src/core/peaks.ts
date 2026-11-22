@@ -14,6 +14,8 @@
  * RMS values as sqrt(mean(rms²)) — the exact RMS of the covered frames.
  */
 
+import type { PcmChannel } from './wav.js';
+
 export interface PeakLevel {
   /** Frames per bucket at this level. */
   framesPerBucket: number;
@@ -28,8 +30,8 @@ export interface PeakCache {
   levels: PeakLevel[];
 }
 
-/** Builds a hierarchical peak cache for int16 channel data. */
-export function buildPeakCache(channelsData: Int16Array[], baseBucket = 256): PeakCache {
+/** Builds a hierarchical peak cache on the shared 32768 amplitude scale. */
+export function buildPeakCache(channelsData: PcmChannel[], baseBucket = 256): PeakCache {
   if (baseBucket < 1) throw new RangeError('baseBucket must be >= 1');
   const channels = channelsData.length;
   const length = channels === 0 ? 0 : channelsData[0].length;
@@ -38,8 +40,8 @@ export function buildPeakCache(channelsData: Int16Array[], baseBucket = 256): Pe
   const base = new Float32Array(buckets * 2);
   const baseRms = new Float32Array(buckets);
   for (let b = 0; b < buckets; b++) {
-    let min = 32767;
-    let max = -32768;
+    let min = Infinity;
+    let max = -Infinity;
     let sumSquares = 0;
     let count = 0;
     const startF = b * baseBucket;
@@ -72,8 +74,8 @@ export function buildPeakCache(channelsData: Int16Array[], baseBucket = 256): Pe
     const next = new Float32Array(count * 2);
     const nextRms = new Float32Array(count);
     for (let i = 0; i < count; i++) {
-      let min = 32767;
-      let max = -32768;
+      let min = Infinity;
+      let max = -Infinity;
       let sumSquares = 0;
       let members = 0;
       for (let j = i * 4; j < Math.min(prev.buckets, (i + 1) * 4); j++) {
@@ -134,8 +136,8 @@ export function peakRange(
     }
   }
 
-  let min = 32767;
-  let max = -32768;
+  let min = Infinity;
+  let max = -Infinity;
   let sumSquares = 0;
   let frames = 0;
   const firstBucket = Math.floor(clampedStart / level.framesPerBucket);

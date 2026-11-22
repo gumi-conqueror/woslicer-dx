@@ -8,8 +8,8 @@
  *    behaviour of taking the top 16 bits (sample >> 16). IEEE float WAVs
  *    (format tag 3) are decoded properly as an extension; the original would
  *    have produced garbage for them.
- *  - Internally all audio is stored as int16 in [-32768, 32767], matching the
- *    original which force-sets bit = 16 after load.
+ *  - This compatibility reader returns int16 for output verification and legacy tests.
+ *    Application imports use Symphonia and retain Float32 samples.
  *
  * The original scanned for the literal bytes "fmt " / "data" one byte at a
  * time inside a fixed 128-byte rolling buffer (and crashed on larger leading
@@ -17,11 +17,14 @@
  * strictly more robust and reads identical results for all well-formed files.
  */
 
-/** Original encoding, independent of the internal Int16 sample representation. */
+/** Original encoding, independent of the internal sample representation. */
 export type SourceFormat =
   | { kind: 'pcm'; bits: number }
-  | { kind: 'float'; bits: 32 }
-  | { kind: 'vorbis' };
+  | { kind: 'float'; bits: number }
+  | { kind: 'encoded'; codec: string };
+
+/** Full-scale amplitude is 32768. Runtime decoders retain fractional samples in Float32. */
+export type PcmChannel = Float32Array | Int16Array;
 
 export interface DecodedWav {
   sourceFormat: SourceFormat;
@@ -31,16 +34,15 @@ export interface DecodedWav {
   channels: number;
   /** Frames per channel. */
   length: number;
-  /** Per-channel samples in int16 range. */
-  data: Int16Array[];
+  /** Per-channel samples on the 32768 amplitude scale, without an integer requirement. */
+  data: PcmChannel[];
 }
 
 export class WavParseError extends Error {}
 
 /**
  * The internal int16 scale: round(x * 32768) clamped to [-32768, 32767].
- * Single conversion contract shared by OGG decode, float WAV parsing and the
- * band analyzer — a change here must move all three together.
+ * Conversion at the PCM16 export boundary and in the legacy WAV test reader.
  */
 export function floatToInternal(x: number): number {
   const v = Math.round(x * 32768);

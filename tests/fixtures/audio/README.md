@@ -8,3 +8,5 @@ Generate it with FFmpeg and the libvorbis encoder:
 ```sh
 ffmpeg -f lavfi -i sine=frequency=440:duration=0.3 -c:a libvorbis generated-tone.ogg
 ```
+
+The tone fixtures come from the MIT audio-decode repository. Its fixture generator creates 6,000 stereo frames at 48 kHz and transcodes them with FFmpeg. All audio is synthetic. Matroska fixtures cover FLAC and AAC input and rejection of unsupported Opus.

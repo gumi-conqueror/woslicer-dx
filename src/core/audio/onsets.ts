@@ -1,13 +1,14 @@
 import type { Timebase } from '../time/conversion.js';
 import { exportSample } from '../time/conversion.js';
+import type { PcmChannel } from '../wav.js';
 export interface OnsetInput {
-  readonly channels: readonly Int16Array[];
+  readonly channels: readonly PcmChannel[];
   readonly timebase: Timebase;
   readonly grid: number;
 }
 // RMS of adjacent grid-length windows; clip to the source,
 // normalize by actual available samples, and use zero for an empty window.
-function level(channel: Int16Array, begin: number, end: number): number {
+function level(channel: PcmChannel, begin: number, end: number): number {
   const start = Math.max(0, begin),
     limit = Math.min(channel.length, end);
   if (limit <= start) return 0;

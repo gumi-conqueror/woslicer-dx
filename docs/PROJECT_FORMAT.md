@@ -87,11 +87,13 @@ Users can rename the division before another export, or save `.wosdx` to preserv
 
 | `MediaAsset` field | Meaning |
 | --- | --- |
-| `mediaId`, `name`, `format` | Stable identity, original filename, and `wav` or `ogg`. |
+| `mediaId`, `name`, `format` | Stable identity, original filename, and `wav`, `ogg`, `oga`, `flac`, `mp3`, `aac`, `m4a`, `mp4`, `aif`, `aiff`, `mka` or `mkv` (filename extension). |
 | `byteLength` | Original file size or `null`, not decoded PCM buffer size. |
 | `sampleRateHz`, `channels`, `framesPerChannel` | Known values or `null`. Frames are per channel. Duration is frames divided by sample rate. |
 | `integrity` | `null` or `{algorithm: "sha256", digest: <64 hex chars>}`. The parser converts digests to lowercase. |
 | `originHint` | `null`, `{kind: "desktop", pathHint}` or `{kind: "browser", name, relativePathHint?, lastModified?}`. |
+
+The expanded media extension enum keeps schema version 1. Earlier readers that accept only WAV and Ogg reject projects containing newer format values. Existing WAV/Ogg projects remain compatible.
 
 ## Timing, playback and views
 
@@ -212,7 +214,7 @@ Decode failures must not delete bindings. Desktop paths must not become browser 
 Desktop media stores its absolute native path in `originHint.pathHint`.
 Opening a selected `.wosdx` file resolves its active media through `open_project_media`.
 This command accepts the selected project's host reference and a media ID, not a path.
-The host reads the bounded project file and grants access only to that entry's absolute WAV or OGG path.
+The host reads the bounded project file and grants access only to that entry's absolute supported audio path.
 The workspace verifies the media metadata and hash before adoption.
 Recovery reuses the persisted host grant. Browser file inputs and drops cannot provide absolute paths and require manual relinking.
 Old projects without paths also require one manual relink before saving the path.

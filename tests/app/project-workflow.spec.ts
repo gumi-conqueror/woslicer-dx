@@ -11,7 +11,7 @@ async function pick(page: Page, label: string, name: string, bytes: Uint8Array):
   if (label === 'Open' || label === 'Open .wosdx…') {
     await page.getByRole('button', { name: 'Project', exact: true }).click();
     await page
-      .getByRole('menuitem', { name: label === 'Open' ? 'Open WAV/OGG…' : label, exact: true })
+      .getByRole('menuitem', { name: label === 'Open' ? 'Open audio…' : label, exact: true })
       .click();
   } else {
     await page.getByRole('button', { name: label, exact: true }).click();
@@ -21,18 +21,17 @@ async function pick(page: Page, label: string, name: string, bytes: Uint8Array):
   ).setFiles({ name, mimeType: 'application/octet-stream', buffer: Buffer.from(bytes) });
 }
 
-test('imports a short Ogg file through the audio worker under the packaged CSP', async ({
+test('imports Ogg, FLAC and Matroska through the audio worker under the packaged CSP', async ({
   page,
 }) => {
   await page.goto('/');
-  await pick(
-    page,
-    'Open',
-    'generated-tone.ogg',
-    await readFile('tests/fixtures/audio/generated-tone.ogg'),
-  );
-  await expect(page.locator('.status-message')).toContainText('Ready: generated-tone');
-  await expect(page.locator('canvas').first()).toBeVisible();
+  for (const name of ['generated-tone.ogg', 'tone.flac', 'tone.mka']) {
+    await pick(page, 'Open', name, await readFile(`tests/fixtures/audio/${name}`));
+    await expect(page.locator('.track-name')).toHaveText(name);
+    await expect(page.locator('.timeline-viewport')).toHaveAttribute('aria-busy', 'false');
+    await expect(page.locator('.status-message')).toContainText(`Ready: ${name.split('.')[0]}`);
+    await expect(page.locator('canvas').first()).toBeVisible();
+  }
 });
 
 test('opens and exports an original BMH file without changing its bytes', async ({ page }) => {
@@ -223,7 +222,7 @@ for (const kind of ['pcm', 'float'] as const) {
       await page.goto('/');
       await pick(page, 'Open', 'source-32.wav', bytes);
       const details = page.locator('.source-info');
-      await expect(details).toContainText(kind === 'pcm' ? 'WAV PCM 32-bit' : 'WAV float 32-bit');
+      await expect(details).toContainText(kind === 'pcm' ? 'PCM 32-bit' : 'Float 32-bit');
       await expect(details).toContainText('Processing / output');
       await expect(details).toContainText('PCM 16-bit');
     },

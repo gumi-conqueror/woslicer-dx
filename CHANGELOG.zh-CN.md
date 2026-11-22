@@ -2,6 +2,13 @@
 
 [English](CHANGELOG.md) · **中文**
 
+## 未发布
+
+### 新增
+
+- 导入 FLAC、MP3、AAC-LC、ALAC 和 AIFF，支持读取 MKV/MKA 中兼容编码的音频。
+- 编辑时保留源音频的更高精度，WAV 导出仍使用 16 位 PCM。
+
 ## 1.1.1 — 2026-11-21
 
 ### 修复

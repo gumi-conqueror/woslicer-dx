@@ -66,6 +66,7 @@ const sections = computed(() =>
       </div>
       <h3>{{ t('help.workflow') }}</h3>
       <p>{{ t('help.workflowBody') }}</p>
+      <p>{{ t('help.audioFormats') }}</p>
       <h3>{{ t('help.workspace') }}</h3>
       <p>{{ t('help.workspaceBody') }}</p>
       <template v-if="guideDevice === 'keyboard'">

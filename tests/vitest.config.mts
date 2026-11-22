@@ -17,6 +17,7 @@ export default defineConfig({
   ],
   test: {
     environment: 'happy-dom',
+    setupFiles: ['tests/app/setup-audio.ts'],
     include: [
       'tests/components/**/*.test.ts',
       'tests/app/**/*.test.ts',

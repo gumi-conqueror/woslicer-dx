@@ -12,6 +12,7 @@ import { PROJECT_FILE_MAX_BYTES, type ProjectFileV1 } from '../../src/project/sc
 import { bmhelperToDocument } from '../../src/project/bmhelper';
 import { readBmh } from '@gumi-conqueror/bmh-file';
 import { readFileSync } from 'node:fs';
+import { AUDIO_EXTENSIONS } from '../../src/core/audio-formats';
 
 function project(): ProjectFileV1 {
   return createSingleTrackProject({
@@ -33,6 +34,16 @@ function project(): ProjectFileV1 {
 }
 
 describe('.wosdx project document', () => {
+  it.each(AUDIO_EXTENSIONS)('round-trips %s media without changing legacy WOS output', (format) => {
+    const value = project();
+    const legacy = writeWos(projectToWos(value));
+    value.media[0].format = format;
+    value.media[0].name = `audio.${format}`;
+    const decoded = decodeProject(encodeProject(value));
+    if (decoded.kind !== 'supported') throw new Error('Expected supported project');
+    expect(decoded.project.media[0].format).toBe(format);
+    expect(writeWos(projectToWos(decoded.project))).toEqual(legacy);
+  });
   it('round-trips optional marker chords and keeps legacy WOS bytes unchanged', () => {
     const value = project();
     value.slicing.markers = [96, 24];

@@ -208,7 +208,7 @@ export function createWorkspace(options: WorkspaceOptions) {
         editor.replaceDocument(next, { saved: preserveBaseName });
         actions.reset();
       }
-      const name = file.name.replace(/\.(wav|ogg)$/i, '');
+      const name = file.name.replace(/\.[^.]+$/, '');
       editor.setSource(
         { ...result.source, floatData: result.floatData, name, reference: file.reference },
         result.peaks,

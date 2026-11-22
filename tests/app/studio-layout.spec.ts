@@ -13,7 +13,7 @@ test('toggles ordered modules without losing drafts and integrates the track ove
   );
   const choosing = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Project', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Open WAV/OGG…', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Open audio…', exact: true }).click();
   await (
     await choosing
   ).setFiles({

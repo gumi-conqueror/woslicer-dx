@@ -10,7 +10,7 @@ wosderge의 woslicerIII를 기반으로 만든 BMS용 오프라인 음원 분할
 
 ## 기능
 
-- WAV/OGG 불러오기와 구간별 WAV 내보내기. 음원 정보에 원본 형식 표시. 현재 음원 처리와 WAV 출력은 16-bit PCM 사용.
+- WAV, AIFF, FLAC, Ogg Vorbis, MP3, AAC-LC, ALAC 불러오기. MKV/MKA 내부의 지원 형식 오디오도 읽기 가능. 내부 처리는 Float32, 구간별 WAV 출력은 16-bit PCM 사용.
 - `.wosdx` 프로젝트 저장·열기, 기존 `.wos` 설정 가져오기·내보내기. 클립보드로 BMSE와 분할점 교환.
 - 스냅, 범위 선택, 퀀타이즈, 실행 취소/다시 실행을 지원하는 시간축 편집.
 - 배속 미리 듣기, 알림음, 입력 타이밍 보정.

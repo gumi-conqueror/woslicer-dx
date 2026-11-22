@@ -30,6 +30,7 @@ import { useInputState } from './input-state';
 import { recordingCommandForGamepad, type RecordingInput } from './recording-bindings';
 import YuanconDialog from './components/YuanconDialog.vue';
 import { useYuanconRecording } from './use-yuancon-recording';
+import { audioFileFormat } from '../core/audio-formats';
 
 // Assembly: platform, stores, workspace and playback providers.
 const platform = getPlatform();
@@ -324,7 +325,7 @@ async function drop(event: DragEvent): Promise<void> {
   event.preventDefault();
   dragActive.value = false;
   const file = event.dataTransfer?.files[0];
-  if (file && /\.(wav|ogg|wosdx)$/i.test(file.name)) {
+  if (file && (audioFileFormat(file.name) || /\.wosdx$/i.test(file.name))) {
     if (/\.wosdx$/i.test(file.name) && !(await confirmProjectReplacement())) return;
     calibrating.value = false;
     await workspace.openDroppedFile(file);

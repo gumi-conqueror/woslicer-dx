@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { MAX_TICKS } from '../core/timebase';
 import { bmhelperDocumentSchema } from './bmhelper';
+import { audioFileFormatSchema } from '../core/audio-formats';
 
 export const PROJECT_FORMAT = 'wosdx' as const;
 export const PROJECT_SCHEMA_VERSION = 1 as const;
@@ -58,7 +59,7 @@ export const originHintKeys = new Set(
 const mediaSchema = z.object({
   mediaId: text(128),
   name: text(1024),
-  format: z.enum(['wav', 'ogg']),
+  format: audioFileFormatSchema,
   byteLength: integer(0, 16 * 1024 * 1024 * 1024).nullable(),
   sampleRateHz: integer(1, 768000).nullable(),
   channels: integer(1, 64).nullable(),

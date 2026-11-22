@@ -185,9 +185,22 @@ languages at 100%, 125% and 150% scale. Each isolated profile has a 30-second
 deadline. The check records light/dark screenshots and verifies local glyphs at
 12px in every bundled weight. Results are in `test-artifacts/fonts/`.
 
-The release settings are independent of audio precision: decoding, DSP and WAV
-encoding run in TypeScript, and the OGG decoder is prebuilt WASM. Rust profile
-changes optimize the native host, not those algorithms.
+All input formats, including WAV, use the published `audio-decode` Symphonia WASM package
+inside the audio Worker. The fixed GitHub Release URL and npm integrity hash are locked
+in `package-lock.json`. App builds do not compile the decoder or fetch runtime assets.
+Desktop and Web use this same path. The decoder repository also exposes a native Rust API,
+but the application does not add a second native decode/IPC path.
+Runtime source buffers retain Float32 samples on the existing 32768 amplitude scale.
+Playback and analysis retain fractional samples and floating-point headroom. Slice export
+converts only the requested frames into the existing PCM16 fade/gate pipeline.
+The canonical WAV writer and original `.wos` / `.bmh` formats do not change.
+Matroska decodes one audio track and supports only the enabled codecs. Symphonia 0.6.1
+can select the first audio track when a later track's default flag is implicit.
+The application does not offer track selection; extract the desired audio track first if needed.
+AAC can retain encoder delay and padding. The source header, not its extension, selects
+the decoder; file pickers and project media use the extension list in `core/audio-formats.ts`.
+The generated package notices are bundled in the About dialog and `THIRD_PARTY_NOTICES.txt`.
+Application Rust profiles optimize the native host, not this prebuilt decoder.
 `strip = "symbols"` is equivalent to `strip = true`. It removes symbol information
 without changing normal error handling. Keep separate symbols if you need to resolve native crash addresses to source locations. `panic = "abort"` is a separate failure-policy choice:
 it terminates the process on a Rust panic, skips stack unwinding and prevents

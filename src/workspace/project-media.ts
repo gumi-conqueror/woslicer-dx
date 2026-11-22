@@ -2,13 +2,12 @@ import { parseProject, ProjectFormatError, projectCapability } from '../project/
 import type { MediaAsset, ProjectDocument, ProjectFileV1 } from '../project/schema';
 import type { OpenedFile } from '../platform/contracts';
 import type { DecodedAudio } from '../audio/audio-jobs';
+import { audioFileFormat } from '../core/audio-formats';
 
 /** Portable metadata includes media identity but never a host grant. */
 export async function identifyAudio(file: OpenedFile) {
-  const extension = file.name.split('.').pop()?.toLowerCase();
-  if (extension !== 'wav' && extension !== 'ogg')
-    throw new ProjectFormatError('Unsupported audio extension');
-  const format: MediaAsset['format'] = extension;
+  const format = audioFileFormat(file.name);
+  if (!format) throw new ProjectFormatError('Unsupported audio extension');
   const byteLength = file.bytes.byteLength;
   // Hash before transferring the original buffer to the decoding worker.
   const hash = await crypto.subtle.digest('SHA-256', new Uint8Array(file.bytes));
@@ -55,7 +54,7 @@ export function projectWithAudio(
   const track = project.tracks[0];
   if (!track) throw new ProjectFormatError('Missing project track');
   const mediaId = crypto.randomUUID();
-  const name = file.name.replace(/\.(wav|ogg)$/i, '');
+  const name = file.name.replace(/\.[^.]+$/, '');
   const { source } = decoded;
   project.media = [
     {

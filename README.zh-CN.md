@@ -10,7 +10,7 @@
 
 ## 功能
 
-- 导入 WAV/OGG，导出 WAV 切片。音源详情显示原始格式，当前音频处理和 WAV 输出使用 16 位 PCM。
+- 导入 WAV、AIFF、FLAC、Ogg Vorbis、MP3、AAC-LC 和 ALAC。可读取 MKV/MKA 中兼容编码的音频。内部使用 Float32，WAV 切片使用 16 位 PCM。
 - 保存和打开 `.wosdx` 工程，导入、导出旧版 `.wos` 设置，通过剪贴板与 BMSE 交换切点。
 - 时间轴编辑、吸附、框选、量化、撤销与重做。
 - 变速播放、提示音和敲击校准。

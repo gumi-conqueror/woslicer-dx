@@ -75,7 +75,7 @@ test('keeps sine waves connected through 24 zoom-out levels from maximum', async
         await page.goto('http://127.0.0.1:4184/');
         const choosing = page.waitForEvent('filechooser');
         await page.getByRole('button', { name: 'Project', exact: true }).click();
-        await page.getByRole('menuitem', { name: 'Open WAV/OGG…', exact: true }).click();
+        await page.getByRole('menuitem', { name: 'Open audio…', exact: true }).click();
         await (await choosing).setFiles({ name: 'sine.wav', mimeType: 'audio/wav', buffer: bytes });
         await expect(page.locator('.status-message')).toContainText('Ready: sine');
         await page.getByRole('button', { name: 'Band detect', exact: true }).click();

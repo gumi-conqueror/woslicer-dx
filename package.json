@@ -65,11 +65,11 @@
     "vue-tsc": "^3.3.14"
   },
   "dependencies": {
+    "@gumi-conqueror/audio-decode": "https://github.com/gumi-conqueror/audio-decode/releases/download/v0.1.0/gumi-conqueror-audio-decode-0.1.0.tgz",
     "@gumi-conqueror/bmh-file": "git+https://github.com/gumi-conqueror/bmh-file.git#22b1d1caf15524c33b489eb7d181bbc1d90bd892",
     "@gumi-conqueror/wos-file": "git+https://github.com/gumi-conqueror/wos-file.git#16d87d40d9cf099beef3a5783744f8d1cf9e292c",
     "@tauri-apps/api": "2.12",
     "@vueuse/core": "^15.0.0",
-    "@wasm-audio-decoders/ogg-vorbis": "^0.1.20",
     "element-plus": "^2.14.8",
     "fflate": "^0.8.3",
     "pinia": "^4.1.0",

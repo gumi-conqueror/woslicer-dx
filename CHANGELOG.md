@@ -2,6 +2,13 @@
 
 **English** · [中文](CHANGELOG.zh-CN.md)
 
+## Unreleased
+
+### Added
+
+- Import FLAC, MP3, AAC-LC, ALAC and AIFF, including supported audio in MKV/MKA files.
+- Keep higher-precision source samples during editing. WAV export remains 16-bit PCM.
+
 ## 1.1.1 — 2026-11-21
 
 ### Fixed
