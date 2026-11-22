@@ -29,7 +29,7 @@ const targetDir = process.env.CARGO_TARGET_DIR ?? resolve('src-tauri/target');
 const exe = resolve(targetDir, selected.profile, 'woslicer-dx.exe');
 if (!existsSync(exe)) {
   console.error(
-    `built executable not found: ${exe} — run npm run tauri -- build --no-bundle${selected.profile === 'release' ? ' --release' : ''} first`,
+    `built executable not found: ${exe} — run npm run build:desktop${selected.profile === 'release' ? ' -- --release' : ''} first`,
   );
   process.exit(1);
 }

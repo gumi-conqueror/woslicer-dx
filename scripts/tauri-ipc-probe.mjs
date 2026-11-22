@@ -2,7 +2,7 @@
 // Verifies the fetch-based ipc custom protocol is actually in use: a healthy
 // transport delivers raw command responses as ArrayBuffer and never emits the
 // "custom protocol failed" fallback warning. Requires the selected build
-// (npm run package or cargo build) and, for the raw-chunk stage, at least one
+// (npm run build:desktop or cargo build) and, for the raw-chunk stage, at least one
 // persisted file grant (open a file once in the app). Run: node scripts/tauri-ipc-probe.mjs
 import { createServer } from 'node:net';
 import { connectNativePage } from './native-cdp.mjs';
@@ -26,7 +26,7 @@ if (selected.args.length) throw new Error(`Unknown probe options: ${selected.arg
 const exe = resolve(targetDir, selected.profile, exeName);
 if (!existsSync(exe)) {
   console.error(
-    `built executable not found: ${exe} — run npm run package${selected.profile === 'release' ? ' -- --release' : ''} first`,
+    `built executable not found: ${exe} — run npm run build:desktop${selected.profile === 'release' ? ' -- --release' : ''} first`,
   );
   process.exit(1);
 }

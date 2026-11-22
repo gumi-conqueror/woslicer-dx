@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process';
 
 const tasks = [
   { name: 'lint', command: 'npm', args: ['run', 'lint'] },
-  { name: 'fmt:check', command: 'npm', args: ['run', 'fmt:check'] },
+  { name: 'format:check', command: 'npm', args: ['run', 'format:check'] },
 ];
 
 for (const task of tasks) {

@@ -62,7 +62,7 @@ runs:
         save-if: ${{ github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main' }}
     - name: Build frontend and generate identity before Cargo
       shell: bash
-      run: npm run build:app:tauri -- --release
+      run: node scripts/build-app-frontend.mjs tauri --release
     - name: Rust format, tests and Clippy
       shell: bash
       env:
@@ -81,8 +81,8 @@ runs:
         RUST_TARGET: ${{ inputs.target }}
       # Both builds reuse the frontend prepared for Cargo checks.
       run: >-
-        npm run tauri -- build --ci --config '{"build":{"beforeBuildCommand":""}}'
-        --target "$RUST_TARGET" --no-bundle -- --locked
+        npm run build:desktop -- --ci --config '{"build":{"beforeBuildCommand":""}}'
+        --target "$RUST_TARGET" -- --locked
     - name: Build Linux and macOS bundles
       if: runner.os != 'Windows'
       shell: bash
@@ -91,7 +91,7 @@ runs:
         TAURI_BUNDLES: ${{ inputs.bundles }}
         CARGO_LOG: ${{ runner.os == 'macOS' && 'cargo::core::compiler::fingerprint=info' || '' }}
       run: >-
-        npm run tauri -- build --ci --config '{"build":{"beforeBuildCommand":""}}'
+        npm run package:desktop -- --ci --config '{"build":{"beforeBuildCommand":""}}'
         --target "$RUST_TARGET" --bundles "$TAURI_BUNDLES" -- --locked
     - name: Package the Windows portable ZIP
       if: runner.os == 'Windows'

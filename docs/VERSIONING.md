@@ -20,7 +20,7 @@ npm version <major.minor.patch> --no-git-tag-version --ignore-scripts
 # Add matching release entries to CHANGELOG.md and CHANGELOG.zh-CN.md.
 npm run check:version
 npm run build
-npm run package
+npm run package:desktop
 ```
 
 The build and package commands run the consistency gate automatically. `npm version` here does not create a commit or tag. Write changelog entries manually as release history. The version check compares release headings with the application version. README download examples use `<version>` to avoid stale current-version copies.

@@ -97,36 +97,55 @@ npm ci
 npm run dev
 ```
 
-Run the local checks and build with:
+Use these commands from the application root:
+
+| Task | Command |
+| --- | --- |
+| Develop in the browser | `npm run dev` |
+| Develop in the desktop window | `npm run dev:desktop` |
+| Check lint, formatting, types and version | `npm run check` |
+| Run tooling, component and core tests | `npm test` |
+| Build the static website | `npm run build` |
+| Build the desktop executable without installers | `npm run build:desktop` |
+| Build and package the website | `npm run package:web` |
+| Build the desktop application and installers | `npm run package:desktop` |
+| Test the built website | `npm run test:ui` |
+| Test the built desktop window or IPC | `npm run test:desktop` / `npm run test:ipc` |
+| Apply source formatting or lint fixes | `npm run format` / `npm run lint:fix` |
+
+Run individual test groups with `test:tooling`, `test:components` or `test:core`.
+The desktop development command starts Tauri. Tauri starts its frontend server through its internal hook.
+For a complete local validation, run:
 
 ```sh
-npm run lint
-npm run fmt:check
-npm run typecheck
+npm run check
 npm test
-npm run build:app:tauri
+npm run build:desktop
 cargo fmt --manifest-path src-tauri/Cargo.toml --check
 cargo test --manifest-path src-tauri/Cargo.toml --locked --all-features
 cargo clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets --all-features -- -D warnings
 npm run build
-npm run test:app-ui
-npm run package
+npm run test:ui
+npm run package:desktop
 ```
 
 ## Build profiles
 
-`build`, `build:app` and `build:app:tauri` default to debug locally.
-`package` produces debug native host bundles, and `npm run tauri -- build`
-also defaults to debug. Select release explicitly when needed:
+All build and package commands default to debug locally.
+Both package commands build fresh output before creating archives or installers.
+Select release explicitly when needed:
 
 ```sh
 npm run build -- --release
-npm run build:app:tauri -- --release
-npm run package -- --release
-npm run tauri -- build --release
+npm run build:desktop -- --release
+npm run package:web -- --release
+npm run package:desktop -- --release
 ```
 
 The build scripts also accept `WOSLICER_BUILD_PROFILE=debug` or `release`.
+CI prepares the desktop frontend once with `node scripts/build-app-frontend.mjs tauri --release` before Cargo checks.
+It disables the Tauri build hook when packaging that tested output.
+CI archives an already tested website with `node scripts/package-web.mjs`, without `--build`.
 Local Rust checks and tests use Cargo's default dev/test profiles. Add
 `--release` explicitly to run release checks or tests. JavaScript unit tests
 do not have a Cargo compilation profile. UI tests exercise the static output
@@ -200,11 +219,11 @@ also cover DPR 1.25 and 1.5 and require one-device-pixel waveform lines across z
 
 ### Native window and IPC
 
-`npm run test:tauri-ipc` is a Windows-local desktop IPC health check against
-the debug executable by default. Use `npm run test:tauri-ipc -- --release`
+`npm run test:ipc` is a Windows-local desktop IPC health check against
+the debug executable by default. Use `npm run test:ipc -- --release`
 to check an explicitly built release executable.
 
-`npm run test:tauri-ui` drives the native window through the WebView2 Chrome DevTools Protocol (CDP) on a dynamic loopback port.
+`npm run test:desktop` drives the native window through the WebView2 Chrome DevTools Protocol (CDP) on a dynamic loopback port.
 It runs two profiles:
 
 - Low: a 1000×640 CSS viewport at the host's natural device scale.
@@ -222,8 +241,8 @@ Add `--release` to both commands to check a release build.
 On non-Windows hosts the profiles report skipped.
 
 ```sh
-npm run tauri -- build --no-bundle
-npm run test:tauri-ui
+npm run build:desktop
+npm run test:desktop
 ```
 
 ## References
