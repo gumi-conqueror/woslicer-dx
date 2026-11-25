@@ -14,6 +14,7 @@
 - 保存和打开 `.wosdx` 工程，导入、导出旧版 `.wos` 设置，通过剪贴板与 BMSE 交换切点。
 - 时间轴编辑、吸附、框选、量化、撤销与重做。
 - 变速播放、提示音和敲击校准。
+- 使用键盘、Xbox 或 YuanCon 控制器录制切点，在 `.wosdx` 工程中保留键号和组合键。
 - 频段显示与自动切点检测。
 - 内置 BMHelper：将键音 MIDI 分割为录音序列和 WAVE 定义，切点可应用到时间轴。
 - 读写原版 BMHelper beta 4′ 的 `.bmh` 文件。DX 工程保留 Unicode 分割名称。BMH 导出沿用原版 CP932 字符替换规则，名称变化时显示警告。
@@ -21,7 +22,7 @@
 
 ## 运行
 
-从 Releases 或 Actions 附件下载对应系统的软件包：
+从 [Releases](https://github.com/gumi-conqueror/woslicer-dx/releases) 或 [Actions 附件](https://github.com/gumi-conqueror/woslicer-dx/actions/workflows/build.yml)下载对应系统的软件包：
 
 | 平台 | 格式 | 使用方式 |
 | --- | --- | --- |
@@ -40,7 +41,7 @@
 
 ## 项目链接
 
-[变更日志](CHANGELOG.zh-CN.md) · [开发指南](docs/DEVELOPMENT.md)
+[变更日志](CHANGELOG.zh-CN.md) · [开发文档](docs/README.md) · [参与开发](CONTRIBUTING.md)
 
 ## 许可与署名
 

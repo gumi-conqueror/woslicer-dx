@@ -14,6 +14,7 @@ wosderge의 woslicerIII를 기반으로 만든 BMS용 오프라인 음원 분할
 - `.wosdx` 프로젝트 저장·열기, 기존 `.wos` 설정 가져오기·내보내기. 클립보드로 BMSE와 분할점 교환.
 - 스냅, 범위 선택, 퀀타이즈, 실행 취소/다시 실행을 지원하는 시간축 편집.
 - 배속 미리 듣기, 알림음, 입력 타이밍 보정.
+- 키보드, Xbox, YuanCon 컨트롤러로 분할점 기록. 키 번호와 동시 입력을 `.wosdx`에 저장.
 - 주파수 대역 표시와 분할점 자동 검출.
 - 내장 BMHelper로 건반음 MIDI 파트를 녹음 시퀀스와 WAVE 정의로 분할. 분할점을 시간축에 적용 가능.
 - 원본 BMHelper beta 4′의 `.bmh` 파일 읽기·저장 지원. DX 프로젝트는 Unicode 분할 이름 보존. BMH 내보내기 시 원본의 CP932 문자 대체 규칙을 적용하며, 이름이 바뀌면 경고 표시.
@@ -21,7 +22,7 @@ wosderge의 woslicerIII를 기반으로 만든 BMS용 오프라인 음원 분할
 
 ## 실행
 
-Releases 또는 Actions 빌드 결과에서 운영 체제에 맞는 패키지 다운로드.
+[Releases](https://github.com/gumi-conqueror/woslicer-dx/releases) 또는 [Actions 빌드 결과](https://github.com/gumi-conqueror/woslicer-dx/actions/workflows/build.yml)에서 운영 체제에 맞는 패키지 다운로드.
 
 | 플랫폼 | 형식 | 사용 방법 |
 | --- | --- | --- |
@@ -40,7 +41,7 @@ Releases 또는 Actions 빌드 결과에서 운영 체제에 맞는 패키지 �
 
 ## 프로젝트 정보
 
-[변경 내역](CHANGELOG.md) · [개발 가이드(영어)](docs/DEVELOPMENT.md)
+[변경 내역](CHANGELOG.md) · [개발 문서(영어)](docs/README.md) · [개발 참여(영어)](CONTRIBUTING.md)
 
 ## 라이선스 및 제작 정보
 

@@ -4,7 +4,8 @@ These fixtures contain synthetic test data, not user music.
 They were saved with the original Windows Be-Music Helper beta 4′ executable on 2026-11-13.
 The executable and original source are not redistributed here.
 
-Reference executable: `A:\bmhelper\bmhelper_b4p\bmhelper.exe`
+Reference executable: `bmhelper.exe` from Windows Be-Music Helper beta 4′.
+The checked-in fixtures are sufficient to run the tests. Regeneration requires that original executable with the hash below.
 
 SHA-256: `ecda98509e21ab2878937592bdbdd11d654dac0c2aac56df5435245e608f69e1`
 

@@ -14,6 +14,7 @@ An offline audio slicer for BMS, based on wosderge's woslicerIII.
 - Save and reopen `.wosdx` projects. Import or export legacy `.wos` settings and exchange markers with BMSE.
 - Timeline editing with snapping, selection, quantization and undo/redo.
 - Variable-speed playback, cue sounds and tap calibration.
+- Record markers with a keyboard, Xbox or YuanCon controller. Save key numbers and chords in `.wosdx` projects.
 - Frequency-band display and automatic marker detection.
 - Built-in BMHelper divides key-sound MIDI into a recording sequence with WAVE definitions. Apply its markers to the timeline.
 - Open and save original BMHelper beta 4′ `.bmh` files. DX projects preserve Unicode division names. BMH export uses the original CP932 character substitutions and warns when names change.
@@ -21,7 +22,7 @@ An offline audio slicer for BMS, based on wosderge's woslicerIII.
 
 ## Run
 
-Download the package for your system from Releases or Actions artifacts:
+Download the package for your system from [Releases](https://github.com/gumi-conqueror/woslicer-dx/releases) or [Actions artifacts](https://github.com/gumi-conqueror/woslicer-dx/actions/workflows/build.yml):
 
 | Platform | Package | Usage |
 | --- | --- | --- |
@@ -40,7 +41,7 @@ Open **Help → User guide and shortcuts** for editing steps, mouse controls, sh
 
 ## Project links
 
-[Changelog](CHANGELOG.md) · [Development guide](docs/DEVELOPMENT.md)
+[Changelog](CHANGELOG.md) · [Developer documentation](docs/README.md) · [Contributing](CONTRIBUTING.md)
 
 ## License and credits
 
