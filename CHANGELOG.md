@@ -2,10 +2,12 @@
 
 **English** · [中文](CHANGELOG.zh-CN.md)
 
-## Unreleased
+## 1.2.0 — 2026-11-25
 
 ### Added
 
+- Record markers with keyboard, Xbox or YuanCon controls, with seeking and playback-speed controls.
+- Save marker key numbers 1–7 and chords in `.wosdx` projects.
 - Import FLAC, MP3, AAC-LC, ALAC and AIFF, including supported audio in MKV/MKA files.
 - Keep higher-precision source samples during editing. WAV export remains 16-bit PCM.
 
