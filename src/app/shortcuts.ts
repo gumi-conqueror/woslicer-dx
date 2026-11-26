@@ -1,6 +1,6 @@
 import type { AppCommand } from './command-types';
 import type { GamepadControl } from './gamepad-controls';
-import { RECORDING_BINDINGS } from './recording-bindings';
+import { codeForKey, codeLabel, RECORDING_BINDINGS } from './recording-bindings';
 
 // Direct controller bindings cover frequent editing operations. Other commands
 // remain available through menu mode; the dispatcher and help read this table.
@@ -219,17 +219,13 @@ export function shortcutLabel(command: AppCommand, recording = false): string {
   const bindings = SHORTCUTS.find((shortcut) => shortcut.command === command)?.bindings ?? [];
   if (!recording) return formatBindings(bindings);
   const direct = RECORDING_BINDINGS.find((item) => item.command === command);
-  if (direct) return direct.keyboard.map((key) => key.replace(/^Key/, '')).join(' / ');
+  if (direct) return direct.keyboard.map(codeLabel).join(' / ');
   const reserved = new Set(RECORDING_BINDINGS.flatMap((item) => item.keyboard));
   return formatBindings(
     bindings.map((binding) => ({
       ...binding,
       keys: binding.keys.filter(
-        (key) =>
-          binding.primary ||
-          binding.alt ||
-          binding.shift ||
-          !reserved.has(key === ' ' ? 'Space' : `Key${key.toUpperCase()}`),
+        (key) => binding.primary || binding.alt || binding.shift || !reserved.has(codeForKey(key)),
       ),
     })),
   );

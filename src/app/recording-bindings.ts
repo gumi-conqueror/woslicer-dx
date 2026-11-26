@@ -68,9 +68,22 @@ export const RECORDING_BINDINGS: readonly {
   { command: 'rate-up', label: 'help.rateUp', keyboard: ['KeyG'], gamepad: ['rb'], yuancon: [] },
 ];
 
+/** The `KeyboardEvent.code` of a key text; synthetic events can lack `code`. */
+export function codeForKey(key: string): string {
+  return key === ' ' ? 'Space' : `Key${key.toUpperCase()}`;
+}
+/** The physical key of an event. */
+export function eventCode(event: Pick<KeyboardEvent, 'code' | 'key'>): string {
+  return event.code || codeForKey(event.key);
+}
+/** Display text of a physical key code: `KeyZ` becomes `Z`. */
+export function codeLabel(code: string): string {
+  return code.replace(/^Key/, '');
+}
+
 export function recordingCommandForKey(event: KeyboardEvent): AppCommand | undefined {
   if (event.isComposing || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
-  const code = event.code || (event.key === ' ' ? 'Space' : `Key${event.key.toUpperCase()}`);
+  const code = eventCode(event);
   return RECORDING_BINDINGS.find((binding) => binding.keyboard.includes(code))?.command;
 }
 

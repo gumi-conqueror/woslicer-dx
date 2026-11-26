@@ -40,6 +40,17 @@ export function gamepadNavigation(control: GamepadControl): MenuNavigation | und
   return GAMEPAD_MENU_SHORTCUTS.find((item) => item.control === control)?.action;
 }
 
+/** Stick and trigger travel that counts as a press. It is generous to ignore stick drift. */
+export const GAMEPAD_DEAD_ZONE = 0.55;
+/** A held navigation or zoom control repeats after this delay, then at this interval. */
+const REPEAT_DELAY_MS = 380;
+const REPEAT_INTERVAL_MS = 110;
+/** In recording mode, each eighth of a stick circle seeks one step. */
+const ROTATION_STEP = Math.PI / 4;
+/** A larger jump between polls has no clear direction; the reader starts over. */
+const ROTATION_JUMP = Math.PI / 2 + 0.001;
+const REPEATING: readonly GamepadControl[] = ['up', 'down', 'left', 'right', 'lt', 'rt'];
+
 /** Edge-trigger actions; only navigation and zoom repeat while held. */
 export function createGamepadReader() {
   const held = new Map<GamepadControl, number>();
@@ -48,6 +59,85 @@ export function createGamepadReader() {
   let recording = false;
   let angle: number | undefined;
   let rotation = 0;
+
+  /** Buttons, triggers and (outside recording) the dominant stick direction. */
+  function pressedControls(
+    pad: Pick<Gamepad, 'buttons' | 'axes'> | undefined,
+  ): Set<GamepadControl> {
+    const pressed = new Set<GamepadControl>();
+    if (!pad) return pressed;
+    for (const control of GAMEPAD_CONTROLS) {
+      const button = pad.buttons[control.button];
+      if (
+        button &&
+        (control.id === 'lt' || control.id === 'rt'
+          ? button.value > GAMEPAD_DEAD_ZONE
+          : button.pressed)
+      )
+        pressed.add(control.id);
+    }
+    const x = pad.axes[0] ?? 0;
+    const y = pad.axes[1] ?? 0;
+    // The dominant axis avoids diagonal double steps.
+    if (!recording) {
+      if (Math.abs(x) > GAMEPAD_DEAD_ZONE && Math.abs(x) >= Math.abs(y))
+        pressed.add(x < 0 ? 'left' : 'right');
+      else if (Math.abs(y) > GAMEPAD_DEAD_ZONE) pressed.add(y < 0 ? 'up' : 'down');
+    }
+    return pressed;
+  }
+
+  /** New presses, and repeats of held navigation and zoom controls. */
+  function pressActions(
+    pressed: Set<GamepadControl>,
+    now: number,
+    enabled: boolean,
+  ): GamepadControl[] {
+    const actions: GamepadControl[] = [];
+    for (const control of GAMEPAD_CONTROLS) {
+      if (!pressed.has(control.id)) {
+        held.delete(control.id);
+        continue;
+      }
+      const next = held.get(control.id);
+      if (!enabled || suspended) {
+        held.set(control.id, Infinity);
+        continue;
+      }
+      const repeat = !recording && REPEATING.includes(control.id);
+      if (next === undefined || (repeat && now >= next)) {
+        actions.push(control.id);
+        held.set(control.id, now + (next === undefined ? REPEAT_DELAY_MS : REPEAT_INTERVAL_MS));
+      }
+    }
+    return actions;
+  }
+
+  /** Seek steps from circular left-stick motion in recording mode. */
+  function rotationActions(x: number, y: number, enabled: boolean): GamepadControl[] {
+    if (!recording || !enabled || suspended || Math.hypot(x, y) <= GAMEPAD_DEAD_ZONE) {
+      angle = undefined;
+      rotation = 0;
+      return [];
+    }
+    const actions: GamepadControl[] = [];
+    const current = Math.atan2(y, x);
+    if (angle !== undefined) {
+      const delta = Math.atan2(Math.sin(current - angle), Math.cos(current - angle));
+      if (Math.abs(delta) > ROTATION_JUMP) rotation = 0;
+      else {
+        rotation += delta;
+        while (Math.abs(rotation) >= ROTATION_STEP - 0.000001) {
+          const clockwise = rotation > 0;
+          actions.push(clockwise ? 'ls-clockwise' : 'ls-counterclockwise');
+          rotation -= clockwise ? ROTATION_STEP : -ROTATION_STEP;
+        }
+      }
+    }
+    angle = current;
+    return actions;
+  }
+
   return (
     pad: Pick<Gamepad, 'index' | 'buttons' | 'axes'> | undefined,
     now: number,
@@ -63,65 +153,11 @@ export function createGamepadReader() {
     recording = recordingMode;
     index = pad?.index;
     if (!enabled) suspended = true;
-    const pressed = new Set<GamepadControl>();
-    if (pad) {
-      for (const control of GAMEPAD_CONTROLS) {
-        const button = pad.buttons[control.button];
-        if (
-          button &&
-          (control.id === 'lt' || control.id === 'rt' ? button.value > 0.55 : button.pressed)
-        )
-          pressed.add(control.id);
-      }
-      const x = pad.axes[0] ?? 0;
-      const y = pad.axes[1] ?? 0;
-      // A generous dead zone avoids stick drift. The dominant axis avoids diagonal double steps.
-      if (!recording) {
-        if (Math.abs(x) > 0.55 && Math.abs(x) >= Math.abs(y)) pressed.add(x < 0 ? 'left' : 'right');
-        else if (Math.abs(y) > 0.55) pressed.add(y < 0 ? 'up' : 'down');
-      }
-    }
+    const pressed = pressedControls(pad);
     const x = pad?.axes[0] ?? 0;
     const y = pad?.axes[1] ?? 0;
-    if (pressed.size === 0 && Math.hypot(x, y) <= 0.55 && enabled) suspended = false;
-    const actions: GamepadControl[] = [];
-    for (const control of GAMEPAD_CONTROLS) {
-      if (!pressed.has(control.id)) {
-        held.delete(control.id);
-        continue;
-      }
-      const next = held.get(control.id);
-      if (!enabled || suspended) {
-        held.set(control.id, Infinity);
-        continue;
-      }
-      const repeat = !recording && ['up', 'down', 'left', 'right', 'lt', 'rt'].includes(control.id);
-      if (next === undefined || (repeat && now >= next)) {
-        actions.push(control.id);
-        held.set(control.id, now + (next === undefined ? 380 : 110));
-      }
-    }
-    if (recording && enabled && !suspended && Math.hypot(x, y) > 0.55) {
-      const current = Math.atan2(y, x);
-      if (angle !== undefined) {
-        const delta = Math.atan2(Math.sin(current - angle), Math.cos(current - angle));
-        // Large jumps have an ambiguous direction; reacquire instead of seeking.
-        if (Math.abs(delta) > Math.PI / 2 + 0.001) rotation = 0;
-        else {
-          rotation += delta;
-          const step = Math.PI / 4;
-          while (Math.abs(rotation) >= step - 0.000001) {
-            const clockwise = rotation > 0;
-            actions.push(clockwise ? 'ls-clockwise' : 'ls-counterclockwise');
-            rotation -= clockwise ? step : -step;
-          }
-        }
-      }
-      angle = current;
-    } else {
-      angle = undefined;
-      rotation = 0;
-    }
-    return actions;
+    // After focus loss or a mode change, input resumes once every control is neutral.
+    if (pressed.size === 0 && Math.hypot(x, y) <= GAMEPAD_DEAD_ZONE && enabled) suspended = false;
+    return [...pressActions(pressed, now, enabled), ...rotationActions(x, y, enabled)];
   };
 }

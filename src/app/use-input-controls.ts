@@ -1,5 +1,5 @@
 import { onMounted, onUnmounted } from 'vue';
-import { createGamepadReader, type GamepadControl } from './gamepad-controls';
+import { createGamepadReader, GAMEPAD_DEAD_ZONE, type GamepadControl } from './gamepad-controls';
 import { useInputState } from './input-state';
 import { visibleDialog } from './input-context';
 import { RECORDING_KEYS, type RecordingInput } from './recording-bindings';
@@ -33,8 +33,8 @@ export function useInputControls(
     const enabled = !document.hidden && document.hasFocus();
     const activity = pad
       ? [
-          ...pad.buttons.map((button) => (button.value > 0.55 ? 1 : 0)),
-          ...pad.axes.map((axis) => (Math.abs(axis) > 0.55 ? Math.sign(axis) : 0)),
+          ...pad.buttons.map((button) => (button.value > GAMEPAD_DEAD_ZONE ? 1 : 0)),
+          ...pad.axes.map((axis) => (Math.abs(axis) > GAMEPAD_DEAD_ZONE ? Math.sign(axis) : 0)),
         ].join(',')
       : '';
     if (enabled && activity !== lastActivity && /1/.test(activity)) input.device = 'gamepad';

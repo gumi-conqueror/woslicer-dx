@@ -13,6 +13,7 @@ import {
   recordingCommandForKey,
   RECORDING_KEYS,
   RECORDING_SEEK_SECONDS,
+  eventCode,
   type RecordingInput,
 } from './recording-bindings';
 import type { EditorStore } from '../slicing/editor-store';
@@ -341,9 +342,7 @@ export function createCommands({
       return;
     const key =
       command === 'recording-tap'
-        ? RECORDING_KEYS.find(
-            (binding) => binding.keyboard === (event.code || `Key${event.key.toUpperCase()}`),
-          )?.key
+        ? RECORDING_KEYS.find((binding) => binding.keyboard === eventCode(event))?.key
         : undefined;
     void run(command, key === undefined ? undefined : { keys: [key], time: event.timeStamp });
   }
