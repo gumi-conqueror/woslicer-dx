@@ -188,7 +188,10 @@
     "aboutExternalLinks": "Links open in an external browser or new tab. No automatic connections.",
     "aboutLinkFailed": "Could not open the link.",
     "aboutAudioDecodeCredit": "Audio decoding (MIT wrapper; Symphonia MPL-2.0).",
-    "decoderLicenses": "Audio decoder licenses"
+    "decoderLicenses": "Audio decoder licenses",
+    "tracks": "Tracks",
+    "renameTrack": "Rename track",
+    "trackName": "Track name"
   },
   "status": {
     "projectOpened": "Opened project: {name}",
@@ -322,7 +325,10 @@
     "sessionRecoverFuture": "Recovery data requires a newer version ({version}). Original data kept. Saving recovery data is paused.",
     "sessionRecoverReadFailed": "Could not read recovery data: {message}",
     "importedWosSettings": "Imported .wos settings: {file} (BPM {bpm}, shift {shift}). Undo in one step.",
-    "projectUnknownFields": "Unsupported fields: {count}. Saving keeps only supported project data."
+    "projectUnknownFields": "Unsupported fields: {count}. Saving keeps only supported project data.",
+    "trackLimit": "A project holds at most {count} tracks.",
+    "lastTrackKept": "A project keeps at least one track.",
+    "trackRemoved": "Removed track {name}. Undo restores it."
   },
   "menu": {
     "file": "File",
@@ -360,7 +366,9 @@
     "tools": "Tools",
     "guide": "User guide and shortcuts",
     "troubleshoot": "Troubleshoot",
-    "openDataFolder": "Open data folder"
+    "openDataFolder": "Open data folder",
+    "addTrack": "Add audio track…",
+    "removeTrack": "Remove current track"
   },
   "dialogs": {
     "loadAudio": "Open audio",
@@ -382,7 +390,7 @@
     "workflow": "Getting started",
     "workflowBody": "Open or drop an audio file. Set BPM and grid, then add markers to split the waveform. Name and export slices in Output. Save your work as a .wosdx project. Use Relink audio after moving the audio file.",
     "workspace": "Tracks and panels",
-    "workspaceBody": "Click or drag the track’s waveform overview to move along the timeline. New panels open at the right edge and move older panels left. Click a panel’s switch again or its close button to hide it. Panels can fill the workspace. If space is insufficient, the oldest panel closes. There is no horizontal scrollbar, and closed panels keep your input.",
+    "workspaceBody": "Click or drag the track’s waveform overview to move along the timeline. New panels open at the right edge and move older panels left. Click a panel’s switch again or its close button to hide it. Panels can fill the workspace. If space is insufficient, the oldest panel closes. There is no horizontal scrollbar, and closed panels keep your input. Project → Add audio track adds a track with its own audio and markers. Click a track to edit it; double-click its name to rename it.",
     "mouse": "Mouse controls",
     "mouseBody": "Left-drag adds markers. Right-drag removes them. Drag a marker to move the selected markers. Shift-drag adds to the selection, and Ctrl/Cmd-drag toggles selection within a range. Middle-drag pans, Ctrl/Cmd+wheel zooms, and Alt temporarily disables snapping. Press {cancel} to cancel a drag.",
     "keyboard": "Keyboard shortcuts",
@@ -420,7 +428,9 @@
       "navigation": "Navigation",
       "output": "Output"
     },
-    "audioFormats": "WAV, AIFF, FLAC, Ogg Vorbis, MP3, AAC-LC and ALAC; mono or stereo. Processing uses Float32; WAV export uses 16-bit PCM. AAC may include encoder delay or padding. MKV/MKA accepts these codecs, excluding Opus. MKV/MKA decodes one audio track; an implicit default flag can cause selection of the first track. Extract the desired track first if needed."
+    "audioFormats": "WAV, AIFF, FLAC, Ogg Vorbis, MP3, AAC-LC and ALAC; mono or stereo. Processing uses Float32; WAV export uses 16-bit PCM. AAC may include encoder delay or padding. MKV/MKA accepts these codecs, excluding Opus. MKV/MKA decodes one audio track; an implicit default flag can cause selection of the first track. Extract the desired track first if needed.",
+    "previousTrack": "Select previous track",
+    "nextTrack": "Select next track"
   },
   "input": {
     "keyboard": "Keyboard / mouse",

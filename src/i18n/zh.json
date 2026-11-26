@@ -188,7 +188,10 @@
     "aboutExternalLinks": "链接将在外部浏览器或新标签页打开，不会自动联网。",
     "aboutLinkFailed": "无法打开链接。",
     "aboutAudioDecodeCredit": "音频解码（封装为 MIT，Symphonia 为 MPL-2.0）。",
-    "decoderLicenses": "音频解码器许可证"
+    "decoderLicenses": "音频解码器许可证",
+    "tracks": "音轨",
+    "renameTrack": "重命名音轨",
+    "trackName": "音轨名称"
   },
   "status": {
     "projectOpened": "已打开工程：{name}",
@@ -322,7 +325,10 @@
     "sessionRecoverFuture": "恢复数据需要更新的应用版本（{version}）。原数据保留，暂停更新恢复数据。",
     "sessionRecoverReadFailed": "恢复数据读取失败：{message}",
     "importedWosSettings": "已导入 .wos 设置：{file}（BPM {bpm}，偏移 {shift}），可一步撤销。",
-    "projectUnknownFields": "包含 {count} 个不支持的字段，保存时仅保留支持的工程数据。"
+    "projectUnknownFields": "包含 {count} 个不支持的字段，保存时仅保留支持的工程数据。",
+    "trackLimit": "一个工程最多 {count} 条音轨。",
+    "lastTrackKept": "工程至少保留一条音轨。",
+    "trackRemoved": "已删除音轨 {name}。撤销可恢复。"
   },
   "menu": {
     "file": "文件",
@@ -360,7 +366,9 @@
     "tools": "工具",
     "guide": "使用帮助与快捷键",
     "troubleshoot": "故障排查",
-    "openDataFolder": "打开数据文件夹"
+    "openDataFolder": "打开数据文件夹",
+    "addTrack": "添加音轨…",
+    "removeTrack": "删除当前音轨"
   },
   "dialogs": {
     "loadAudio": "打开音频",
@@ -382,7 +390,7 @@
     "workflow": "开始使用",
     "workflowBody": "打开或拖入 音频文件，设置 BPM 和网格，在波形上添加切点。在“输出”中设置名称并导出切片。工作保存为 .wosdx 工程，音频移动后需“重新关联音频”。",
     "workspace": "音轨与面板",
-    "workspaceBody": "点击或拖动音轨缩略图可定位时间轴。新面板在最右侧打开，已有面板向左移动。再次点击开关或关闭按钮可隐藏面板，输入内容保留。面板可铺满工作区，空间不足时从最早打开的面板开始关闭，无横向滚动条。",
+    "workspaceBody": "点击或拖动音轨缩略图可定位时间轴。新面板在最右侧打开，已有面板向左移动。再次点击开关或关闭按钮可隐藏面板，输入内容保留。面板可铺满工作区，空间不足时从最早打开的面板开始关闭，无横向滚动条。工程 → 添加音轨 可添加带独立音频和切点的音轨。点击音轨即可编辑，双击名称可重命名。",
     "mouse": "鼠标操作",
     "mouseBody": "左键拖动添加切点，右键拖动删除。拖动切点可移动选中的切点。Shift+拖动加选，Ctrl/Cmd+拖动反转范围内的选择。中键拖动平移，Ctrl/Cmd+滚轮缩放。Alt 临时关闭吸附，{cancel} 取消拖动。",
     "keyboard": "快捷键",
@@ -420,7 +428,9 @@
       "navigation": "导航",
       "output": "输出"
     },
-    "audioFormats": "支持单声道或立体声的 WAV、AIFF、FLAC、Ogg Vorbis、MP3、AAC-LC 和 ALAC。内部使用 Float32，WAV 输出使用 16 位 PCM。AAC 可能含编码器产生的首尾填充。 MKV/MKA 支持上述编码，不含 Opus。 MKV/MKA 只读取一条音轨，默认标记省略时可能选中第一条。需要其他音轨时，请先单独提取。"
+    "audioFormats": "支持单声道或立体声的 WAV、AIFF、FLAC、Ogg Vorbis、MP3、AAC-LC 和 ALAC。内部使用 Float32，WAV 输出使用 16 位 PCM。AAC 可能含编码器产生的首尾填充。 MKV/MKA 支持上述编码，不含 Opus。 MKV/MKA 只读取一条音轨，默认标记省略时可能选中第一条。需要其他音轨时，请先单独提取。",
+    "previousTrack": "选择上一条音轨",
+    "nextTrack": "选择下一条音轨"
   },
   "input": {
     "keyboard": "键鼠",

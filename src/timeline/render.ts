@@ -341,11 +341,15 @@ export function drawOverlay(
   context.restore();
 }
 
+/**
+ * A track's whole-length thumbnail. `viewportWidth` draws the visible range of
+ * the timeline over it; other tracks pass `null`.
+ */
 export function drawOverview(
   context: CanvasRenderingContext2D,
-  state: TimelineSnapshot,
+  state: Pick<TimelineSnapshot, 'source' | 'peaks' | 'timeBase' | 'scrollTick' | 'pxPerTick'>,
   width: number,
-  viewportWidth: number,
+  viewportWidth: number | null,
   palette: Readonly<Palette>,
 ): void {
   context.fillStyle = palette.panel;
@@ -378,6 +382,7 @@ export function drawOverview(
       palette,
     );
   }
+  if (viewportWidth === null) return;
   const left = (state.scrollTick / MAX_TICKS) * width,
     span = Math.max(2, (viewportWidth / state.pxPerTick / MAX_TICKS) * width);
   context.fillStyle = palette.viewportFill;

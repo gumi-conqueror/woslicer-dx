@@ -1,9 +1,9 @@
 import { inject, provide, readonly, shallowRef, type InjectionKey } from 'vue';
 import { errorMessage } from '../core/messages';
 import {
+  createEmptyTrack,
   currentTrack,
   decodeProject,
-  requireEditableTracks,
   encodeProject,
   parseProject,
   projectFromWos,
@@ -13,15 +13,16 @@ import {
   byteLimitText,
   MEDIA_FILE_MAX_BYTES,
   PROJECT_FILE_MAX_BYTES,
+  PROJECT_MAX_TRACKS,
   type ProjectDocument,
 } from '../project/schema';
 import {
-  activeMedia,
   identifyAudio,
   projectFileName,
   projectWithAudio,
   matchesProjectAudio,
   relinkMedia,
+  setTrackAudio,
 } from './project-media';
 import { readWos, writeWos } from '@gumi-conqueror/wos-file';
 import { buildBmseClipboard, parseBmseClipboard } from '../core/formats/bmse';
@@ -55,6 +56,8 @@ export interface LoadingActivity {
   stage: 'restoring' | 'opening' | 'reading' | 'verifying' | 'decoding';
   name?: string;
   mediaId?: string;
+  /** The track that receives the audio; absent before a target is known. */
+  trackId?: string;
 }
 export function createWorkspace(options: WorkspaceOptions) {
   const { platform, editor, createEngine = createAudioEngine } = options;
@@ -62,7 +65,9 @@ export function createWorkspace(options: WorkspaceOptions) {
     disposed = false,
     sessionClosed = false;
   let recoveryBlock: RecoveryBlock | null = null;
-  let engine: AudioEngine | null = null;
+  /** Decoded audio lives in one engine per track. */
+  const engines = new Map<string, AudioEngine>();
+  const currentEngine = () => engines.get(editor.track.trackId) ?? null;
   let pendingEngine: AudioEngine | null = null;
   let opening = 0;
   const loading = shallowRef<LoadingActivity | null>(null);
@@ -71,17 +76,8 @@ export function createWorkspace(options: WorkspaceOptions) {
   const persistence = createSessionPersistence(platform, editor, (error) => {
     editor.setStatus('sessionSaveFailed', { message: errorMessage(error) }, true);
   });
-  const exporter = createExporter(
-    platform,
-    editor,
-    () => engine,
-    () => generation,
-  );
-  const detection = createDetection(
-    editor,
-    () => engine,
-    () => generation,
-  );
+  const exporter = createExporter(platform, editor, currentEngine, () => generation);
+  const detection = createDetection(editor, currentEngine, () => generation);
   function beginOpening(activity: LoadingActivity | null = null): number {
     opening++;
     loading.value = activity;
@@ -94,11 +90,18 @@ export function createWorkspace(options: WorkspaceOptions) {
   function finishOpening(request: number): void {
     if (request === opening) loading.value = null;
   }
-  function invalidate(): number {
+  /**
+   * Ends pending work and releases decoded audio: of one track, or of every
+   * track when the whole workspace changes.
+   */
+  function invalidate(trackId?: string): number {
     beginOpening();
     generation++;
-    engine?.dispose();
-    engine = null;
+    for (const [id, item] of engines)
+      if (trackId === undefined || id === trackId) {
+        item.dispose();
+        engines.delete(id);
+      }
     editor.setPlaying(false);
     editor.exportLock = false;
     editor.bandBusy = false;
@@ -119,19 +122,34 @@ export function createWorkspace(options: WorkspaceOptions) {
     return true;
   }
 
-  async function loadAudio(file: OpenedFile, preserveBaseName = false): Promise<void> {
+  /**
+   * Decodes audio for a track: the current track by default, a given track, or
+   * a new track appended in one undoable edit once the audio is ready.
+   */
+  async function loadAudio(
+    file: OpenedFile,
+    preserveBaseName = false,
+    target: { trackId: string } | { newTrack: true } = { trackId: editor.track.trackId },
+  ): Promise<void> {
     if (resetPending) await resetPending;
     if (disposed) return;
     sessionClosed = false;
     persistence.resume();
+    const newTrack = 'newTrack' in target;
+    const trackId = newTrack
+      ? `${editor.document.projectId}:track:${crypto.randomUUID()}`
+      : target.trackId;
     const request = beginOpening({
+        trackId: newTrack ? undefined : trackId,
         stage: 'verifying',
         name: file.name,
-        mediaId: preserveBaseName ? activeMedia(editor.document)?.mediaId : undefined,
+        mediaId: preserveBaseName ? editor.track.media?.mediaId : undefined,
       }),
       documentGeneration = editor.documentGeneration;
-    const previousPhase = editor.source ? { kind: 'ready' as const } : { kind: 'empty' as const };
-    editor.setPhase({ kind: 'loading', name: file.name });
+    const previousPhase = editor.sessions.get(trackId)?.source
+      ? { kind: 'ready' as const }
+      : { kind: 'empty' as const };
+    editor.setPhase({ kind: 'loading', name: file.name }, trackId);
     editor.setStatus('parsingSourceFile');
     let worker: AudioEngine | null = null;
     try {
@@ -146,7 +164,8 @@ export function createWorkspace(options: WorkspaceOptions) {
       // the document invalidates this result; merge audio into the latest state.
       if (documentGeneration !== editor.documentGeneration)
         throw new Error('Project changed during audio loading; select the audio again');
-      const expected = preserveBaseName ? activeMedia(editor.document) : null;
+      const expected =
+        preserveBaseName && !newTrack ? currentTrack(editor.document, trackId).media : null;
       if (expected) {
         const different = !matchesProjectAudio(expected, identity, result);
         if (different) {
@@ -162,31 +181,45 @@ export function createWorkspace(options: WorkspaceOptions) {
           (expected.originHint?.kind !== 'desktop' ||
             expected.originHint.pathHint !== file.absolutePath);
         if (different || pathChanged)
-          editor.transact((draft) =>
-            relinkMedia(currentTrack(draft), file, identity, result, different),
+          editor.editTrack(
+            (track) => relinkMedia(track, file, identity, result, different),
+            trackId,
           );
       }
-      const next = expected
-        ? null
-        : projectWithAudio(editor.document, file, identity, result, preserveBaseName);
+      // With one track, new audio starts a new project from it. With several
+      // tracks, it is an undoable edit of its track that keeps the project.
+      const single = !newTrack && editor.document.tracks.length === 1;
+      const next =
+        expected || !single
+          ? null
+          : projectWithAudio(editor.document, file, identity, result, preserveBaseName, trackId);
       // Validate the replacement before releasing the current decoder or source.
       if (next) parseProject(next);
       pendingEngine = null;
-      invalidate();
-      engine = worker;
+      invalidate(trackId);
+      engines.set(trackId, worker);
       worker = null;
       if (next) {
         editor.replaceDocument(next, { saved: preserveBaseName });
         actions.reset();
-      }
+      } else if (newTrack) {
+        const track = createEmptyTrack(trackId, file.name);
+        setTrackAudio(track, file, identity, result);
+        editor.transact((draft) => {
+          draft.tracks.push(track);
+        });
+        editor.selectTrack(trackId);
+      } else if (!expected)
+        editor.editTrack((track) => setTrackAudio(track, file, identity, result), trackId);
       const name = file.name.replace(/\.[^.]+$/, '');
       editor.setSource(
         { ...result.source, floatData: result.floatData, name, reference: file.reference },
         result.peaks,
+        trackId,
       );
       // The binding survives failed reopens; only a real replacement writes or clears it.
-      editor.setLastFile(file.reference ? { reference: file.reference, name } : null);
-      editor.setPhase({ kind: 'ready' });
+      editor.setLastFile(file.reference ? { reference: file.reference, name } : null, trackId);
+      editor.setPhase({ kind: 'ready' }, trackId);
       editor.setStatus('readySource', {
         name,
         rate: result.source.sampleRate,
@@ -194,13 +227,63 @@ export function createWorkspace(options: WorkspaceOptions) {
       });
     } catch (error) {
       if (disposed || request !== opening) return;
-      editor.setPhase(previousPhase);
+      editor.setPhase(previousPhase, trackId);
       editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
     } finally {
       finishOpening(request);
       if (pendingEngine === worker) pendingEngine = null;
       worker?.dispose();
     }
+  }
+  /** Adds a track with audio that the user chooses. */
+  async function addTrack(): Promise<void> {
+    if (recoveryBlock && !(await releaseRecoveryBlock())) return;
+    if (editor.document.tracks.length >= PROJECT_MAX_TRACKS) {
+      editor.setStatus('trackLimit', { count: PROJECT_MAX_TRACKS }, true);
+      return;
+    }
+    const documentGeneration = editor.documentGeneration,
+      request = beginOpening({ stage: 'opening' });
+    try {
+      const file = await platform.openFile('audio');
+      if (
+        file &&
+        !disposed &&
+        documentGeneration === editor.documentGeneration &&
+        request === opening
+      )
+        await loadAudio(file, false, { newTrack: true });
+    } catch (error) {
+      if (!disposed && request === opening)
+        editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
+    } finally {
+      finishOpening(request);
+    }
+  }
+  /** Removes the current track in one undoable edit; the last track stays. */
+  function removeTrack(): void {
+    const tracks = editor.document.tracks;
+    if (tracks.length <= 1) {
+      editor.setStatus('lastTrackKept', true);
+      return;
+    }
+    const index = tracks.findIndex((item) => item.trackId === editor.track.trackId);
+    const removed = editor.track;
+    const neighbor = tracks[index + 1] ?? tracks[index - 1];
+    if (!neighbor) return;
+    editor.selectTrack(neighbor.trackId);
+    // Decoded audio stays in its session, so undo restores the track with its audio.
+    editor.transact((draft) => {
+      draft.tracks = draft.tracks.filter((item) => item.trackId !== removed.trackId);
+    });
+    editor.setStatus('trackRemoved', { name: removed.name });
+  }
+  /** Selects the previous or next track. */
+  function stepTrack(direction: -1 | 1): void {
+    const tracks = editor.document.tracks;
+    const index = tracks.findIndex((item) => item.trackId === editor.track.trackId);
+    const next = tracks[index + direction];
+    if (next) editor.selectTrack(next.trackId);
   }
   async function openAudio(): Promise<void> {
     if (recoveryBlock && !(await releaseRecoveryBlock())) return;
@@ -225,9 +308,9 @@ export function createWorkspace(options: WorkspaceOptions) {
     }
   }
   async function relinkAudio(): Promise<void> {
-    if (!activeMedia(editor.document)) return;
+    if (!editor.track.media) return;
     const documentGeneration = editor.documentGeneration,
-      request = beginOpening({ stage: 'opening', name: activeMedia(editor.document)?.name });
+      request = beginOpening({ stage: 'opening', name: editor.track.media?.name });
     try {
       const file = await platform.openFile('audio');
       if (
@@ -262,9 +345,9 @@ export function createWorkspace(options: WorkspaceOptions) {
     const parsed = decodeProject(file.bytes);
     if (parsed.kind === 'unsupported-version')
       throw new Error(`Unsupported project version: ${parsed.version}`);
-    requireEditableTracks(parsed.project);
     replaceWorkspace(parsed.project);
-    const media = activeMedia(editor.document);
+    const media = editor.track.media;
+    const projectReference = file.reference;
     if (parsed.unknownFields.length)
       editor.setStatus([
         {
@@ -277,21 +360,26 @@ export function createWorkspace(options: WorkspaceOptions) {
       editor.setStatus(media ? 'projectMediaMissing' : 'projectOpened', {
         name: media?.name ?? file.name,
       });
-    if (media && file.reference && media.originHint?.kind === 'desktop') {
-      const request = beginOpening({ stage: 'reading', name: media.name, mediaId: media.mediaId }),
+    if (!projectReference) return;
+    // The desktop app reopens each track's audio next to the project, one after another.
+    for (const track of editor.document.tracks) {
+      const asset = track.media;
+      if (asset?.originHint?.kind !== 'desktop') continue;
+      const request = beginOpening({
+          stage: 'reading',
+          name: asset.name,
+          mediaId: asset.mediaId,
+          trackId: track.trackId,
+        }),
         documentGeneration = editor.documentGeneration;
       try {
-        const audio = await platform.openProjectMedia(file.reference, media.mediaId);
-        if (
-          audio &&
-          !disposed &&
-          request === opening &&
-          documentGeneration === editor.documentGeneration
-        )
-          await loadAudio(audio, true);
+        const audio = await platform.openProjectMedia(projectReference, asset.mediaId);
+        if (disposed || request !== opening || documentGeneration !== editor.documentGeneration)
+          return;
+        if (audio) await loadAudio(audio, true, { trackId: track.trackId });
       } catch {
         if (!disposed && request === opening)
-          editor.setStatus('projectMediaMissing', { name: media.name }, true);
+          editor.setStatus('projectMediaMissing', { name: asset.name }, true);
       } finally {
         finishOpening(request);
       }
@@ -363,23 +451,23 @@ export function createWorkspace(options: WorkspaceOptions) {
       finishOpening(request);
     }
   }
-  async function reopen(reference: string, preserveBaseName = false): Promise<void> {
-    const request = beginOpening({
-        stage: 'reading',
-        name: activeMedia(editor.document)?.name ?? editor.lastFile?.name,
-      }),
+  async function reopen(
+    reference: string,
+    preserveBaseName = false,
+    trackId = editor.track.trackId,
+  ): Promise<void> {
+    const name =
+      currentTrack(editor.document, trackId).media?.name ??
+      editor.sessions.get(trackId)?.lastFile?.name;
+    const request = beginOpening({ stage: 'reading', name, trackId }),
       documentGeneration = editor.documentGeneration;
     try {
       const file = await platform.reopenFile(reference);
       if (!disposed && request === opening && documentGeneration === editor.documentGeneration)
-        await loadAudio(file, preserveBaseName);
+        await loadAudio(file, preserveBaseName, { trackId });
     } catch {
       if (!disposed && request === opening)
-        editor.setStatus(
-          'lastFileMissing',
-          { name: activeMedia(editor.document)?.name ?? reference },
-          true,
-        );
+        editor.setStatus('lastFileMissing', { name: name ?? reference }, true);
     } finally {
       finishOpening(request);
     }
@@ -395,7 +483,7 @@ export function createWorkspace(options: WorkspaceOptions) {
       const imported = currentTrack(wos).slicing;
       editor.transact((draft) => {
         draft.timing = { ...wos.timing };
-        const { slicing } = currentTrack(draft);
+        const { slicing } = currentTrack(draft, editor.currentTrackId);
         slicing.fadeoutMs = imported.fadeoutMs;
         slicing.noisegateDb = imported.noisegateDb;
         slicing.markers = imported.markers;
@@ -431,7 +519,7 @@ export function createWorkspace(options: WorkspaceOptions) {
   async function saveWos(): Promise<void> {
     const version = generation;
     try {
-      const bytes = writeWos(projectToWos(editor.document));
+      const bytes = writeWos(projectToWos(editor.document, editor.currentTrackId));
       const name = `${editor.source?.name ?? 'untitled'}.wos`;
       if ((await platform.saveFile('wos', name, bytes)) && !disposed && version === generation)
         editor.setStatus('savedWos', { file: name });
@@ -496,7 +584,11 @@ export function createWorkspace(options: WorkspaceOptions) {
       if (outcome.kind === 'restored') {
         restoreEditorSession(editor, outcome.session);
         actions.reset();
-        if (outcome.session.lastFile) await reopen(outcome.session.lastFile.reference, true);
+        const restoredGeneration = editor.documentGeneration;
+        for (const [trackId, file] of Object.entries(outcome.session.files)) {
+          if (disposed || editor.documentGeneration !== restoredGeneration) return;
+          await reopen(file.reference, true, trackId);
+        }
         return;
       }
       // Earlier, damaged, future and unreadable records stay preserved; recovery writes stay paused.
@@ -553,6 +645,9 @@ export function createWorkspace(options: WorkspaceOptions) {
     platform,
     actions,
     openAudio,
+    addTrack,
+    removeTrack,
+    stepTrack,
     openProject,
     saveProject,
     relinkAudio,

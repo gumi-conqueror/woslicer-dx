@@ -196,10 +196,21 @@ onBeforeUnmount(() => {
     class="timeline"
     :aria-label="t('chrome.tabCuts')"
   >
-    <TrackHeader
-      :viewport-width="dimensions.width"
-      :loading="loading"
-    />
+    <div
+      class="track-list"
+      role="list"
+      :aria-label="t('chrome.tracks')"
+    >
+      <TrackHeader
+        v-for="(item, index) in editor.document.tracks"
+        :key="item.trackId"
+        role="listitem"
+        :track-id="item.trackId"
+        :index="index"
+        :viewport-width="dimensions.width"
+        :loading="loading"
+      />
+    </div>
     <!-- ruler: click to seek, wheel zooms -->
     <canvas
       ref="ruler"
@@ -259,6 +270,12 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+/* Up to three track rows stay visible; more tracks scroll inside the list. */
+.track-list {
+  flex: none;
+  max-height: calc(3 * 65px);
+  overflow-y: auto;
+}
 /* Timeline column: track, ruler, viewport and scrollbar stacked vertically. */
 .timeline {
   min-width: 0;

@@ -4,11 +4,10 @@ import { ElButton, ElDescriptions, ElDescriptionsItem, ElEmpty } from 'element-p
 import { useI18n } from 'vue-i18n';
 import { useEditorStore } from '../../slicing/editor-store';
 import { useWorkspace } from '../../workspace/workspace';
-import { activeMedia } from '../../workspace/project-media';
 const editor = useEditorStore();
 const workspace = useWorkspace();
 // Resolved missing-media descriptor; null while a source is loaded.
-const missing = computed(() => (editor.source ? null : activeMedia(editor.document)));
+const missing = computed(() => (editor.source ? null : editor.track.media));
 const { t } = useI18n();
 const sourceFormat = computed(() => {
   const format = editor.source?.sourceFormat;

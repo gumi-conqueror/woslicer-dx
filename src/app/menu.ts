@@ -16,6 +16,8 @@ export const APPLICATION_MENU = [
       { id: 'save-project', mnemonic: 's' },
       { id: 'relink-audio', mnemonic: 'r' },
       { id: 'open-audio', mnemonic: 'a' },
+      { id: 'add-track', mnemonic: 'k' },
+      { id: 'remove-track', mnemonic: 'm' },
       { id: 'new-project-wos', mnemonic: 'n' },
       { id: 'import-wos', mnemonic: 'i' },
       { id: 'export-wos', mnemonic: 'w' },
