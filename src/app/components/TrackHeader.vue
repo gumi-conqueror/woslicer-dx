@@ -72,6 +72,30 @@ function commit(): void {
           @dblclick="rename"
           >{{ name }}</span
         >
+        <span class="track-mix">
+          <button
+            type="button"
+            class="track-toggle"
+            :aria-pressed="track?.muted ?? false"
+            :aria-label="t('chrome.muteTrack')"
+            :title="t('chrome.muteTrack')"
+            @pointerdown.stop
+            @click="editor.setTrackMix(trackId, { muted: !track?.muted })"
+          >
+            M
+          </button>
+          <button
+            type="button"
+            class="track-toggle"
+            :aria-pressed="track?.solo ?? false"
+            :aria-label="t('chrome.soloTrack')"
+            :title="t('chrome.soloTrack')"
+            @pointerdown.stop
+            @click="editor.setTrackMix(trackId, { solo: !track?.solo })"
+          >
+            S
+          </button>
+        </span>
         <span
           v-if="!loading && session?.source"
           class="track-format"
@@ -146,6 +170,27 @@ function commit(): void {
   border-radius: 3px;
   background: var(--el-fill-color-blank);
   color: var(--el-text-color-primary);
+}
+.track-mix {
+  display: inline-flex;
+  gap: 2px;
+}
+.track-toggle {
+  width: 20px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--el-border-color);
+  border-radius: 3px;
+  background: var(--el-fill-color-lighter);
+  color: var(--el-text-color-secondary);
+  font:
+    600 10px 'Consolas',
+    monospace;
+}
+.track-toggle[aria-pressed='true'] {
+  border-color: var(--el-color-primary);
+  background: var(--el-color-primary);
+  color: var(--el-bg-color);
 }
 .track-format {
   color: var(--el-text-color-secondary);

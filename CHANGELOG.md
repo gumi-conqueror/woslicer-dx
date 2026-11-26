@@ -4,6 +4,13 @@
 
 ## Unreleased
 
+## 2.0.0-alpha.6 — 2026-11-27
+
+### Added
+
+- Playback plays all tracks together. Each track header has **M** (mute) and **S** (solo) buttons; mute wins over solo. Slice preview and recording still use the current track.
+- **Project → Export slices of all tracks** writes the slices of every track into one archive or folder. Each track uses its own output name and numbering; the export stops if two tracks would write the same file name.
+
 ## 2.0.0-alpha.5 — 2026-11-27
 
 ### Added

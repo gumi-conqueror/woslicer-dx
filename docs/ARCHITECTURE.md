@@ -6,7 +6,7 @@ A project has one or more tracks, each with its own audio, markers and output se
 The editor works on one current track. `currentTrackId` and `track` in the editor store select it;
 `currentTrack` in `src/project/codec.ts` finds a track in a document.
 Decoded audio, peaks, band analysis and loading state are per-track `sessions` in the editor store.
-The workspace keeps one audio engine (Worker) per track. Playback, preview and export use the current track.
+The workspace keeps one audio engine (Worker) per track. Playback plays every track through a gain stage per track; the current track drives the playhead. Preview and single-track export use the current track.
 See [Project format](PROJECT_FORMAT.md) for that compatibility boundary.
 
 ## Source map
@@ -32,6 +32,27 @@ See [Project format](PROJECT_FORMAT.md) for that compatibility boundary.
 | YuanCon protocol, device session and recording | [`src/input/yuancon/`](../src/input/yuancon/) |
 | Languages, fonts and theme | [`src/i18n/`](../src/i18n/), [`src/ui/`](../src/ui/), [`build-fonts.mjs`](../scripts/build-fonts.mjs) |
 | Native commands and permissions | [`src-tauri/src/`](../src-tauri/src/), [`capabilities/`](../src-tauri/capabilities/), [`permissions/`](../src-tauri/permissions/) |
+
+## Fact owners
+
+Each fact below has one owner. Change the fact there; other code reads it.
+
+| Fact | Owner |
+| --- | --- |
+| Slice file names and numbering | `sliceFileName` in [`src/core/slices.ts`](../src/core/slices.ts) |
+| Ranges and limits of project fields (BPM, fade-out, noise gate, track count) | `FIELD_RANGES` and the `PROJECT_MAX_*` constants in [`src/project/schema.ts`](../src/project/schema.ts) |
+| Tick and sample conversion | [`src/core/timebase.ts`](../src/core/timebase.ts) |
+| A track's time base | `timeBaseOf` in [`editor-store.ts`](../src/slicing/editor-store.ts) |
+| Slice processing of a track (a disabled noise gate renders as 0 dB) | `sliceProcessingOf` in [`editor-store.ts`](../src/slicing/editor-store.ts) |
+| Track audibility (mute, solo, gain) | `trackAmps` in [`editor-store.ts`](../src/slicing/editor-store.ts) |
+| Supported audio formats | [`src/core/audio-formats.ts`](../src/core/audio-formats.ts); `src-tauri/src/files.rs` repeats the extensions and a consistency test compares them |
+| Commands, their labels and availability | `COMMANDS` in [`src/app/commands.ts`](../src/app/commands.ts) |
+| Default key, controller and YuanCon bindings | `BINDINGS` in [`src/input/bindings.ts`](../src/input/bindings.ts) |
+| Fixed controller navigation | `UI_NAVIGATION` in [`src/input/gamepad.ts`](../src/input/gamepad.ts) |
+| Controller thresholds and repeat timing | top of [`src/input/gamepad.ts`](../src/input/gamepad.ts) |
+| Command wheel slots, travel and size | [`src/input/wheel.ts`](../src/input/wheel.ts), [`use-wheel.ts`](../src/input/use-wheel.ts) |
+| Editor state saved with recovery data | `SAVED_STATE` in [`src/workspace/session.ts`](../src/workspace/session.ts) |
+| Theme colors | [`src/app/styles.css`](../src/app/styles.css) for the interface, [`src/ui/palette.ts`](../src/ui/palette.ts) for canvases |
 
 ## State and commands
 

@@ -344,6 +344,12 @@ export const COMMANDS = {
     enabled: (state) => hasSource(state) && hasMarkers(state),
     run: ({ workspace }) => workspace.exportAll(),
   },
+  'export-all-tracks': {
+    label: 'menu.exportAllTracks',
+    group: 'output',
+    enabled: (state) => state.document.tracks.some((track) => track.slicing.markers.length > 0),
+    run: ({ workspace }) => workspace.exportAllTracks(),
+  },
   'copy-bmse': {
     label: 'help.bmseOut',
     group: 'output',
