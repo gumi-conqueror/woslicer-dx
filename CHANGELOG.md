@@ -4,6 +4,13 @@
 
 ## Unreleased
 
+## 2.0.0-alpha.3 — 2026-11-27
+
+### Changed
+
+- The light and dark themes use new colors: neutral gray surfaces with an orange accent. The waveform is cyan.
+- Band detection settings are saved in the project with each track, and changing them can be undone. Earlier versions kept them only in recovery data.
+
 ## 2.0.0-alpha.2 — 2026-11-26
 
 ### Added

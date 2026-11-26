@@ -11,6 +11,11 @@ export interface WaveViewport {
   pxPerTick: number;
   timeBase: TimeBase;
 }
+/** One channel's band of the canvas: its center line and the height from center to edge. */
+export interface ChannelArea {
+  center: number;
+  halfHeight: number;
+}
 // Source buffers are immutable after decoding. Weak keys release converted data with the source.
 const drawingSamples = new WeakMap<PcmChannel, Float32Array>();
 
@@ -19,12 +24,12 @@ export function drawWaveLane(
   context: CanvasRenderingContext2D,
   view: WaveViewport,
   data: PcmChannel,
-  mid: number,
-  half: number,
+  area: ChannelArea,
   colors: { outer: string; rms: string },
   rmsVisible: boolean,
 ): void {
-  if (!data.length || view.width <= 0 || half <= 0) return;
+  const { center, halfHeight } = area;
+  if (!data.length || view.width <= 0 || halfHeight <= 0) return;
   let samples = drawingSamples.get(data);
   if (!samples) {
     samples = Float32Array.from(data, (value) => value / FULL_SCALE);
@@ -38,12 +43,12 @@ export function drawWaveLane(
       scroll: view.scrollTick,
       scale: view.pxPerTick,
       width: view.width,
-      height: half * 2,
+      height: halfHeight * 2,
       dpr: view.dpr,
     },
     { ...colors, detail: colors.outer },
     rmsVisible,
-    mid - half,
+    center - halfHeight,
   );
 }
 
@@ -51,18 +56,16 @@ export function drawWaveLane(
 export function drawBandEnvelope(
   context: CanvasRenderingContext2D,
   view: WaveViewport,
-  peaks: PeakCache,
-  length: number,
-  mid: number,
-  half: number,
-  color: string,
-  dash: number[],
+  band: { peaks: PeakCache; length: number; color: string; dash: readonly number[] },
+  area: ChannelArea,
 ): void {
+  const { peaks, length, color, dash } = band;
+  const { center, halfHeight } = area;
   const base = peaks.levels[0];
   if (!base) return;
   context.strokeStyle = color;
   context.lineWidth = 1 / view.dpr;
-  context.setLineDash(dash);
+  context.setLineDash([...dash]);
   for (const upper of [true, false]) {
     context.beginPath();
     let drawing = false;
@@ -97,7 +100,8 @@ export function drawBandEnvelope(
         drawing = false;
         continue;
       }
-      const y = (Math.floor((mid - (value / FULL_SCALE) * half) * view.dpr) + 0.5) / view.dpr;
+      const y =
+        (Math.floor((center - (value / FULL_SCALE) * halfHeight) * view.dpr) + 0.5) / view.dpr;
       if (drawing) context.lineTo(x, y);
       else {
         context.moveTo(x, y);

@@ -43,14 +43,7 @@ export function createPlayback(editor: EditorStore): Playback {
   let lastCueTick = 0;
 
   function tickAtSample(sample: number): number {
-    const source = editor.source;
-    return source
-      ? sampleToTick(sample, {
-          bpm: editor.doc.bpm,
-          shift: editor.doc.shift,
-          sampleRate: source.sampleRate,
-        })
-      : 0;
+    return editor.timeBase ? sampleToTick(sample, editor.timeBase) : 0;
   }
   function release(node: AudioBufferSourceNode | null): void {
     if (!node) return;
@@ -162,9 +155,9 @@ export function createPlayback(editor: EditorStore): Playback {
       editor.setPlaybackRate(PLAYBACK_RATES.includes(rate) ? rate : DEFAULT_PLAYBACK_RATE);
   }
   function previewSlice(previous = false): void {
-    const source = editor.source;
-    if (disposed || !source) return;
-    const base = { bpm: editor.doc.bpm, shift: editor.doc.shift, sampleRate: source.sampleRate };
+    const source = editor.source,
+      base = editor.timeBase;
+    if (disposed || !source || !base) return;
     const { ranges } = sliceRanges(editor.ticks, base, source.length);
     if (!ranges.length) {
       editor.setStatus('noMarkersToPreview');
@@ -183,8 +176,7 @@ export function createPlayback(editor: EditorStore): Playback {
     const rendered = renderSlice(source, {
       start: range.start,
       end: range.end,
-      fadeoutMs: editor.doc.fadeoutMs,
-      noisegateDb: editor.noisegateEnabled ? editor.doc.noisegateDb : 0,
+      ...editor.sliceProcessing,
     });
     if (!rendered.length) {
       editor.setStatus('emptySlice');

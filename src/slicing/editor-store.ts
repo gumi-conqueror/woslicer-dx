@@ -5,7 +5,12 @@ import { normalizeSelection } from '../core/markers';
 import { remapMarkerKeys, type MarkerKeys } from '../project/marker-keys';
 import { ProjectEditor } from '../project/editor';
 import { createEmptyProject, currentTrack } from '../project/codec';
-import type { ProjectDocument, ProjectFile, OutputRecipe } from '../project/schema';
+import type {
+  ProjectDocument,
+  ProjectFile,
+  OutputRecipe,
+  SlicingSettings,
+} from '../project/schema';
 import { clampGainDb, FIELD_RANGES, inRange, type CueMode } from '../project/schema';
 import { gridStepTicks } from '../core/gridlines';
 import {
@@ -14,11 +19,12 @@ import {
   resolveBreakpointTick,
   samplesPerTick,
   tickToSampleExport,
+  type TimeBase,
 } from '../core/timebase';
 import { zoomAt as zoomView } from '../timeline/waveform/zoom';
 import { ampToDb, dbToAmp } from '../core/volume';
 import type { PeakCache } from '../core/peaks';
-import type { BandAnalysis, BandName } from '../core/bands';
+import type { BandAnalysis } from '../core/bands';
 import type { FormatParams, StatusKey } from '../core/messages';
 
 export interface AudioSource extends SourceAudio {
@@ -62,6 +68,16 @@ export const useEditorStore = defineStore('editor', () => {
     }),
   );
   const previewTicks = shallowRef<readonly number[] | null>(null);
+  /** The current track's tick-to-sample time base; `null` until its audio is loaded. */
+  const timeBase = computed<Readonly<TimeBase> | null>(() =>
+    source.value
+      ? Object.freeze({
+          bpm: document.value.timing.bpm,
+          shift: document.value.timing.shiftTicks,
+          sampleRate: source.value.sampleRate,
+        })
+      : null,
+  );
   let cancelActiveDraft: (() => void) | null = null;
   const source = shallowRef<AudioSource | null>(null);
   const peaks = shallowRef<PeakCache | null>(null);
@@ -161,20 +177,21 @@ export const useEditorStore = defineStore('editor', () => {
       }),
   });
   const noisegateEnabled = computed(() => track.value.slicing.noisegateEnabled);
+  /** Slice rendering settings for preview and export. A disabled noise gate renders as 0 dB. */
+  const sliceProcessing = computed(() =>
+    Object.freeze({
+      fadeoutMs: track.value.slicing.fadeoutMs,
+      noisegateDb: noisegateEnabled.value ? track.value.slicing.noisegateDb : 0,
+    }),
+  );
   const baseName = computed(() => track.value.output.baseName);
   const clipStartNumber = computed(() => track.value.output.clipStartNumber);
   const useFfNumbering = computed(() => track.value.output.useFfNumbering);
   const exportLock = shallowRef(false);
   const bandAnalysis = shallowRef<BandAnalysis | null>(null);
-  const bandDetectBands = shallowRef<Record<BandName, boolean>>({
-    low: true,
-    mid: true,
-    high: true,
-  });
-  const bandThresholdDb = shallowRef(6),
-    bandMinGapUnits = shallowRef(1),
-    bandSnap = shallowRef(true),
-    tapOffsetMs = shallowRef(0);
+  // Detection settings belong to the track and are saved with the project.
+  const bandDetection = computed(() => track.value.slicing.bandDetection);
+  const tapOffsetMs = shallowRef(0);
   const bandEstimate = shallowRef<number | null>(null),
     bandBusy = shallowRef(false);
   const ticks = computed(() => track.value.slicing.markers);
@@ -265,6 +282,11 @@ export const useEditorStore = defineStore('editor', () => {
       Object.assign(currentTrack(draft).output, value);
     });
   }
+  function setBandDetection(value: Partial<SlicingSettings['bandDetection']>): void {
+    transact((draft) => {
+      Object.assign(currentTrack(draft).slicing.bandDetection, value);
+    });
+  }
   function setNoisegateEnabled(value: boolean): void {
     transact((draft) => {
       currentTrack(draft).slicing.noisegateEnabled = value;
@@ -288,22 +310,14 @@ export const useEditorStore = defineStore('editor', () => {
   function tickBeyondEnd(tick: number): boolean {
     return (
       source.value !== null &&
-      tickToSampleExport(tick, {
-        bpm: doc.value.bpm,
-        shift: doc.value.shift,
-        sampleRate: source.value.sampleRate,
-      }) > source.value.length
+      timeBase.value !== null &&
+      tickToSampleExport(tick, timeBase.value) > source.value.length
     );
   }
   function legalTick(tick: number): boolean {
-    const audio = source.value;
-    return markerTickAllowed(
-      tick,
-      audio && {
-        base: { bpm: doc.value.bpm, shift: doc.value.shift, sampleRate: audio.sampleRate },
-        length: audio.length,
-      },
-    );
+    const audio = source.value,
+      base = timeBase.value;
+    return markerTickAllowed(tick, audio && base && { base, length: audio.length });
   }
   function setCursorTick(tick: number): void {
     if (Number.isFinite(tick))
@@ -323,9 +337,7 @@ export const useEditorStore = defineStore('editor', () => {
     return resolveBreakpointTick(tick, snap.value, gridStepTicks(grid.value), false);
   }
   function zoomAt(anchor: number, factor: number): void {
-    const frames = source.value
-      ? samplesPerTick({ bpm: doc.value.bpm, shift: 0, sampleRate: source.value.sampleRate })
-      : 500;
+    const frames = timeBase.value ? samplesPerTick(timeBase.value) : 500;
     const next = zoomView({ scale: pxPerTick.value, scroll: scrollTick.value }, anchor, factor, {
       min: 0.02,
       max: Math.max(600, 4 * frames),
@@ -395,16 +407,13 @@ export const useEditorStore = defineStore('editor', () => {
     scrollTick.value = 0;
     followPlayhead.value = true;
     exportLock.value = false;
-    bandDetectBands.value = { low: true, mid: true, high: true };
-    bandThresholdDb.value = 6;
-    bandMinGapUnits.value = 1;
-    bandSnap.value = true;
     tapOffsetMs.value = 0;
     bandBusy.value = false;
   }
   return {
     document,
     doc,
+    timeBase,
     docRevision,
     documentGeneration,
     isDirty,
@@ -436,6 +445,7 @@ export const useEditorStore = defineStore('editor', () => {
     followPlayhead,
     cueMode,
     noisegateEnabled,
+    sliceProcessing,
     baseName,
     clipStartNumber,
     useFfNumbering,
@@ -443,10 +453,7 @@ export const useEditorStore = defineStore('editor', () => {
     bandsVisible,
     rmsVisible,
     bandAnalysis,
-    bandDetectBands,
-    bandThresholdDb,
-    bandMinGapUnits,
-    bandSnap,
+    bandDetection,
     tapOffsetMs,
     bandEstimate,
     bandBusy,
@@ -463,6 +470,7 @@ export const useEditorStore = defineStore('editor', () => {
     addTicks,
     setOutputOptions,
     setNoisegateEnabled,
+    setBandDetection,
     cancelDraft,
     registerDraftCancellation,
     setPreviewTicks,

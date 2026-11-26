@@ -104,13 +104,9 @@ watch(
 watch([() => editor.playheadSample, () => editor.cursorTick, ghost], () => invalidate(false));
 // Auto-scroll: while playing with follow enabled, keep the playhead inside the window.
 watch([() => editor.playheadSample, () => editor.followPlayhead], () => {
-  if (!editor.playing || !editor.followPlayhead || !editor.source || dimensions.value.width <= 0)
+  if (!editor.playing || !editor.followPlayhead || !editor.timeBase || dimensions.value.width <= 0)
     return;
-  const tick = sampleToTick(editor.playheadSample, {
-    bpm: editor.doc.bpm,
-    shift: editor.doc.shift,
-    sampleRate: editor.source.sampleRate,
-  });
+  const tick = sampleToTick(editor.playheadSample, editor.timeBase);
   const span = dimensions.value.width / editor.pxPerTick;
   if (tick < editor.scrollTick || tick > editor.scrollTick + span * 0.95)
     editor.setScrollTick(Math.max(0, tick - span * 0.1));
@@ -180,14 +176,7 @@ function seek(event: PointerEvent): void {
     editor.scrollTick + (event.clientX - (rect?.left ?? 0)) / editor.pxPerTick,
   );
   editor.setCursorTick(tick);
-  if (editor.source)
-    playback.seekSample(
-      tickToSampleExport(editor.cursorTick, {
-        bpm: editor.doc.bpm,
-        shift: editor.doc.shift,
-        sampleRate: editor.source.sampleRate,
-      }),
-    );
+  if (editor.timeBase) playback.seekSample(tickToSampleExport(editor.cursorTick, editor.timeBase));
 }
 // Horizontal scroll slider accepts only the number branch of the payload.
 function scroll(value: number | number[]): void {

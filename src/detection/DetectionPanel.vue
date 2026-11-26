@@ -9,21 +9,23 @@ const workspace = useWorkspace();
 const editor = workspace.editor;
 // Rise threshold accepted only when a finite number within 0–120 dB.
 const threshold = computed({
-  get: () => editor.bandThresholdDb,
+  get: () => editor.bandDetection.thresholdDb,
   set: (value: number | undefined) => {
     if (value !== undefined && Number.isFinite(value) && value >= 0 && value <= 120)
-      editor.bandThresholdDb = value;
+      editor.setBandDetection({ thresholdDb: value });
   },
 });
-// Band checkboxes project the per-band flags on the editor.
+// The settings are track data: each change is one undoable edit.
 const selectedBands = computed({
-  get: () => BAND_NAMES.filter((band) => editor.bandDetectBands[band]),
+  get: () => BAND_NAMES.filter((band) => editor.bandDetection.bands[band]),
   set: (bands: BandName[]) => {
-    editor.bandDetectBands = {
-      low: bands.includes('low'),
-      mid: bands.includes('mid'),
-      high: bands.includes('high'),
-    };
+    editor.setBandDetection({
+      bands: {
+        low: bands.includes('low'),
+        mid: bands.includes('mid'),
+        high: bands.includes('high'),
+      },
+    });
   },
 });
 const bandLabels = { low: 'chrome.bandLow', mid: 'chrome.bandMid', high: 'chrome.bandHigh' };
@@ -77,8 +79,9 @@ watch(
       </el-form-item>
       <el-form-item :label="t('chrome.minGapLabel')">
         <el-select
-          v-model="editor.bandMinGapUnits"
+          :model-value="editor.bandDetection.minGapUnits"
           :aria-label="t('chrome.minGapLabel')"
+          @update:model-value="(units: number) => editor.setBandDetection({ minGapUnits: units })"
         >
           <el-option
             v-for="n in [1, 2, 4, 8]"
@@ -88,7 +91,11 @@ watch(
           />
         </el-select>
       </el-form-item>
-      <el-checkbox v-model="editor.bandSnap">{{ t('chrome.bandSnapLabel') }}</el-checkbox>
+      <el-checkbox
+        :model-value="editor.bandDetection.snap"
+        @update:model-value="(snap: unknown) => editor.setBandDetection({ snap: snap === true })"
+        >{{ t('chrome.bandSnapLabel') }}</el-checkbox
+      >
       <!-- scope readout and detect actions -->
       <p class="scope">
         {{ range ? `${t('status.bandDetectInSelection')}: ${range}` : t('chrome.bandScopeWhole') }}

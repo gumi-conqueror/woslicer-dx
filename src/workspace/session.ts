@@ -1,7 +1,6 @@
 import { currentTrack, parseProject, requireEditableTracks } from '../project/codec';
 import type { ProjectDocument } from '../project/schema';
 import { MAX_TICKS, MEASURE_TICKS } from '../core/timebase';
-import type { BandName } from '../core/bands';
 import type { EditorStore } from '../slicing/editor-store';
 
 /**
@@ -54,28 +53,15 @@ const SAVED_STATE = {
     scrollTick: numberIn(0, MAX_TICKS),
     pxPerTick: numberIn(0.02, 1e9),
   },
-  detection: {
-    bandDetectBands: (value: unknown) => {
-      if (typeof value !== 'object' || value === null) return undefined;
-      const bands: Partial<Record<BandName, unknown>> = value;
-      const { low, mid, high } = bands;
-      return typeof low === 'boolean' && typeof mid === 'boolean' && typeof high === 'boolean'
-        ? { low, mid, high }
-        : undefined;
-    },
-    bandThresholdDb: numberIn(0, 120),
-    bandMinGapUnits: numberIn(0, MEASURE_TICKS),
-    bandSnap: flag,
-  },
   calibration: {
     tapOffsetMs: numberIn(-2000, 2000),
   },
 } satisfies Record<string, Partial<Record<keyof EditorStore, Read<unknown>>>>;
 
 type Group = keyof typeof SAVED_STATE;
-const GROUPS: readonly Group[] = ['view', 'detection', 'calibration'];
+const GROUPS: readonly Group[] = ['view', 'calibration'];
 export type SavedState = { [G in Group]: Record<string, unknown> };
-const emptyState = (): SavedState => ({ view: {}, detection: {}, calibration: {} });
+const emptyState = (): SavedState => ({ view: {}, calibration: {} });
 
 export interface EditorSession {
   version: typeof SESSION_VERSION;
