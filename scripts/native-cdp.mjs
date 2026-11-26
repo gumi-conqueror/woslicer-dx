@@ -10,7 +10,12 @@ export async function connectNativePage(port) {
   }).toPass({ timeout: 20_000, intervals: [100, 250, 500] });
   const browser = await chromium.connectOverCDP(endpoint);
   const context = browser.contexts()[0];
-  const page = context.pages()[0] ?? (await context.waitForEvent('page'));
+  // WebView2 can list an about:blank page before the app page navigates.
+  let page;
+  await expect(async () => {
+    page = context.pages().find((candidate) => candidate.url() !== 'about:blank');
+    expect(page).toBeDefined();
+  }).toPass({ timeout: 20_000, intervals: [100, 250, 500] });
   await page.waitForLoadState('load');
   const session = await context.newCDPSession(page);
   await session.send('Runtime.enable');
