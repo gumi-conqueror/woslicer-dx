@@ -1,56 +1,75 @@
 # `.wosdx` project format
 
-This document describes the v1 fields, compatibility rules and local media bindings.
+This document describes the version 2 fields, the version 1 upgrade, compatibility rules and local media bindings.
 [codec.ts](../src/project/codec.ts) and [schema.ts](../src/project/schema.ts) define the implementation.
 
 ## Format and validation
 
 - `.wos` is the locked, 6,168-byte settings exchange format implemented by `@gumi-conqueror/wos-file`. Do not add fields or change its encoding.
 - Original `.bmh` compatibility is also locked. The [BMH format contract](BMH_FORMAT.md) applies at import and export. DX uses UTF-8 JSON internally.
-- `.wosdx` is bounded UTF-8 JSON with `format: "wosdx"` and `schemaVersion: 1`.
+- `.wosdx` is bounded UTF-8 JSON with `format: "wosdx"` and `schemaVersion: 2`.
 - The schema version is independent of the application, session and Rust crate versions.
 - Audio is not embedded. Projects store media metadata and origin hints. Projects may embed BMHelper data.
 
 `decodeProject`, `parseProject` and `encodeProject` are the codec entry points.
-Parsing checks the format and version before applying v1 validation. Future
-versions take a separate path and are never interpreted as v1.
+Parsing checks the format and version first. A version 1 file is upgraded in
+memory (see below). Future versions take a separate path and are never interpreted.
 
 `schema.ts` defines field shapes, ranges and enums with Zod and derives document
 types from them. It does not coerce strings, numbers or booleans. String limits
-count UTF-16 code units. `codec.ts` validates duplicate IDs, media references,
-clip ranges, the total clip count and duplicate marker ticks. Add field rules
-to the schema and cross-field business rules to the codec. The parser rejects invalid UTF-8, JSON, format identifiers or v1 data.
+count UTF-16 code units. `codec.ts` validates duplicate track IDs, duplicate marker ticks and marker keys.
+Add field rules to the schema and cross-field business rules to the codec.
+The parser rejects invalid UTF-8, JSON, format identifiers or invalid data.
 
-## v1 fields
+## Version 2 fields
+
+A project has tracks. Each track is one complete source file with its own
+markers and output settings. All tracks share the time base, the global
+playback settings and the BMHelper data. This version edits projects with
+exactly one track; it rejects others with an explanation.
 
 | Path | Meaning |
 | --- | --- |
 | `projectId`, `name` | Stable project ID and display name. Decoding or recovering media must not replace the ID. |
-| `timing.bpm`, `timing.shiftTicks` | BPM and offset in ticks, not seconds or source frames. |
-| `slicing.fadeoutMs` | Integer milliseconds. |
-| `slicing.noisegateDb`, `slicing.noisegateEnabled` | Threshold in dB and a separate enable flag. |
-| `slicing.markers` | Ticks at 192 ticks per measure, from 0 through 49,151. The codec sorts ticks and rejects duplicates. |
-| `slicing.markerKeys` | Optional `{tick, keys}` entries for recorded markers. `keys` contains unique integers 1–7, including chords. Entries must reference existing marker ticks. |
-| `slicing.bandDetection` | `bands {low,mid,high}`, `thresholdDb`, `minGapUnits`, `snap`. Detection settings are separate from waveform visibility. |
-| `output` | `baseName`, `clipStartNumber`, `useFfNumbering`. |
+| `timing.bpm`, `timing.shiftTicks` | BPM and offset in ticks, not seconds or source frames. Shared by all tracks. |
 | `global` | `masterGainDb`, `masterMuted`, `cueGainDb`, `cueMode`, `playbackRate`, `views`. |
 | `global.views` | Boolean `rms` and `bands` defaults. Spectrum is `"reserved"`. |
-| `media[]` | Media metadata and origin hints, referenced by `mediaId`. |
-| `tracks[]` | `trackId`, `name`, `gainDb`, `muted`, `solo`, `views`, `clips[]`. |
+| `tracks[]` | `trackId`, `name`, `gainDb`, `muted`, `solo`, `views`, `media`, `slicing`, `output`. 1–256 entries. |
 | `track.views` | `rms` and `bands` accept `null` (inherit), `true` or `false`. Spectrum is `"reserved"`. |
-| `clip` | `clipId`, `mediaId`, `timelineStartSeconds`, `sourceOffsetFrames`, `frameCount`. |
+| `track.media` | `null` before audio is chosen, or one `MediaAsset` (below). |
+| `track.slicing.fadeoutMs` | Integer milliseconds. |
+| `track.slicing.noisegateDb`, `track.slicing.noisegateEnabled` | Threshold in dB and a separate enable flag. |
+| `track.slicing.markers` | Ticks at 192 ticks per measure, from 0 through 49,151. The codec sorts ticks and rejects duplicates. |
+| `track.slicing.markerKeys` | Optional `{tick, keys}` entries for recorded markers. `keys` contains unique integers 1–7, including chords. Entries must reference existing marker ticks. |
+| `track.slicing.bandDetection` | `bands {low,mid,high}`, `thresholdDb`, `minGapUnits`, `snap`. Detection settings are separate from waveform visibility. |
+| `track.output` | `baseName`, `clipStartNumber`, `useFfNumbering`. |
 | `bmhelper` | `null` or `{format: "bmhelper", source, divisions}` containing structured BMHelper work. |
+
+### Version 1 upgrade
+
+Version 1 kept `slicing` and `output` at the project level, listed `media[]`
+separately and placed audio on tracks as `clips[]`. The app upgrades a
+version 1 file in memory when it opens it, and saves version 2.
+Only the two layouts that earlier releases could edit upgrade:
+
+- one track without clips or media;
+- one track with one clip at timeline position 0 and source offset 0 that covers its whole media file.
+
+Other version 1 layouts (several tracks or clips, trimmed clips, leading
+silence) are rejected, and the original file stays unchanged. Unknown version 1
+fields are dropped without a report. Releases before 1.3 reject version 2 files
+as a future version.
 
 ### Recorded marker keys
 
-The optional `slicing.markerKeys` field extends v1 without changing the numeric
+The optional `slicing.markerKeys` field extends a track's numeric
 `slicing.markers` array. For example, `[{"tick":96,"keys":[1,3,5]}]` records a
 three-key chord at tick 96. Missing entries mean that a marker has no recorded
 key identity. The codec sorts entries and keys, rejects duplicate ticks or keys,
 and omits an empty collection.
 
 Key numbers are logical marker attributes, independent of the input device.
-[`recording-bindings.ts`](../src/app/recording-bindings.ts) defines the keyboard,
+[`src/input/recording.ts`](../src/input/recording.ts) defines the keyboard,
 Xbox and YuanCon mappings and supplies the in-app guide. Device protocol evidence
 and limitations are documented with the [input fixture](../tests/fixtures/input/README.md).
 
@@ -91,16 +110,12 @@ Users can rename the division before another export, or save `.wosdx` to preserv
 | `integrity` | `null` or `{algorithm: "sha256", digest: <64 hex chars>}`. The parser converts digests to lowercase. |
 | `originHint` | `null`, `{kind: "desktop", pathHint}` or `{kind: "browser", name, relativePathHint?, lastModified?}`. |
 
-The expanded media extension enum keeps schema version 1. Readers before 1.2.0 accept only WAV and Ogg and reject projects containing newer format values. Existing WAV/Ogg projects remain compatible.
 
 ## Timing, playback and views
 
-`timelineStartSeconds` is independent of BPM. `sourceOffsetFrames` and
-`frameCount` use the source media's sample rate. Changing BPM must not move clips
-in seconds or change their frame counts. Source offset plus frame count must
-fit within the known media length, and all ID references must resolve.
-A positive timeline start leaves leading silence. Array order does not imply
-position. Overlapping clips can be stored but do not imply mixing or crossfades.
+Every track starts at the beginning of its source file. Markers are ticks on
+the shared time base; each track maps them to frames with its own sample rate,
+so tracks may use different sample rates.
 
 Gains use dB, with 0 dB as unity. Mute is independent of gain and takes precedence
 over solo. If any track is soloed, only unmuted solo tracks are audible.
@@ -120,11 +135,9 @@ schema contain the complete validation rules.
 | --- | --- |
 | Entire encoded UTF-8 JSON | 64 MiB, including BMHelper data and metadata. |
 | Desktop recovery JSON | 65 MiB, including the project and session fields. |
-| Media / tracks | 256 each. |
-| Clips | 100,000 across all tracks. |
+| Tracks | 256, each with at most one media file. |
 | Markers | At most 49,152 markers. Ticks range from 0 through 49,151. |
-| Source frames / offset / count | 0 through 2,000,000,000 per field, subject to clip range validation. |
-| `timelineStartSeconds` | 0 through 1,000,000,000 seconds. |
+| Source frames | 0 through 2,000,000,000 per channel. |
 | Track / master / cue gain | −96 through +12 dB. |
 | BPM / `shiftTicks` | 0 < BPM ≤ 10,000. Shift from −1e9 through 1e9. |
 | Fadeout / noise gate | Fadeout: 0 through 60,000 integer milliseconds. Noise gate: −200 through 0 dB. |
@@ -138,9 +151,7 @@ Recovery reserves an additional 1 MiB for local bindings and UI settings. JSON r
 The byte limit applies after UTF-8 serialization, not to the original MIDI or BMH file size.
 Browser recovery also depends on the browser's local-storage quota. Failed recovery writes remain visible to users.
 
-`createEmptyProject` creates one empty track without media or clips.
-`createSingleTrackProject` creates one track with a full-source clip at timeline
-position and source offset zero.
+`createEmptyProject` creates one track without media.
 
 Empty projects default to master −10 dB, cue −6 dB, playback rate 1, cue off,
 and RMS/bands off. Tracks default to 0 dB, unmuted, not soloed, and inherited
@@ -150,45 +161,21 @@ views. These are constructor defaults, not user-configurable defaults.
 
 | Input | Behavior |
 | --- | --- |
-| Empty project | Settings can be edited and saved. |
-| Full-source single-track layout | Editable and saveable. Missing media can be relinked manually. |
-| Multiple tracks or clips, trimmed clips, leading silence, or non-neutral track playback properties | Opens read-only. Files opened from disk can be saved with their original bytes. |
-| Future version or invalid file | The app rejects the file and preserves the current workspace and source file. |
-
-An editable single-track layout has one track and one full-source clip. Its
-length equals the known source length. Timeline position and source offset are
-zero. Track gain is 0 dB, with mute and solo off.
+| Version 2 with one track | Editable and saveable. Missing media can be relinked manually. |
+| Version 2 with several tracks | Rejected with an explanation; the current workspace stays. |
+| Version 1 | Upgraded as described above, or rejected. |
+| Future version or invalid file | Rejected; the current workspace and source file stay. |
 
 ### Normalization and unknown fields
 
-Preserving a complex project means retaining all valid known media, tracks,
-clips, positions, properties and BMH content, without flattening or trimming.
-Normalized JSON does not preserve whitespace or field order. The locked `.wos`
-byte format is a separate compatibility requirement.
-
 The parser constructs new objects containing known fields. It sorts markers,
 rejects duplicate ticks, lowercases digests and converts track spectrum `null`
-to `"reserved"`. `parseProject` collects up to 16 unknown field paths in
-`unknownFields`. Editable projects show `projectUnknownFields` to warn that
-saving retains only recognized data. For read-only files, the app saves the original bytes without normalization.
-The workspace rejects future versions and does not write them to disk.
-
-### Original file bytes
-
-`decodeProject` returns a `ProjectDecodeResult` with `sourceBytes` for supported
-and unsupported-version results. The byte copy owns its storage, including when
-the input is a Node Buffer subview. It preserves unknown fields, original values,
-BOM, whitespace and number spelling. The caller owns this mutable copy. It is
-only for preserving an unedited file and cannot replace encoding after edits.
-
-`parseProject` does not attach source bytes. `encodeProject` writes normalized
-v1 JSON. Original bytes are not part of `ProjectDocument` or undo history.
-
-Complex layouts display `projectLimitedOpen`. The editor blocks document
-mutations centrally, and saving writes `sourceBytes` unchanged, covered by
-byte-for-byte tests. Complex projects restored from recovery remain read-only.
-The app cannot save these projects because recovery lacks the original bytes.
-`limitedSaveUnavailable` explains this restriction.
+to `"reserved"`. For version 2 files, `parseProject` collects up to 16 unknown
+field paths in `unknownFields`, and the app shows `projectUnknownFields` to warn
+that saving keeps only recognized data. Normalized JSON does not preserve
+whitespace or field order. The locked `.wos` byte format is a separate
+compatibility requirement. The workspace rejects future versions and does not
+write them to disk.
 
 ## Local bindings, recovery and relinking
 
@@ -212,11 +199,10 @@ Projects without paths require one manual relink before saving the path.
 Relinking stages and decodes the candidate, then compares size, format,
 sample rate, channels, frames and hash. Matching names do not prove matching
 content. Unknown metadata stays unknown. Users can confirm replacement when
-media differs. Replacement updates media metadata and clip length as one
+media differs. Replacement updates the track's media metadata as one
 undoable transaction. A matching file at a new native path updates the path as an undoable edit.
 Cancellation or failure leaves the document, bindings
-and history unchanged. Clip range changes must be disclosed, never silently
-truncated.
+and history unchanged.
 
 `.wos` import maps only the fields it can represent. Importing settings into
 loaded audio preserves the actual media. Starting a project from WOS creates

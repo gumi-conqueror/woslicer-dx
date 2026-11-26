@@ -19,7 +19,7 @@ it('rejects fractional WOS gate, then saves exact original format and resets und
   expect(f.editor.canUndo).toBe(false);
   expect(f.editor.ticks).toEqual([5]);
   expect(f.editor.canRedo).toBe(false);
-  expect(f.editor.document.media).toEqual([]);
+  expect(f.editor.document.tracks[0].media).toBeNull();
   expect(f.editor.document.tracks).toHaveLength(1);
-  expect(f.editor.document.tracks[0]?.clips).toEqual([]);
+  expect(f.editor.document.tracks[0]?.media).toBeNull();
 });

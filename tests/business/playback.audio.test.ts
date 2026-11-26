@@ -338,35 +338,22 @@ describe('Pinia playback lifetime and audio clock', () => {
   it('routes master gain through project global state with mute winning and an independent cue route', () => {
     const { editor, context } = fixture();
     editor.transact((draft) => {
-      draft.media = [
-        {
-          mediaId: 'm1',
-          name: 'a.wav',
-          format: 'wav',
-          byteLength: 1000,
-          sampleRateHz: 48000,
-          channels: 1,
-          framesPerChannel: 48000,
-          integrity: null,
-          originHint: null,
-        },
-      ];
       const track = draft.tracks[0];
       if (!track) throw new Error('Missing track');
-      track.clips = [
-        {
-          clipId: 'c1',
-          mediaId: 'm1',
-          timelineStartSeconds: 0,
-          sourceOffsetFrames: 0,
-          frameCount: 48000,
-        },
-      ];
+      track.media = {
+        mediaId: 'm1',
+        name: 'a.wav',
+        format: 'wav',
+        byteLength: 1000,
+        sampleRateHz: 48000,
+        channels: 1,
+        framesPerChannel: 48000,
+        integrity: null,
+        originHint: null,
+      };
       draft.global.masterGainDb = -20;
       draft.global.cueGainDb = -12;
     });
-    // Non-neutral track playback opens limited, so the live route is the global bus;
-    // the track projection stays reserved for the multi-track schema.
     const master = required(context.gains[0]);
     expect(master.gain.value).toBeCloseTo(Math.pow(10, -20 / 20), 12);
     editor.transact((draft) => {

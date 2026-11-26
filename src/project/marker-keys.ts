@@ -1,6 +1,6 @@
 import type { MarkerKey, ProjectDocument } from './schema';
 
-export type MarkerKeys = NonNullable<ProjectDocument['slicing']['markerKeys']>;
+export type MarkerKeys = NonNullable<ProjectDocument['tracks'][number]['slicing']['markerKeys']>;
 
 /** Keep attributes attached through edits, merging chords when markers meet. */
 export function remapMarkerKeys(

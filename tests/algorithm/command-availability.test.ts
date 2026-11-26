@@ -7,58 +7,46 @@ import {
 } from '../../src/app/menu';
 import { APP_COMMANDS } from '../../src/app/command-types';
 
+const document = (media: unknown) =>
+  ({ tracks: [{ media }] }) as unknown as MenuEditorState['document'];
 const state = (overrides: Partial<MenuEditorState> = {}): MenuEditorState => ({
-  document: { media: [], tracks: [] } as unknown as MenuEditorState['document'],
+  document: document(null),
   source: null,
   ticks: [],
   selectedTicks: [],
   canUndo: false,
   canRedo: false,
-  limited: false,
   ...overrides,
 });
 const withSource = state({
   source: { name: 'a' } as unknown as MenuEditorState['source'],
   ticks: [12],
 });
-const limited = state({
-  limited: true,
-  ticks: [12],
-  selectedTicks: [12],
-  document: { media: [{}] } as unknown as MenuEditorState['document'],
-});
+const busy = state({ ticks: [12], selectedTicks: [12], document: document({}) });
 
 const table: ReadonlyArray<readonly [MenuCommand, MenuEditorState, boolean]> = [
   // Always available: project replacement, explicit save, close, view helpers.
   ['open-project', state(), true],
-  ['new-project-wos', limited, true],
-  ['save-project', limited, true],
-  ['close-project', limited, true],
-  ['zoom-in', limited, true],
-  ['zoom-out', limited, true],
-  ['about', limited, true],
-  ['help', limited, true],
-  ['troubleshoot', limited, true],
-  ['open-data-folder', limited, true],
+  ['new-project-wos', busy, true],
+  ['save-project', busy, true],
+  ['close-project', busy, true],
+  ['zoom-in', busy, true],
+  ['zoom-out', busy, true],
+  ['about', busy, true],
+  ['help', busy, true],
+  ['troubleshoot', busy, true],
+  ['open-data-folder', busy, true],
   ['connect-yuancon', state(), true],
   ['toggle-recording', state(), false],
   ['toggle-recording', withSource, true],
-  ['toggle-recording', state({ ...withSource, limited: true }), false],
   ['calibrate', state(), false],
   ['calibrate', withSource, true],
-  // Content and WOS transfer refuse read-only projects.
-  ['open-audio', limited, false],
-  ['open-audio', withSource, true],
-  ['import-wos', limited, false],
-  ['export-wos', limited, false],
-  // Relink needs media and an editable project.
+  ['open-audio', state(), true],
+  ['import-wos', state(), true],
+  ['export-wos', state(), true],
+  // Relink needs audio on the track.
   ['relink-audio', state(), false],
-  ['relink-audio', limited, false],
-  [
-    'relink-audio',
-    state({ document: { media: [{}] } as unknown as MenuEditorState['document'] }),
-    true,
-  ],
+  ['relink-audio', busy, true],
   // Exports need a decoded source and at least one cut.
   ['export-slice', state(), false],
   ['export-slice', state({ source: { name: 'a' } as unknown as MenuEditorState['source'] }), false],
@@ -68,15 +56,14 @@ const table: ReadonlyArray<readonly [MenuCommand, MenuEditorState, boolean]> = [
   ['undo', state({ canUndo: true }), true],
   ['undo', withSource, false],
   ['redo', state({ canRedo: true }), true],
-  // Selection helpers need markers; destructive ones refuse read-only projects.
+  // Selection helpers need markers.
   ['select-all', withSource, true],
   ['select-all', state(), false],
   ['select-copy', withSource, true],
   ['clear-markers', withSource, true],
-  ['clear-markers', limited, false],
+  ['clear-markers', state(), false],
   ['select-cut', state({ ticks: [12], selectedTicks: [12] }), true],
-  ['select-cut', limited, false],
-  ['select-paste', limited, false],
+  ['select-cut', state(), false],
   ['select-paste', state(), true],
 ];
 

@@ -107,11 +107,6 @@ export function createTimelineGestures(editor: EditorStore) {
   }
   function begin(point: TimelinePointer): void {
     cancel();
-    // Panning stays available for read-only inspection; every editing gesture is refused.
-    if (point.button !== 1 && editor.limited) {
-      editor.setStatus('limitedReadOnly', true);
-      return;
-    }
     if (point.button === 1) {
       gesture = { kind: 'pan', anchorX: point.x, scroll: editor.scrollTick };
       cursor.value = 'grabbing';

@@ -1,10 +1,10 @@
 import { inject, provide, readonly, shallowRef, type InjectionKey } from 'vue';
 import { errorMessage } from '../core/messages';
 import {
+  currentTrack,
   decodeProject,
   encodeProject,
   parseProject,
-  projectCapability,
   projectFromWos,
   projectToWos,
 } from '../project/codec';
@@ -15,6 +15,7 @@ import {
   projectFileName,
   projectWithAudio,
   matchesProjectAudio,
+  relinkMedia,
 } from './project-media';
 import { readWos, writeWos } from '@gumi-conqueror/wos-file';
 import { buildBmseClipboard, parseBmseClipboard } from '../core/formats/bmse';
@@ -54,8 +55,6 @@ export function createWorkspace(options: WorkspaceOptions) {
     disposed = false,
     sessionClosed = false;
   let recoveryBlock: RecoveryBlock | null = null;
-  // Read-only owner of a limited project's original bytes; null when nothing is preserved.
-  let limitedFile: { name: string; sourceBytes: Uint8Array } | null = null;
   let engine: AudioEngine | null = null;
   let pendingEngine: AudioEngine | null = null;
   let opening = 0;
@@ -112,13 +111,8 @@ export function createWorkspace(options: WorkspaceOptions) {
     persistence.resume();
     return true;
   }
-  function requireEditable(): boolean {
-    if (!editor.limited) return true;
-    editor.setStatus('limitedReadOnly', true);
-    return false;
-  }
+
   async function loadAudio(file: OpenedFile, preserveBaseName = false): Promise<void> {
-    if (!requireEditable()) return;
     if (resetPending) await resetPending;
     if (disposed) return;
     sessionClosed = false;
@@ -160,27 +154,10 @@ export function createWorkspace(options: WorkspaceOptions) {
           file.absolutePath !== undefined &&
           (expected.originHint?.kind !== 'desktop' ||
             expected.originHint.pathHint !== file.absolutePath);
-        if (different || pathChanged) {
-          editor.transact((draft) => {
-            const media = draft.media.find((item) => item.mediaId === expected.mediaId);
-            if (media) {
-              media.originHint = file.absolutePath
-                ? { kind: 'desktop', pathHint: file.absolutePath }
-                : null;
-            }
-            if (media && different) {
-              media.name = file.name;
-              media.format = identity.format;
-              media.byteLength = identity.byteLength;
-              media.sampleRateHz = result.source.sampleRate;
-              media.channels = result.source.channels;
-              media.framesPerChannel = result.source.length;
-              media.integrity = identity.integrity;
-            }
-            const clip = draft.tracks[0]?.clips.find((item) => item.mediaId === expected.mediaId);
-            if (clip && different) clip.frameCount = result.source.length;
-          });
-        }
+        if (different || pathChanged)
+          editor.transact((draft) =>
+            relinkMedia(currentTrack(draft), file, identity, result, different),
+          );
       }
       const next = expected
         ? null
@@ -219,7 +196,6 @@ export function createWorkspace(options: WorkspaceOptions) {
     }
   }
   async function openAudio(): Promise<void> {
-    if (!requireEditable()) return;
     if (recoveryBlock && !(await releaseRecoveryBlock())) return;
     const version = generation,
       documentGeneration = editor.documentGeneration,
@@ -242,7 +218,6 @@ export function createWorkspace(options: WorkspaceOptions) {
     }
   }
   async function relinkAudio(): Promise<void> {
-    if (!requireEditable()) return;
     if (!activeMedia(editor.document)) return;
     const documentGeneration = editor.documentGeneration,
       request = beginOpening({ stage: 'opening', name: activeMedia(editor.document)?.name });
@@ -266,21 +241,16 @@ export function createWorkspace(options: WorkspaceOptions) {
     const parsed = decodeProject(file.bytes);
     if (parsed.kind === 'unsupported-version')
       throw new Error(`Unsupported project version: ${parsed.version}`);
-    // Complex legal layouts open read-only; the untouched file bytes remain the save source.
-    const limited = parsed.capability.kind === 'unsupported-arrangement';
     invalidate();
     sessionClosed = false;
     persistence.resume();
-    limitedFile = limited ? { name: file.name, sourceBytes: parsed.sourceBytes } : null;
-    editor.setLimited(limited);
     editor.setLastFile(null);
     editor.replaceDocument(parsed.project);
     actions.reset();
     editor.setSource(null);
     editor.setPhase({ kind: 'empty' });
     const media = activeMedia(editor.document);
-    if (limited) editor.setStatus('projectLimitedOpen', { name: file.name });
-    else if (parsed.unknownFields.length)
+    if (parsed.unknownFields.length)
       editor.setStatus([
         {
           key: media ? 'projectMediaMissing' : 'projectOpened',
@@ -292,7 +262,7 @@ export function createWorkspace(options: WorkspaceOptions) {
       editor.setStatus(media ? 'projectMediaMissing' : 'projectOpened', {
         name: media?.name ?? file.name,
       });
-    if (!limited && media && file.reference && media.originHint?.kind === 'desktop') {
+    if (media && file.reference && media.originHint?.kind === 'desktop') {
       const request = beginOpening({ stage: 'reading', name: media.name, mediaId: media.mediaId }),
         documentGeneration = editor.documentGeneration;
       try {
@@ -331,22 +301,6 @@ export function createWorkspace(options: WorkspaceOptions) {
   }
   async function saveProject(): Promise<void> {
     const version = generation;
-    if (editor.limited) {
-      // The document cannot change: saving writes the opened file's bytes unchanged.
-      if (!limitedFile) {
-        editor.setStatus('limitedSaveUnavailable', true);
-        return;
-      }
-      try {
-        const name = projectFileName(editor.document.name);
-        if ((await platform.saveFile('wosdx', name, limitedFile.sourceBytes)) && !disposed)
-          editor.setStatus('projectSaved', { name });
-      } catch (error) {
-        if (!disposed && version === generation)
-          editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
-      }
-      return;
-    }
     const revision = editor.docRevision,
       projectId = editor.document.projectId;
     try {
@@ -369,7 +323,6 @@ export function createWorkspace(options: WorkspaceOptions) {
   async function openDroppedFile(file: File): Promise<void> {
     if (recoveryBlock && !(await releaseRecoveryBlock())) return;
     const project = /\.wosdx$/i.test(file.name);
-    if (!project && !requireEditable()) return;
     const request = beginOpening({ stage: 'reading', name: file.name }),
       revision = editor.docRevision,
       documentGeneration = editor.documentGeneration;
@@ -418,20 +371,20 @@ export function createWorkspace(options: WorkspaceOptions) {
   }
   /** Imports timing and cuts into the current project in one undo step, keeping its identity and media. */
   async function importWosSettings(): Promise<void> {
-    if (!requireEditable()) return;
     const revision = editor.docRevision;
     try {
       const file = await platform.openFile('wos');
       if (!file || disposed || revision !== editor.docRevision) return;
       const data = readWos(file.bytes);
       const wos = projectFromWos(data, file.name);
+      const imported = currentTrack(wos).slicing;
       editor.transact((draft) => {
-        draft.timing.bpm = wos.timing.bpm;
-        draft.timing.shiftTicks = wos.timing.shiftTicks;
-        draft.slicing.fadeoutMs = wos.slicing.fadeoutMs;
-        draft.slicing.noisegateDb = wos.slicing.noisegateDb;
-        draft.slicing.markers = wos.slicing.markers;
-        delete draft.slicing.markerKeys;
+        draft.timing = { ...wos.timing };
+        const { slicing } = currentTrack(draft);
+        slicing.fadeoutMs = imported.fadeoutMs;
+        slicing.noisegateDb = imported.noisegateDb;
+        slicing.markers = imported.markers;
+        delete slicing.markerKeys;
       });
       editor.setStatus('importedWosSettings', {
         file: file.name,
@@ -444,7 +397,6 @@ export function createWorkspace(options: WorkspaceOptions) {
   }
   /** Replaces the whole workspace with a fresh project that only carries the WOS timing. */
   async function newProjectFromWos(): Promise<void> {
-    if (!requireEditable()) return;
     if (recoveryBlock && !(await releaseRecoveryBlock())) return;
     if (resetPending) await resetPending;
     if (disposed) return;
@@ -457,8 +409,6 @@ export function createWorkspace(options: WorkspaceOptions) {
       const project = projectFromWos(data, file.name);
       beginOpening();
       invalidate();
-      limitedFile = null;
-      editor.setLimited(false);
       editor.setLastFile(null);
       editor.replaceDocument(project);
       actions.reset();
@@ -471,7 +421,6 @@ export function createWorkspace(options: WorkspaceOptions) {
     }
   }
   async function saveWos(): Promise<void> {
-    if (!requireEditable()) return;
     const version = generation;
     try {
       const bytes = writeWos(projectToWos(editor.document));
@@ -504,7 +453,6 @@ export function createWorkspace(options: WorkspaceOptions) {
     }
   }
   async function bmseIn(): Promise<void> {
-    if (!requireEditable()) return;
     const version = generation;
     try {
       const parsed = parseBmseClipboard(await platform.readClipboard());
@@ -540,12 +488,6 @@ export function createWorkspace(options: WorkspaceOptions) {
       if (outcome.kind === 'restored') {
         restoreEditorSession(editor, outcome.session);
         actions.reset();
-        if (projectCapability(editor.document).kind === 'unsupported-arrangement') {
-          // Restored complex layouts keep read-only protection; the original bytes are not in the archive.
-          editor.setLimited(true);
-          editor.setStatus('sessionRestoredLimited', true);
-          return;
-        }
         if (outcome.session.lastFile) await reopen(outcome.session.lastFile.reference, true);
         return;
       }
@@ -574,7 +516,6 @@ export function createWorkspace(options: WorkspaceOptions) {
     if (resetPending) return resetPending;
     sessionClosed = true;
     recoveryBlock = null;
-    limitedFile = null;
     persistence.pause();
     invalidate();
     actions.reset();

@@ -199,7 +199,7 @@ function makeDirty(): void {
   const editor = useEditorStore(pinia);
   // The default document already has the gate enabled; a same-value write is a
   // no-op transaction, so flip the current value to make the edit count.
-  editor.setNoisegateEnabled(!editor.document.slicing.noisegateEnabled);
+  editor.setNoisegateEnabled(!editor.document.tracks[0].slicing.noisegateEnabled);
 }
 
 function deferredConfirm(): {

@@ -1,4 +1,4 @@
-import { parseProject } from '../project/codec';
+import { currentTrack, parseProject } from '../project/codec';
 import type { ProjectDocument } from '../project/schema';
 import { MAX_TICKS, MEASURE_TICKS } from '../core/timebase';
 import type { BandName } from '../core/bands';
@@ -47,7 +47,9 @@ const SAVED_STATE = {
       Array.isArray(value)
         ? value
             .map((item: unknown) => tick(item, project))
-            .filter((item) => item !== undefined && project.slicing.markers.includes(item))
+            .filter(
+              (item) => item !== undefined && currentTrack(project).slicing.markers.includes(item),
+            )
         : undefined,
     scrollTick: numberIn(0, MAX_TICKS),
     pxPerTick: numberIn(0.02, 1e9),

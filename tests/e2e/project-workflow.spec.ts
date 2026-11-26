@@ -146,8 +146,8 @@ test('opens, saves and relinks a project at native browser scale', async ({ page
   const parsed = decodeProject(bytes);
   expect(parsed.kind).toBe('supported');
   if (parsed.kind !== 'supported') throw new Error('Unexpected project version');
-  expect(parsed.project.slicing.markers).toEqual([0, 24]);
-  expect(parsed.project.media[0]?.integrity?.digest).toMatch(/^[0-9a-f]{64}$/);
+  expect(parsed.project.tracks[0].slicing.markers).toEqual([0, 24]);
+  expect(parsed.project.tracks[0].media?.integrity?.digest).toMatch(/^[0-9a-f]{64}$/);
   await expect(page.getByLabel('Unsaved changes', { exact: true })).toHaveCount(0);
   await pick(page, 'Open .wosdx…', 'tone.wosdx', bytes);
   await expect(page.locator('.source-info')).toContainText('Audio unavailable: tone.wav');

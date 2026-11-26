@@ -2,7 +2,8 @@
 
 woslicer-dx edits audio markers and exports WAV slices for BMS charts.
 The browser and Tauri desktop application share the Vue interface, project model and audio Worker.
-The editor supports one full-source audio track. The project format can preserve additional layouts in read-only mode.
+The editor edits projects with one track; the project format already stores markers and output settings per track.
+`currentTrack` in `src/project/codec.ts` is the one place that picks the edited track.
 See [Project format](PROJECT_FORMAT.md) for that compatibility boundary.
 
 ## Source map

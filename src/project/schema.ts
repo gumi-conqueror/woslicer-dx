@@ -4,7 +4,7 @@ import { bmhelperDocumentSchema } from './bmhelper';
 import { audioFileFormatSchema } from '../core/audio-formats';
 
 export const PROJECT_FORMAT = 'wosdx' as const;
-export const PROJECT_SCHEMA_VERSION = 1 as const;
+export const PROJECT_SCHEMA_VERSION = 2 as const;
 // Application memory budgets, not requirements of the original binary formats.
 // The native host repeats them in src-tauri/src/files.rs and session.rs;
 // scripts/native-consistency.test.mjs checks that the values agree.
@@ -19,7 +19,6 @@ export function byteLimitText(bytes: number): string {
 }
 export const PROJECT_MAX_MEDIA = 256;
 export const PROJECT_MAX_TRACKS = 256;
-export const PROJECT_MAX_CLIPS = 100_000;
 export const PROJECT_MAX_MARKERS = 49_152;
 export const PROJECT_MAX_FRAMES = 2_000_000_000;
 export const PROJECT_MAX_GAIN_DB = 12;
@@ -88,7 +87,7 @@ const originHintSchema = z.discriminatedUnion('kind', [
     lastModified: integer(0, Number.MAX_SAFE_INTEGER).optional(),
   }),
 ]);
-// v1 recognizes either origin variant's keys, even when inactive.
+// Both origin variants' keys are recognized, even when inactive.
 export const originHintKeys = new Set(
   originHintSchema.options.flatMap((option) => Object.keys(option.shape)),
 );
@@ -112,13 +111,34 @@ const mediaSchema = z.object({
     .nullable(),
   originHint: originHintSchema.nullable(),
 });
-const clipSchema = z.object({
-  clipId: text(128),
-  mediaId: text(128),
-  timelineStartSeconds: z.number().min(0).max(1e9),
-  sourceOffsetFrames: integer(0, PROJECT_MAX_FRAMES),
-  frameCount: integer(0, PROJECT_MAX_FRAMES),
+const slicingSchema = z.object({
+  fadeoutMs: integer(FIELD_RANGES.fadeoutMs.min, FIELD_RANGES.fadeoutMs.max),
+  noisegateDb: ranged(FIELD_RANGES.noisegateDb),
+  noisegateEnabled: z.boolean(),
+  markers: z.array(integer(0, MAX_TICKS - 1)).max(PROJECT_MAX_MARKERS),
+  markerKeys: z
+    .array(
+      z.object({
+        tick: integer(0, MAX_TICKS - 1),
+        keys: z.array(markerKeySchema).min(1).max(7),
+      }),
+    )
+    .max(PROJECT_MAX_MARKERS)
+    .optional(),
+  bandDetection: z.object({
+    bands: z.object({ low: z.boolean(), mid: z.boolean(), high: z.boolean() }),
+    thresholdDb: z.number().min(0).max(120),
+    minGapUnits: z.number().min(0).max(192),
+    snap: z.boolean(),
+  }),
 });
+const outputSchema = z.object({
+  baseName: text(240, 0),
+  clipStartNumber: integer(FIELD_RANGES.clipStartNumber.min, FIELD_RANGES.clipStartNumber.max),
+  useFfNumbering: z.boolean(),
+});
+
+/** One track: a complete source file with its own markers and output settings. */
 const trackSchema = z.object({
   trackId: text(128),
   name: text(512),
@@ -133,10 +153,14 @@ const trackSchema = z.object({
       .nullable()
       .transform(() => 'reserved' as const),
   }),
-  clips: z.array(clipSchema).max(PROJECT_MAX_CLIPS),
+  /** One complete source file, or null before audio is chosen. */
+  media: mediaSchema.nullable(),
+  slicing: slicingSchema,
+  output: outputSchema,
 });
 
-export const projectV1Schema = z.object({
+/** All tracks share the time base, the global playback settings and the BMHelper data. */
+export const projectSchema = z.object({
   format: z.literal(PROJECT_FORMAT),
   schemaVersion: z.literal(PROJECT_SCHEMA_VERSION),
   projectId: text(128),
@@ -144,32 +168,6 @@ export const projectV1Schema = z.object({
   timing: z.object({
     bpm: ranged(FIELD_RANGES.bpm),
     shiftTicks: ranged(FIELD_RANGES.shiftTicks),
-  }),
-  slicing: z.object({
-    fadeoutMs: integer(FIELD_RANGES.fadeoutMs.min, FIELD_RANGES.fadeoutMs.max),
-    noisegateDb: ranged(FIELD_RANGES.noisegateDb),
-    noisegateEnabled: z.boolean(),
-    markers: z.array(integer(0, MAX_TICKS - 1)).max(PROJECT_MAX_MARKERS),
-    markerKeys: z
-      .array(
-        z.object({
-          tick: integer(0, MAX_TICKS - 1),
-          keys: z.array(markerKeySchema).min(1).max(7),
-        }),
-      )
-      .max(PROJECT_MAX_MARKERS)
-      .optional(),
-    bandDetection: z.object({
-      bands: z.object({ low: z.boolean(), mid: z.boolean(), high: z.boolean() }),
-      thresholdDb: z.number().min(0).max(120),
-      minGapUnits: z.number().min(0).max(192),
-      snap: z.boolean(),
-    }),
-  }),
-  output: z.object({
-    baseName: text(240, 0),
-    clipStartNumber: integer(FIELD_RANGES.clipStartNumber.min, FIELD_RANGES.clipStartNumber.max),
-    useFfNumbering: z.boolean(),
   }),
   global: z.object({
     masterGainDb: gain,
@@ -179,34 +177,23 @@ export const projectV1Schema = z.object({
     playbackRate: ranged(FIELD_RANGES.playbackRate),
     views: z.object({ rms: z.boolean(), bands: z.boolean(), spectrum: z.literal('reserved') }),
   }),
-  media: z.array(mediaSchema).max(PROJECT_MAX_MEDIA),
   tracks: z.array(trackSchema).min(1).max(PROJECT_MAX_TRACKS),
   bmhelper: bmhelperDocumentSchema.nullable(),
 });
 
-export type ProjectFileV1 = z.infer<typeof projectV1Schema>;
-export type MediaAsset = ProjectFileV1['media'][number];
-export type OutputRecipe = ProjectFileV1['output'];
+export type ProjectFile = z.infer<typeof projectSchema>;
+export type ProjectTrack = ProjectFile['tracks'][number];
+export type MediaAsset = NonNullable<ProjectTrack['media']>;
+export type SlicingSettings = ProjectTrack['slicing'];
+export type OutputRecipe = ProjectTrack['output'];
 
 type Immutable<T> = { readonly [K in keyof T]: Immutable<T[K]> };
-export type ProjectDocument = Immutable<ProjectFileV1>;
-
-export type ProjectCapability =
-  | { kind: 'empty' }
-  | { kind: 'single-track'; trackId: string; clipId: string; mediaId: string }
-  | { kind: 'unsupported-arrangement'; trackCount: number; clipCount: number };
+export type ProjectDocument = Immutable<ProjectFile>;
 
 export type ProjectParseResult =
   | {
       kind: 'supported';
-      project: ProjectFileV1;
-      capability: ProjectCapability;
+      project: ProjectFile;
       unknownFields: readonly string[];
     }
   | { kind: 'unsupported-version'; version: number; raw: unknown };
-
-/** File bytes are separate from the normalized document and never enter edit history. */
-export type ProjectDecodeResult = ProjectParseResult & {
-  /** Owned copy of the input view, for unchanged-file preservation only. */
-  readonly sourceBytes: Uint8Array;
-};

@@ -320,10 +320,6 @@
     "sessionRecoverInvalid": "Recovery data is damaged. Original data kept. Saving recovery data is paused.",
     "sessionRecoverFuture": "Recovery data requires a newer version ({version}). Original data kept. Saving recovery data is paused.",
     "sessionRecoverReadFailed": "Could not read recovery data: {message}",
-    "projectLimitedOpen": "Limited project: {name}. This multi-track layout is read-only. Editing and playback are disabled. Saving preserves the original file.",
-    "limitedReadOnly": "Read-only project: editing, playback and WOS transfer are disabled",
-    "limitedSaveUnavailable": "Cannot save this recovered project. Open the original file to save it.",
-    "sessionRestoredLimited": "Restored a read-only multi-track project. Open the original file to save it. Editing remains disabled.",
     "importedWosSettings": "Imported .wos settings: {file} (BPM {bpm}, shift {shift}). Undo in one step.",
     "projectUnknownFields": "Unsupported fields: {count}. Saving keeps only supported project data."
   },

@@ -7,9 +7,9 @@ it('commits parameters, output recipe and cuts as one operation and leaves no-op
   const revision = editor.docRevision;
   editor.transact((draft) => {
     draft.timing.bpm = 160;
-    draft.slicing.markers = [24, 48];
-    draft.slicing.noisegateEnabled = false;
-    draft.output.baseName = 'recording';
+    draft.tracks[0].slicing.markers = [24, 48];
+    draft.tracks[0].slicing.noisegateEnabled = false;
+    draft.tracks[0].output.baseName = 'recording';
   });
   expect(editor.docRevision).toBe(revision + 1);
   expect(editor.doc.bpm).toBe(160);

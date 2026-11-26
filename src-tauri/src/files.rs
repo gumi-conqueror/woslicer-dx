@@ -19,6 +19,8 @@ const MAX_FILE_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 // Keep aligned with PROJECT_FILE_MAX_BYTES in src/project/schema.ts.
 // Memory budget for UTF-8 project JSON, including structured BMHelper data.
 pub(crate) const MAX_PROJECT_BYTES: u64 = 64 * 1024 * 1024;
+/// Current `.wosdx` schema version; `PROJECT_SCHEMA_VERSION` in src/project/schema.ts owns it.
+const PROJECT_SCHEMA_VERSION: u64 = 2;
 const MAX_REFERENCES: usize = 1024;
 const MAX_OPEN_READERS: usize = 64;
 
@@ -166,15 +168,29 @@ impl HostFiles {
             return Err("project exceeds 64 MiB".into());
         }
         let value: serde_json::Value = serde_json::from_slice(&bytes).map_err(message)?;
-        if value["format"] != "wosdx" || value["schemaVersion"] != 1 {
+        // Version 1 lists media at the project level; version 2 keeps one per track.
+        // The app upgrades version 1 files only when it saves them.
+        let version = value["schemaVersion"].as_u64();
+        if value["format"] != "wosdx" || !matches!(version, Some(1) | Some(PROJECT_SCHEMA_VERSION))
+        {
             return Err("unsupported project format".into());
         }
-        let media = value["media"].as_array().ok_or("missing project media")?;
+        let media: Vec<&serde_json::Value> = if version == Some(1) {
+            let media = value["media"].as_array().ok_or("missing project media")?;
+            media.iter().collect()
+        } else {
+            let tracks = value["tracks"].as_array().ok_or("missing project tracks")?;
+            tracks
+                .iter()
+                .map(|track| &track["media"])
+                .filter(|asset| !asset.is_null())
+                .collect()
+        };
         if media.len() > 256 {
             return Err("too many project media entries".into());
         }
         let mut matches = media
-            .iter()
+            .into_iter()
             .filter(|asset| asset["mediaId"].as_str() == Some(media_id));
         let asset = matches
             .next()

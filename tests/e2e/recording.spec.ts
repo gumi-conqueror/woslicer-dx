@@ -238,23 +238,17 @@ test('records with keyboard, Xbox and YuanCon while preserving menus and playbac
   if (!downloadPath) throw new Error('Expected saved project');
   const saved = decodeProject(new Uint8Array(await readFile(downloadPath)));
   if (saved.kind !== 'supported') throw new Error('Expected supported project');
-  expect(saved.project.slicing.markerKeys?.slice(0, 7).map((entry) => entry.keys)).toEqual([
-    [1],
-    [2],
-    [3],
-    [4],
-    [5],
-    [6],
-    [7],
-  ]);
-  expect(saved.project.slicing.markerKeys?.map((entry) => entry.keys)).toEqual(
+  expect(
+    saved.project.tracks[0].slicing.markerKeys?.slice(0, 7).map((entry) => entry.keys),
+  ).toEqual([[1], [2], [3], [4], [5], [6], [7]]);
+  expect(saved.project.tracks[0].slicing.markerKeys?.map((entry) => entry.keys)).toEqual(
     expect.arrayContaining([
       [1, 3, 5],
       [4, 5, 6, 7],
       [1, 3, 5, 7],
     ]),
   );
-  expect(saved.project.slicing.markerKeys).toHaveLength(count);
+  expect(saved.project.tracks[0].slicing.markerKeys).toHaveLength(count);
   await page.keyboard.press('F1');
   const guide = page.getByRole('dialog', { name: 'User guide and shortcuts', exact: true });
   await guide.getByRole('button', { name: 'Xbox controller', exact: true }).click();

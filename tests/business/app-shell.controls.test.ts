@@ -149,23 +149,6 @@ describe('application controls', () => {
       await nextTick();
       expect(disabled('open-audio')).toBe(false);
       expect(disabled('clear-markers')).toBe(false);
-      instance.editor.setLimited(true);
-      await nextTick();
-      for (const command of [
-        'open-audio',
-        'import-wos',
-        'export-wos',
-        'clear-markers',
-        'select-cut',
-        'select-paste',
-      ]) {
-        expect(disabled(command)).toBe(true);
-      }
-      for (const command of ['save-project', 'open-project', 'about']) {
-        expect(disabled(command)).toBe(false);
-      }
-      instance.editor.setLimited(false);
-      await nextTick();
       expect(disabled('open-audio')).toBe(false);
       await wrapper.get('[data-command="save-project"]').trigger('click');
       expect(wrapper.emitted('command')).toEqual([['save-project']]);

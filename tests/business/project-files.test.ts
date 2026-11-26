@@ -19,8 +19,11 @@ describe('portable project workflow', () => {
     restored.opened = { ...saved, reference: 'project-grant' };
     const resolve = vi.spyOn(restored.platform, 'openProjectMedia').mockResolvedValue(file);
     await restored.workspace.openProject();
-    expect(resolve).toHaveBeenCalledWith('project-grant', f.editor.document.media[0]?.mediaId);
-    expect(restored.editor.document.media[0]?.originHint).toEqual({
+    expect(resolve).toHaveBeenCalledWith(
+      'project-grant',
+      f.editor.document.tracks[0].media.mediaId,
+    );
+    expect(restored.editor.document.tracks[0].media.originHint).toEqual({
       kind: 'desktop',
       pathHint: file.absolutePath,
     });
@@ -40,13 +43,13 @@ describe('portable project workflow', () => {
     await f.workspace.saveProject();
     f.opened = { ...audioFile(), absolutePath: 'D:\\New\\tone.wav' };
     await f.workspace.relinkAudio();
-    expect(f.editor.document.media[0]?.originHint).toEqual({
+    expect(f.editor.document.tracks[0].media.originHint).toEqual({
       kind: 'desktop',
       pathHint: 'D:\\New\\tone.wav',
     });
     expect(f.editor.isDirty).toBe(true);
     f.workspace.actions.undo();
-    expect(f.editor.document.media[0]?.originHint).toEqual({
+    expect(f.editor.document.tracks[0].media.originHint).toEqual({
       kind: 'desktop',
       pathHint: 'C:\\Old\\tone.wav',
     });
@@ -56,7 +59,7 @@ describe('portable project workflow', () => {
     const file = audioFile();
     await f.workspace.loadAudio(file);
     f.editor.setTicks([0, 24]);
-    expect(f.editor.document.media[0]).toMatchObject({
+    expect(f.editor.document.tracks[0].media).toMatchObject({
       name: 'tone.wav',
       sampleRateHz: 48000,
       framesPerChannel: 48000,
@@ -117,24 +120,22 @@ describe('portable project workflow', () => {
     const f = setup();
     await f.workspace.loadAudio(audioFile());
     f.confirmOptions.confirmRelinkDifference = () => Promise.resolve(true);
-    const media = f.editor.document.media[0],
-      clip = f.editor.document.tracks[0]?.clips[0];
-    if (!media || !clip) throw new Error('Expected media and clip');
+    const media = f.editor.document.tracks[0].media;
+    if (!media) throw new Error('Expected media');
     const other = audioFile('other.wav', 24000);
     f.opened = other;
     await f.workspace.relinkAudio();
     expect(f.editor.source?.name).toBe('other');
-    const updated = f.editor.document.media[0];
+    const updated = f.editor.document.tracks[0].media;
     expect(updated?.mediaId).toBe(media.mediaId);
     expect(updated?.name).toBe('other.wav');
     expect(updated?.framesPerChannel).toBe(24000);
     expect(updated?.integrity).not.toEqual(media.integrity);
-    expect(f.editor.document.tracks[0]?.clips[0]?.frameCount).toBe(24000);
+    expect(updated?.framesPerChannel).toBe(24000);
     expect(f.editor.isDirty).toBe(true);
     expect(f.editor.canUndo).toBe(true);
     f.workspace.actions.undo();
-    expect(f.editor.document.media[0]).toEqual(media);
-    expect(f.editor.document.tracks[0]?.clips[0]).toEqual(clip);
+    expect(f.editor.document.tracks[0].media).toEqual(media);
   });
   it('keeps the current audio when a relink difference is declined', async () => {
     const f = setup();
@@ -151,7 +152,7 @@ describe('portable project workflow', () => {
     expect(f.editor.document).toBe(document);
     expect(f.editor.canUndo).toBe(false);
   });
-  it('opens an empty project, rejects future versions, and opens complex arrangements read-only', async () => {
+  it('opens an empty project and rejects future versions and multi-track projects', async () => {
     const f = setup();
     const project = createEmptyProject('portable', 'Empty');
     f.opened = { name: 'empty.wosdx', reference: null, bytes: encodeProject(project) };
@@ -169,18 +170,18 @@ describe('portable project workflow', () => {
     expect(f.editor.isError).toBe(true);
     const track = project.tracks[0];
     if (!track) throw new Error('Missing track');
-    project.tracks.push({ ...track, trackId: 'second' });
-    f.opened = { name: 'multi.wosdx', reference: null, bytes: encodeProject(project) };
+    f.opened = {
+      name: 'multi.wosdx',
+      reference: null,
+      bytes: new TextEncoder().encode(
+        JSON.stringify({ ...project, tracks: [track, { ...track, trackId: 'second' }] }),
+      ),
+    };
     await f.workspace.openProject();
-    expect(f.editor.limited).toBe(true);
-    expect(f.editor.document.tracks).toHaveLength(2);
-    expect(f.editor.status.segments.some((segment) => segment.key === 'projectLimitedOpen')).toBe(
-      true,
-    );
-    expect(f.editor.canUndo).toBe(false);
-    expect(() => f.editor.setTicks([12])).toThrow();
-    expect(f.workspace.actions.undo()).toBe(false);
+    expect(f.editor.document).toBe(original);
+    expect(f.editor.status.segments[0]?.params?.message).toMatch(/2 tracks/);
   });
+
   it('persists playback properties in the saved project and restores them', async () => {
     const f = setup();
     await f.workspace.loadAudio(audioFile());
@@ -220,7 +221,6 @@ describe('portable project workflow', () => {
     );
     f.opened = { name: 'odd.wosdx', reference: null, bytes };
     await f.workspace.openProject();
-    expect(f.editor.limited).toBe(false);
     expect(f.editor.status.segments.map((segment) => segment.key)).toEqual([
       'projectOpened',
       'projectUnknownFields',
@@ -232,74 +232,6 @@ describe('portable project workflow', () => {
     expect(new TextDecoder().decode(saved.bytes)).not.toContain('legacyHint');
     const parsed = decodeProject(saved.bytes);
     expect(parsed.kind === 'supported' && parsed.unknownFields).toEqual([]);
-  });
-  it('saves a limited project byte-identically and refuses content operations until replaced', async () => {
-    const f = setup();
-    const project = createEmptyProject('multi', 'Complex');
-    const track = project.tracks[0];
-    if (!track) throw new Error('Missing track');
-    project.tracks.push({ ...track, trackId: 'second' });
-    // Whitespace and an unknown field prove the saved bytes keep the original file content.
-    const original = new TextEncoder().encode(
-      JSON.stringify({ ...project, unknownField: { nested: true } }, null, 2),
-    );
-    f.opened = { name: 'multi.wosdx', reference: 'grant', bytes: original };
-    await f.workspace.openProject();
-    expect(f.editor.limited).toBe(true);
-    await f.workspace.saveProject();
-    expect(f.saved[0]?.bytes).toEqual(original);
-    const openFile = vi.spyOn(f.platform, 'openFile');
-    await f.workspace.openAudio();
-    expect(openFile).not.toHaveBeenCalled();
-    f.opened = {
-      name: 'cuts.wos',
-      reference: null,
-      bytes: writeWos(projectToWos(createEmptyProject())),
-    };
-    await f.workspace.importWosSettings();
-    expect(f.editor.document.projectId).toBe('multi');
-    await f.workspace.newProjectFromWos();
-    expect(f.editor.document.projectId).toBe('multi');
-    await f.workspace.saveWos();
-    expect(f.saved).toHaveLength(1);
-    await f.workspace.bmseIn();
-    expect(f.editor.ticks).toEqual([]);
-    expect(f.editor.status.segments[0]?.key).toBe('limitedReadOnly');
-    f.opened = {
-      name: 'empty.wosdx',
-      reference: null,
-      bytes: encodeProject(createEmptyProject('plain')),
-    };
-    await f.workspace.openProject();
-    expect(f.editor.limited).toBe(false);
-    f.editor.setTicks([5]);
-    expect(f.editor.ticks).toEqual([5]);
-    await f.workspace.reset();
-    expect(f.editor.limited).toBe(false);
-  });
-  it('restores a complex project from recovery as read-only without a preserved save', async () => {
-    const source = setup();
-    const project = createEmptyProject('multi', 'Complex');
-    const track = project.tracks[0];
-    if (!track) throw new Error('Missing track');
-    project.tracks.push({ ...track, trackId: 'second' });
-    source.opened = { name: 'multi.wosdx', reference: null, bytes: encodeProject(project) };
-    await source.workspace.openProject();
-    const snapshot = captureEditorSession(source.editor);
-    const restored = setup();
-    restored.session = JSON.parse(JSON.stringify(snapshot));
-    await restored.workspace.restoreSession();
-    expect(restored.editor.limited).toBe(true);
-    expect(restored.editor.document.projectId).toBe('multi');
-    expect(
-      restored.editor.status.segments.some((segment) => segment.key === 'sessionRestoredLimited'),
-    ).toBe(true);
-    expect(() => restored.editor.setTicks([3])).toThrow();
-    await restored.workspace.saveProject();
-    expect(restored.saved).toHaveLength(0);
-    expect(
-      restored.editor.status.segments.some((segment) => segment.key === 'limitedSaveUnavailable'),
-    ).toBe(true);
   });
   it('never marks newer edits or a replacement project saved after an asynchronous save', async () => {
     const f = setup();
@@ -400,10 +332,10 @@ describe('portable project workflow', () => {
   it('imports WOS settings into the current project as one undo step without touching its identity', async () => {
     const f = setup();
     await f.workspace.loadAudio(audioFile());
-    const media = f.editor.document.media,
+    const media = f.editor.document.tracks[0].media,
       source = f.editor.source,
       projectId = f.editor.document.projectId,
-      output = f.editor.document.output;
+      output = f.editor.document.tracks[0].output;
     const wos = projectToWos(createEmptyProject());
     wos.bpm = 150;
     wos.shift = 2;
@@ -414,9 +346,9 @@ describe('portable project workflow', () => {
     expect(f.editor.doc.shift).toBe(2);
     expect(f.editor.ticks).toEqual([5]);
     expect(f.editor.source).toBe(source);
-    expect(f.editor.document.media).toEqual(media);
+    expect(f.editor.document.tracks[0].media).toEqual(media);
     expect(f.editor.document.projectId).toBe(projectId);
-    expect(f.editor.document.output).toEqual(output);
+    expect(f.editor.document.tracks[0].output).toEqual(output);
     expect(f.editor.isDirty).toBe(true);
     expect(f.editor.canUndo).toBe(true);
     f.workspace.actions.undo();
@@ -426,7 +358,7 @@ describe('portable project workflow', () => {
     const saved = f.saved[0];
     if (!saved) throw new Error('Missing output');
     const parsed = decodeProject(saved.bytes);
-    expect(parsed.kind === 'supported' && parsed.capability.kind).toBe('single-track');
+    expect(parsed.kind === 'supported' && parsed.project.tracks[0]?.media).not.toBeNull();
   });
   it('imports WOS settings into an empty workspace without inventing media', async () => {
     const f = setup();
@@ -439,7 +371,7 @@ describe('portable project workflow', () => {
     expect(f.editor.doc.bpm).toBe(90);
     expect(f.editor.ticks).toEqual([3]);
     expect(f.editor.document.projectId).toBe(projectId);
-    expect(f.editor.document.media).toEqual([]);
+    expect(f.editor.document.tracks[0].media).toBeNull();
     expect(f.editor.source).toBeNull();
     expect(f.editor.canUndo).toBe(true);
   });
@@ -456,9 +388,9 @@ describe('portable project workflow', () => {
     expect(f.editor.doc.bpm).toBe(90);
     expect(f.editor.ticks).toEqual([3]);
     expect(f.editor.document.projectId).not.toBe(oldProjectId);
-    expect(f.editor.document.media).toEqual([]);
+    expect(f.editor.document.tracks[0].media).toBeNull();
     expect(f.editor.source).toBeNull();
-    expect(f.editor.document.output.baseName).toBe('slice');
+    expect(f.editor.document.tracks[0].output.baseName).toBe('slice');
     expect(f.editor.canUndo).toBe(false);
     expect(f.editor.canRedo).toBe(false);
     expect(f.editor.status.segments[0]?.key).toBe('loadedWos');
@@ -474,7 +406,7 @@ describe('portable project workflow', () => {
     expect(f.editor.document).toBe(original);
     await f.workspace.loadAudio(audioFile());
     f.editor.transact((draft) => {
-      const media = draft.media[0];
+      const media = draft.tracks[0].media;
       if (media) media.originHint = { kind: 'desktop', pathHint: 'C:/untrusted/secret.wav' };
     });
     f.opened = {
@@ -486,7 +418,7 @@ describe('portable project workflow', () => {
     await f.workspace.openProject();
     expect(reopen).not.toHaveBeenCalled();
     expect(f.editor.source).toBeNull();
-    expect(f.editor.document.media[0]?.originHint).toEqual({
+    expect(f.editor.document.tracks[0].media.originHint).toEqual({
       kind: 'desktop',
       pathHint: 'C:/untrusted/secret.wav',
     });

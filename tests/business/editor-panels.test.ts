@@ -72,9 +72,9 @@ describe('editor panels with real Element Plus controls', () => {
     const replacement = createEmptyProject();
     replacement.timing.bpm = 90;
     replacement.timing.shiftTicks = -6;
-    replacement.slicing.fadeoutMs = 80;
-    replacement.slicing.noisegateDb = -42;
-    replacement.output.clipStartNumber = 7;
+    replacement.tracks[0].slicing.fadeoutMs = 80;
+    replacement.tracks[0].slicing.noisegateDb = -42;
+    replacement.tracks[0].output.clipStartNumber = 7;
     f.editor.replaceDocument(replacement);
     await flushPromises();
     expect(toolbarValues()).toEqual([90, -6, 80, -42]);
@@ -87,7 +87,7 @@ describe('editor panels with real Element Plus controls', () => {
     const input = wrapper.getComponent(ElInput);
     input.vm.$emit('update:modelValue', 'custom');
     await flushPromises();
-    expect(f.editor.document.output.baseName).toBe('custom');
+    expect(f.editor.document.tracks[0].output.baseName).toBe('custom');
     f.workspace.actions.undo();
     await flushPromises();
     expect(input.props('modelValue')).toBe('slice');

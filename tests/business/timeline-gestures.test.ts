@@ -77,11 +77,11 @@ it('autosaves only committed cuts while a pointer stroke remains active', async 
     gestures.move({ ...point, x: 120 });
     expect(f.editor.previewTicks).toEqual([0, 48, 72, 96, 120]);
     await vi.advanceTimersByTimeAsync(650);
-    expect(parseEditorSession(f.session)?.project.slicing.markers).toEqual([0]);
+    expect(parseEditorSession(f.session)?.project.tracks[0].slicing.markers).toEqual([0]);
     expect(f.editor.docRevision).toBe(revision);
     gestures.cancel();
     await f.workspace.flushSession();
-    expect(parseEditorSession(f.session)?.project.slicing.markers).toEqual([0]);
+    expect(parseEditorSession(f.session)?.project.tracks[0].slicing.markers).toEqual([0]);
     f.workspace.actions.undo();
     expect(f.editor.ticks).toEqual([]);
     expect(f.editor.canUndo).toBe(false);

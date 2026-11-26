@@ -12,7 +12,7 @@ function fixture(ticks: number[] = []) {
   instances.push(pinia);
   const editor = useEditorStore(pinia);
   const project = createEmptyProject('marker-actions-test');
-  project.slicing.markers = ticks;
+  project.tracks[0].slicing.markers = ticks;
   editor.replaceDocument(project);
   return { editor, actions: createEditorActions(editor) };
 }
@@ -30,13 +30,13 @@ describe('marker editing actions', () => {
     expect(editor.markerKeys).toEqual([{ tick: 24, keys: [1, 3, 5] }]);
     expect(actions.setMarker(24, true, [5])).toBe(false);
     const session = parseEditorSession(JSON.parse(JSON.stringify(captureEditorSession(editor))));
-    expect(session?.project.slicing.markerKeys).toEqual(editor.markerKeys);
+    expect(session?.project.tracks[0].slicing.markerKeys).toEqual(editor.markerKeys);
     actions.setMarker(24, false);
     expect(editor.markerKeys).toEqual([]);
     actions.undo();
     expect(editor.markerKeys).toEqual([{ tick: 24, keys: [1, 3, 5] }]);
     actions.redo();
-    expect(editor.document.slicing).not.toHaveProperty('markerKeys');
+    expect(editor.document.tracks[0].slicing).not.toHaveProperty('markerKeys');
   });
   it('retains key identities through move, quantize, copy, cut and measure paste', () => {
     const { editor, actions } = fixture();

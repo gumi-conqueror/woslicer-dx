@@ -53,7 +53,7 @@ it('shows recovery before storage returns, then media reading and decoding until
     expect(f.workspace.loading.value).toMatchObject({
       stage: 'decoding',
       name: 'tone.wav',
-      mediaId: archive.project.media[0]?.mediaId,
+      mediaId: archive.project.tracks[0].media?.mediaId,
     }),
   );
   decoding.resolve();
@@ -171,7 +171,6 @@ it('keeps missing project media editable and cancels a pending media read when c
   f.platform.openProjectMedia = () => Promise.reject(new Error('File moved'));
   await f.workspace.openProject();
   expect(f.editor.source).toBeNull();
-  expect(f.editor.limited).toBe(false);
   expect(f.editor.status.segments[0]?.key).toBe('projectMediaMissing');
   expect(f.workspace.loading.value).toBeNull();
   const reading = deferred<ReturnType<typeof audioFile>>();
@@ -183,5 +182,5 @@ it('keeps missing project media editable and cancels a pending media read when c
   reading.resolve(audioFile());
   await opening;
   expect(f.editor.source).toBeNull();
-  expect(f.editor.document.media).toEqual([]);
+  expect(f.editor.document.tracks[0].media).toBeNull();
 });

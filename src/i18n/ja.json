@@ -320,10 +320,6 @@
     "sessionRecoverInvalid": "復元データが破損。元のデータを保持し、復元データの更新を停止。",
     "sessionRecoverFuture": "復元データは新しいバージョン（{version}）用。元のデータを保持し、復元データの更新を停止。",
     "sessionRecoverReadFailed": "復元データの読み込み失敗：{message}",
-    "projectLimitedOpen": "制限付き：{name}。複数トラックの構成は読み取り専用。編集・再生は無効。保存時は元のファイルを保持。",
-    "limitedReadOnly": "読み取り専用：編集・再生・WOS 転送は無効",
-    "limitedSaveUnavailable": "復元データから開いたため保存不可。保存には元のファイルを開く必要あり。",
-    "sessionRestoredLimited": "複数トラックのプロジェクトを読み取り専用で復元。保存には元のファイルを開く必要あり。編集は引き続き無効。",
     "importedWosSettings": ".wos 設定を読み込み：{file}（BPM {bpm}、位置補正 {shift}）。1 回の操作で元に戻せる。",
     "projectUnknownFields": "未対応の項目 {count} 個あり。保存時は対応するデータのみ保持。"
   },

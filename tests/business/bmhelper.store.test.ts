@@ -316,32 +316,6 @@ describe('BMHelper project integration', () => {
     expect(store.selectedDivision?.definitions[0]?.zz).toBe(36);
     disposePinia(pinia);
   });
-  it('leaves content and local state unchanged when a read-only document rejects an edit', async () => {
-    const pinia = createPinia();
-    const store = useBmhelperStore(pinia);
-    const editor = useEditorStore(pinia);
-    store.bindEditor(editor);
-    store.importMidi(midi, 'source.mid', trackOf(store), new Set([0]));
-    store.addDivision(defaultDivisionSetting('first', 480));
-    await store.saveBmhProject(() => Promise.resolve(true));
-    const bytes = store.saveProjectBytes();
-    editor.setLimited(true);
-    for (const edit of [
-      () => store.transpose(1),
-      () => store.setStart(35),
-      () => store.deleteDivision(),
-      () => store.addDivision(defaultDivisionSetting('rejected', 480)),
-      () => store.openProject(bytes, 'rejected.bmh'),
-      () => store.importMidi(midi, 'rejected.mid', trackOf(store), new Set([0])),
-    ]) {
-      expect(edit).toThrow('read-only');
-      expect(store.saveProjectBytes()).toEqual(bytes);
-      expect(store.name).toBe('source');
-      expect(store.selectedIndex).toBe(0);
-      expect(store.dirty).toBe(false);
-    }
-    disposePinia(pinia);
-  });
   it('does not apply an old save baseline after switching away and back to a project', async () => {
     const pinia = createPinia();
     const store = useBmhelperStore(pinia);

@@ -320,10 +320,6 @@
     "sessionRecoverInvalid": "恢复数据已损坏，原数据保留，暂停更新恢复数据。",
     "sessionRecoverFuture": "恢复数据需要更新的应用版本（{version}）。原数据保留，暂停更新恢复数据。",
     "sessionRecoverReadFailed": "恢复数据读取失败：{message}",
-    "projectLimitedOpen": "受限工程：{name}。多轨布局为只读，无法编辑或播放，保存时保留原文件。",
-    "limitedReadOnly": "只读工程：无法编辑、播放或转换 WOS",
-    "limitedSaveUnavailable": "无法保存恢复的工程，需先打开原文件。",
-    "sessionRestoredLimited": "已恢复只读多轨工程。保存需先打开原文件，仍无法编辑。",
     "importedWosSettings": "已导入 .wos 设置：{file}（BPM {bpm}，偏移 {shift}），可一步撤销。",
     "projectUnknownFields": "包含 {count} 个不支持的字段，保存时仅保留支持的工程数据。"
   },

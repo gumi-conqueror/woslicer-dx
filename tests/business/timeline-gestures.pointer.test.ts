@@ -20,7 +20,7 @@ function fixture(ticks: number[] = []) {
   const editor = useEditorStore();
   editor.pxPerTick = 1;
   const doc = createEmptyProject();
-  doc.slicing.markers = ticks;
+  doc.tracks[0].slicing.markers = ticks;
   editor.replaceDocument(doc);
   return { editor, gestures: createTimelineGestures(editor) };
 }
@@ -31,7 +31,7 @@ describe('timeline gesture transactions', () => {
     const revision = editor.docRevision;
     gestures.begin(point(48));
     gestures.move(point(120));
-    expect(captureEditorSession(editor).project.slicing.markers).toEqual([0]);
+    expect(captureEditorSession(editor).project.tracks[0].slicing.markers).toEqual([0]);
     expect(editor.ticks).toEqual([0]);
     expect(editor.docRevision).toBe(revision);
     gestures.cancel();
@@ -134,7 +134,7 @@ describe('timeline gesture transactions', () => {
   it('moves a group through a ghost, clamps its shared delta, and preserves spacing', () => {
     const { editor, gestures } = fixture([24, 48]);
     editor.transact((draft) => {
-      draft.slicing.markerKeys = [{ tick: 24, keys: [1, 5] }];
+      draft.tracks[0].slicing.markerKeys = [{ tick: 24, keys: [1, 5] }];
     });
     editor.setSelectedTicks([24, 48]);
     gestures.begin(point(24));
@@ -225,7 +225,7 @@ describe('timeline gesture transactions', () => {
     gestures.begin(point(24));
     gestures.move(point(96));
     const next = createEmptyProject();
-    next.slicing.markers = [300];
+    next.tracks[0].slicing.markers = [300];
     editor.replaceDocument(next);
     gestures.cancel();
     expect(editor.ticks).toEqual([300]);

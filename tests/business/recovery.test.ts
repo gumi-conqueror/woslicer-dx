@@ -36,7 +36,15 @@ it('rejects unsupported session versions and invalid numeric document inputs', (
   expect(
     parseEditorSession({
       ...s,
-      project: { ...s.project, slicing: { ...s.project.slicing, markers: [0, 0, -1] } },
+      project: {
+        ...s.project,
+        tracks: [
+          {
+            ...s.project.tracks[0],
+            slicing: { ...s.project.tracks[0].slicing, markers: [0, 0, -1] },
+          },
+        ],
+      },
     }),
   ).toBeNull();
   const parsed = parseEditorSession({ ...s, state: { view: { grid: 7, snap: false } } });
@@ -99,7 +107,7 @@ it('rebuilds audio from the binding without resetting project identity or dirty 
   await restored.workspace.restoreSession();
   expect(restored.editor.source?.reference).toBe(file.reference);
   expect(restored.editor.document.projectId).toBe(projectId);
-  expect(restored.editor.document.media).toEqual(snapshot.project.media);
+  expect(restored.editor.document.tracks[0].media).toEqual(snapshot.project.tracks[0].media);
   expect(restored.editor.isDirty).toBe(true);
   expect(restored.editor.canUndo).toBe(false);
   expect(restored.editor.lastFile).toEqual({ reference: file.reference, name: 'tone' });
@@ -109,21 +117,19 @@ it('restores the entire committed project and independent session controls with 
   const f = setup();
   f.editor.transact((draft) => {
     draft.name = 'Recovery';
-    draft.slicing.markers = [12];
-    draft.output.baseName = 'custom';
-    draft.media = [
-      {
-        mediaId: 'm1',
-        name: 'missing.wav',
-        format: 'wav',
-        byteLength: 1000,
-        sampleRateHz: 48000,
-        channels: 1,
-        framesPerChannel: 400,
-        integrity: null,
-        originHint: null,
-      },
-    ];
+    draft.tracks[0].slicing.markers = [12];
+    draft.tracks[0].output.baseName = 'custom';
+    draft.tracks[0].media = {
+      mediaId: 'm1',
+      name: 'missing.wav',
+      format: 'wav',
+      byteLength: 1000,
+      sampleRateHz: 48000,
+      channels: 1,
+      framesPerChannel: 400,
+      integrity: null,
+      originHint: null,
+    };
     const track = draft.tracks[0];
     if (!track) throw new Error('Missing default track');
     track.clips = [
@@ -149,7 +155,7 @@ it('restores the entire committed project and independent session controls with 
   f.editor.playbackRate = 0.5;
   const snapshot = captureEditorSession(f.editor);
   f.editor.setTicks([24]);
-  expect(snapshot.project.slicing.markers).toEqual([12]);
+  expect(snapshot.project.tracks[0].slicing.markers).toEqual([12]);
   const restored = setup();
   restored.session = JSON.parse(JSON.stringify(snapshot));
   await restored.workspace.restoreSession();
@@ -213,7 +219,7 @@ it('reports a failed recovery write and retries the same content without new edi
     failing = false;
     await f.workspace.flushSession();
     expect(attempts).toBe(2);
-    expect(parseEditorSession(f.session)?.project.slicing.markers).toEqual([5]);
+    expect(parseEditorSession(f.session)?.project.tracks[0].slicing.markers).toEqual([5]);
   } finally {
     vi.useRealTimers();
   }
@@ -239,7 +245,7 @@ it('keeps edits made during a failed write pending and retries the newest snapsh
   expect(attempts).toBe(1);
   failing = false;
   await f.workspace.flushSession();
-  expect(parseEditorSession(f.session)?.project.slicing.markers).toEqual([5]);
+  expect(parseEditorSession(f.session)?.project.tracks[0].slicing.markers).toEqual([5]);
   expect(parseEditorSession(f.session)?.project.timing.bpm).toBe(200);
 });
 
@@ -289,7 +295,7 @@ it('keeps newer edits pending when an older write settles first', async () => {
   if (!release) throw new Error('Expected pending write');
   release();
   await saving;
-  expect(parseEditorSession(f.session)?.project.slicing.markers).toEqual([5]);
+  expect(parseEditorSession(f.session)?.project.tracks[0].slicing.markers).toEqual([5]);
   subsequent = true;
   await f.workspace.flushSession();
   expect(parseEditorSession(f.session)?.project.timing.bpm).toBe(200);
@@ -405,7 +411,7 @@ it('lets an explicit close discard a blocked record and resume archiving', async
   expect(f.session).toBeNull();
   f.workspace.actions.setMarker(5);
   await f.workspace.flushSession();
-  expect(parseEditorSession(f.session)?.project.slicing.markers).toEqual([5]);
+  expect(parseEditorSession(f.session)?.project.tracks[0].slicing.markers).toEqual([5]);
 });
 
 it('keeps a reset archive empty when an older restore returns later', async () => {
@@ -433,5 +439,5 @@ it('starts archiving later edits after reset without recreating an untouched emp
   expect(f.session).toBeNull();
   f.workspace.actions.setMarker(12);
   await f.workspace.flushSession();
-  expect(parseEditorSession(f.session)?.project.slicing.markers).toEqual([12]);
+  expect(parseEditorSession(f.session)?.project.tracks[0].slicing.markers).toEqual([12]);
 });

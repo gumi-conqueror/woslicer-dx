@@ -55,14 +55,13 @@ test('native file size budgets match the app budgets', () => {
 test('native project media lookup reads the current project format', () => {
   const format = match(ts.schema, /PROJECT_FORMAT = '([^']+)'/, 'PROJECT_FORMAT')[1];
   const version = Number(match(ts.schema, /PROJECT_SCHEMA_VERSION = (\d+)/, 'schema version')[1]);
-  const media = Number(match(ts.schema, /PROJECT_MAX_MEDIA = (\d+)/, 'media limit')[1]);
-  const check = match(
-    rust.files,
-    /value\["format"\] != "([^"]+)" \|\| value\["schemaVersion"\] != (\d+)/,
-    'Rust format check',
+  const tracks = Number(match(ts.schema, /PROJECT_MAX_TRACKS = (\d+)/, 'track limit')[1]);
+  assert.ok(rust.files.includes(`value["format"] != "${format}"`), 'Rust format check');
+  assert.equal(
+    Number(match(rust.files, /const PROJECT_SCHEMA_VERSION: u64 = (\d+);/, 'Rust version')[1]),
+    version,
   );
-  assert.deepEqual([check[1], Number(check[2])], [format, version], 'format and version');
-  assert.equal(Number(match(rust.files, /media\.len\(\) > (\d+)/, 'Rust media limit')[1]), media);
+  assert.equal(Number(match(rust.files, /media\.len\(\) > (\d+)/, 'Rust media limit')[1]), tracks);
 });
 
 test('native and app portable file names forbid the same characters and device names', () => {

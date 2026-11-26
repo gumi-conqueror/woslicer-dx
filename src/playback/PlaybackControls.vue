@@ -91,7 +91,7 @@ const formatVolume = (position: number) => `${sliderToDb(position).toFixed(1)} d
   >
     <ElButton
       class="recording-toggle"
-      :disabled="disabled || editor.limited"
+      :disabled="disabled"
       :type="input.recording ? 'danger' : 'default'"
       :aria-pressed="input.recording"
       :title="t('recording.modeHint')"
@@ -116,7 +116,6 @@ const formatVolume = (position: number) => `${sliderToDb(position).toFixed(1)} d
     <!-- Drag previews the live audio route; release creates one document edit. -->
     <ElSlider
       class="volume-slider"
-      :disabled="editor.limited"
       :model-value="volumeDisplay"
       :format-tooltip="formatVolume"
       :aria-label="t('chrome.titleVolume')"
@@ -162,7 +161,6 @@ const formatVolume = (position: number) => `${sliderToDb(position).toFixed(1)} d
     <ElSlider
       class="volume-slider"
       :model-value="cueDisplay"
-      :disabled="editor.limited"
       :format-tooltip="formatVolume"
       :aria-label="t('chrome.titleCueVolume')"
       :title="t('chrome.titleCueVolume')"

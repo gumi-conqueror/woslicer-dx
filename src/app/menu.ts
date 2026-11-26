@@ -1,8 +1,9 @@
 import type { EditorStore } from '../slicing/editor-store';
+import { currentTrack } from '../project/codec';
 
 export type MenuEditorState = Pick<
   EditorStore,
-  'document' | 'source' | 'ticks' | 'selectedTicks' | 'canUndo' | 'canRedo' | 'limited'
+  'document' | 'source' | 'ticks' | 'selectedTicks' | 'canUndo' | 'canRedo'
 >;
 
 // The visible menu is also the source of its command type and input validation.
@@ -71,9 +72,9 @@ export const MENU_COMMANDS = APPLICATION_MENU.flatMap((group) =>
   group.commands.map((item) => item.id),
 );
 
-/** Recording needs audio and an editable project. */
-export function canRecord(editor: Pick<MenuEditorState, 'source' | 'limited'>): boolean {
-  return editor.source !== null && !editor.limited;
+/** Recording needs audio. */
+export function canRecord(editor: Pick<MenuEditorState, 'source'>): boolean {
+  return editor.source !== null;
 }
 
 /**
@@ -101,9 +102,10 @@ export function menuCommandEnabled(id: MenuCommand, editor: MenuEditorState): bo
     case 'open-audio':
     case 'import-wos':
     case 'export-wos':
-      return !editor.limited;
+    case 'select-paste':
+      return true;
     case 'relink-audio':
-      return editor.document.media.length > 0 && !editor.limited;
+      return currentTrack(editor.document).media !== null;
     case 'export-slice':
     case 'export-all':
       return editor.source !== null && editor.ticks.length > 0;
@@ -115,11 +117,9 @@ export function menuCommandEnabled(id: MenuCommand, editor: MenuEditorState): bo
     case 'select-copy':
       return editor.ticks.length > 0;
     case 'clear-markers':
-      return editor.ticks.length > 0 && !editor.limited;
+      return editor.ticks.length > 0;
     case 'select-cut':
-      return editor.selectedTicks.length > 0 && !editor.limited;
-    case 'select-paste':
-      return !editor.limited;
+      return editor.selectedTicks.length > 0;
     default: {
       const exhaustive: never = id;
       return exhaustive;
