@@ -120,7 +120,12 @@ test('restricted lists and assignment consumers preserve associations and orderi
   ] as const) {
     const ids = expected.map(parseId);
     assert.deepEqual(renumber([100, 900], parseId(start), 'restricted'), ids);
-    const result = assignDefinitions(notes, sounds, false, 0, parseId(start), 'restricted');
+    const result = assignDefinitions(notes, sounds, {
+      sharing: false,
+      freeGap: 0,
+      firstDefinition: parseId(start),
+      numbering: 'restricted',
+    });
     assert.deepEqual(result.definitions, [
       { definitionId: ids[0], soundId: 7 },
       { definitionId: ids[1], soundId: 3 },

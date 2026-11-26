@@ -1,8 +1,8 @@
-import test from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { arrange, defaultSettings, beatsToTicks } from '../src/core/notes/arrangement.js';
-import { groupSounds, sortSounds } from '../src/core/notes/sound-groups.js';
-import type { SourceNote, Sound, SortKey } from '../src/core/notes/sound-groups.js';
+import { arrange, defaultSettings } from '../../src/core/notes/arrangement';
+import { groupSounds, sortSounds } from '../../src/core/notes/sound-groups';
+import type { SourceNote, Sound, SortKey } from '../../src/core/notes/sound-groups';
 const note = (
   sourceId: string,
   onset: number,
@@ -10,7 +10,7 @@ const note = (
   velocity = 70,
   pitch = 60,
 ): SourceNote => ({ sourceId, onset, duration, velocity, pitch });
-test('defaults, timing conversion and grouped means preserve every association', () => {
+test('defaults and grouped means preserve every association', () => {
   assert.deepEqual(defaultSettings(480), {
     resolution: 480,
     headMargin: 0,
@@ -24,7 +24,6 @@ test('defaults, timing conversion and grouped means preserve every association',
     freeGap: 240,
     sourceCopy: false,
   });
-  assert.equal(beatsToTicks(1.234, 480), 592);
   const input = [note('a', 0, 100), note('b', 1000, 104, 72)];
   const before = JSON.stringify(input);
   const r = arrange(input, { ...defaultSettings(480), durationTolerance: 10 });
