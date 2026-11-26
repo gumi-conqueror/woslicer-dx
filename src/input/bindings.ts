@@ -136,6 +136,8 @@ export const BINDINGS: readonly Binding[] = [
   { layer: 'edit', command: 'cursor-next-measure', keyboard: key('ArrowDown'), gamepad: ['rb'] },
   { layer: 'edit', command: 'previous-track', keyboard: [primary('ArrowUp')] },
   { layer: 'edit', command: 'next-track', keyboard: [primary('ArrowDown')] },
+  { layer: 'edit', command: 'move-track-up', keyboard: [primary('ArrowUp', true)] },
+  { layer: 'edit', command: 'move-track-down', keyboard: [primary('ArrowDown', true)] },
   { layer: 'edit', command: 'export-slice', keyboard: [primary('e')] },
   { layer: 'edit', command: 'export-all', keyboard: [primary('e', true), ...key('m')] },
   { layer: 'edit', command: 'copy-bmse', keyboard: key('v') },

@@ -112,6 +112,18 @@ export const COMMANDS = {
     group: 'navigation',
     run: ({ workspace }) => workspace.stepTrack(1),
   },
+  'move-track-up': {
+    label: 'help.moveTrackUp',
+    group: 'navigation',
+    enabled: (state) => state.document.tracks[0]?.trackId !== state.track.trackId,
+    run: ({ workspace }) => workspace.moveTrack(-1),
+  },
+  'move-track-down': {
+    label: 'help.moveTrackDown',
+    group: 'navigation',
+    enabled: (state) => state.document.tracks.at(-1)?.trackId !== state.track.trackId,
+    run: ({ workspace }) => workspace.moveTrack(1),
+  },
   'new-project-wos': {
     label: 'menu.newProjectWos',
     group: 'project',

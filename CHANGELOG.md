@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+### Added
+
+- Ctrl/Cmd+Shift+↑ and Ctrl/Cmd+Shift+↓ move the current track up or down the track list.
+
 ## 2.0.0-alpha.6 — 2026-11-27
 
 ### Added

@@ -283,6 +283,19 @@ export function createWorkspace(options: WorkspaceOptions) {
     });
     editor.setStatus('trackRemoved', { name: removed.name });
   }
+  /** Moves the current track up or down the list in one undoable edit. */
+  function moveTrack(direction: -1 | 1): void {
+    const id = editor.track.trackId;
+    editor.transact((draft) => {
+      const index = draft.tracks.findIndex((item) => item.trackId === id);
+      const target = index + direction;
+      const moved = draft.tracks[index];
+      const other = draft.tracks[target];
+      if (!moved || !other) return;
+      draft.tracks[target] = moved;
+      draft.tracks[index] = other;
+    });
+  }
   /** Selects the previous or next track. */
   function stepTrack(direction: -1 | 1): void {
     const tracks = editor.document.tracks;
@@ -653,6 +666,7 @@ export function createWorkspace(options: WorkspaceOptions) {
     addTrack,
     removeTrack,
     stepTrack,
+    moveTrack,
     openProject,
     saveProject,
     relinkAudio,
