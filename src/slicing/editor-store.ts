@@ -19,6 +19,7 @@ import {
   resolveBreakpointTick,
   samplesPerTick,
   tickToSampleExport,
+  type TimeBase,
 } from '../core/timebase';
 import { zoomAt as zoomView } from '../timeline/waveform/zoom';
 import { ampToDb, dbToAmp } from '../core/volume';
@@ -67,6 +68,16 @@ export const useEditorStore = defineStore('editor', () => {
     }),
   );
   const previewTicks = shallowRef<readonly number[] | null>(null);
+  /** The current track's tick-to-sample time base; `null` until its audio is loaded. */
+  const timeBase = computed<Readonly<TimeBase> | null>(() =>
+    source.value
+      ? Object.freeze({
+          bpm: document.value.timing.bpm,
+          shift: document.value.timing.shiftTicks,
+          sampleRate: source.value.sampleRate,
+        })
+      : null,
+  );
   let cancelActiveDraft: (() => void) | null = null;
   const source = shallowRef<AudioSource | null>(null);
   const peaks = shallowRef<PeakCache | null>(null);
@@ -166,6 +177,13 @@ export const useEditorStore = defineStore('editor', () => {
       }),
   });
   const noisegateEnabled = computed(() => track.value.slicing.noisegateEnabled);
+  /** Slice rendering settings for preview and export. A disabled noise gate renders as 0 dB. */
+  const sliceProcessing = computed(() =>
+    Object.freeze({
+      fadeoutMs: track.value.slicing.fadeoutMs,
+      noisegateDb: noisegateEnabled.value ? track.value.slicing.noisegateDb : 0,
+    }),
+  );
   const baseName = computed(() => track.value.output.baseName);
   const clipStartNumber = computed(() => track.value.output.clipStartNumber);
   const useFfNumbering = computed(() => track.value.output.useFfNumbering);
@@ -292,22 +310,14 @@ export const useEditorStore = defineStore('editor', () => {
   function tickBeyondEnd(tick: number): boolean {
     return (
       source.value !== null &&
-      tickToSampleExport(tick, {
-        bpm: doc.value.bpm,
-        shift: doc.value.shift,
-        sampleRate: source.value.sampleRate,
-      }) > source.value.length
+      timeBase.value !== null &&
+      tickToSampleExport(tick, timeBase.value) > source.value.length
     );
   }
   function legalTick(tick: number): boolean {
-    const audio = source.value;
-    return markerTickAllowed(
-      tick,
-      audio && {
-        base: { bpm: doc.value.bpm, shift: doc.value.shift, sampleRate: audio.sampleRate },
-        length: audio.length,
-      },
-    );
+    const audio = source.value,
+      base = timeBase.value;
+    return markerTickAllowed(tick, audio && base && { base, length: audio.length });
   }
   function setCursorTick(tick: number): void {
     if (Number.isFinite(tick))
@@ -327,9 +337,7 @@ export const useEditorStore = defineStore('editor', () => {
     return resolveBreakpointTick(tick, snap.value, gridStepTicks(grid.value), false);
   }
   function zoomAt(anchor: number, factor: number): void {
-    const frames = source.value
-      ? samplesPerTick({ bpm: doc.value.bpm, shift: 0, sampleRate: source.value.sampleRate })
-      : 500;
+    const frames = timeBase.value ? samplesPerTick(timeBase.value) : 500;
     const next = zoomView({ scale: pxPerTick.value, scroll: scrollTick.value }, anchor, factor, {
       min: 0.02,
       max: Math.max(600, 4 * frames),
@@ -405,6 +413,7 @@ export const useEditorStore = defineStore('editor', () => {
   return {
     document,
     doc,
+    timeBase,
     docRevision,
     documentGeneration,
     isDirty,
@@ -436,6 +445,7 @@ export const useEditorStore = defineStore('editor', () => {
     followPlayhead,
     cueMode,
     noisegateEnabled,
+    sliceProcessing,
     baseName,
     clipStartNumber,
     useFfNumbering,

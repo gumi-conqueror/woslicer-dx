@@ -54,7 +54,8 @@ export function createDetection(
       return;
     }
     await ensureBands();
-    if (version !== generation() || !editor.bandAnalysis || !editor.source) return;
+    const base = editor.timeBase;
+    if (version !== generation() || !editor.bandAnalysis || !base) return;
     const revision = editor.docRevision;
     const start = editor.selectionStartTick,
       end = editor.selectionEndTick;
@@ -69,11 +70,7 @@ export function createDetection(
         minGapTicks: cell * settings.minGapUnits,
         fromTick: start === null || end === null ? 0 : Math.min(start, end),
         toTick: start === null || end === null ? MAX_TICKS - 1 : Math.max(start, end),
-        base: {
-          bpm: editor.doc.bpm,
-          shift: editor.doc.shift,
-          sampleRate: editor.source.sampleRate,
-        },
+        base,
         existing: new Set(editor.ticks),
         snap: settings.snap,
       });
@@ -95,21 +92,17 @@ export function createDetection(
   }
   async function edgeDetect(): Promise<void> {
     const worker = engine(),
-      source = editor.source,
+      base = editor.timeBase,
       version = generation(),
       revision = editor.docRevision;
-    if (!worker || !source) {
+    if (!worker || !base) {
       editor.setStatus('edgeDetectionNeedsSource', true);
       return;
     }
     if (editor.bandBusy) return;
     editor.bandBusy = true;
     try {
-      const ticks = await worker.edges({
-        bpm: editor.doc.bpm,
-        shift: editor.doc.shift,
-        sampleRate: source.sampleRate,
-      });
+      const ticks = await worker.edges(base);
       if (version !== generation() || revision !== editor.docRevision) return;
       const legal = ticks.filter(editor.legalTick);
       editor.setTicks(legal, []);

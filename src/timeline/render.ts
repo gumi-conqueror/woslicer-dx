@@ -10,7 +10,7 @@ export const RULER_HEIGHT = 28;
 export const OVERVIEW_HEIGHT = 36;
 export type TimelineSnapshot = Pick<
   EditorStore,
-  | 'doc'
+  | 'timeBase'
   | 'ticks'
   | 'markerKeys'
   | 'previewTicks'
@@ -138,9 +138,9 @@ export function drawTimeline(
     context.strokeStyle = line.isMeasure ? palette.surface3 : palette.surface2;
     vertical(context, (line.tick - state.scrollTick) * state.pxPerTick, 0, height);
   }
-  const source = state.source;
-  if (source) {
-    const timeBase = { bpm: state.doc.bpm, shift: state.doc.shift, sampleRate: source.sampleRate };
+  const source = state.source,
+    timeBase = state.timeBase;
+  if (source && timeBase) {
     hatch(
       context,
       (sampleToTick(source.length, timeBase) - state.scrollTick) * state.pxPerTick,
@@ -262,12 +262,8 @@ export function drawOverlay(
     for (const tick of ghost.ticks)
       context.fillRect((tick + ghost.delta - state.scrollTick) * state.pxPerTick - 1, 0, 2, height);
   }
-  if (state.source) {
-    const tick = sampleToTick(state.playheadSample, {
-      bpm: state.doc.bpm,
-      shift: state.doc.shift,
-      sampleRate: state.source.sampleRate,
-    });
+  if (state.timeBase) {
+    const tick = sampleToTick(state.playheadSample, state.timeBase);
     const x = (tick - state.scrollTick) * state.pxPerTick;
     if (x >= -2 && x <= width + 2) {
       context.strokeStyle = context.fillStyle = palette.playhead;
@@ -298,9 +294,9 @@ export function drawOverview(
   context.fillRect(0, 0, width, OVERVIEW_HEIGHT);
   context.lineWidth = 1;
   const source = state.source,
-    cache = state.peaks;
-  if (source && cache) {
-    const base = { bpm: state.doc.bpm, shift: state.doc.shift, sampleRate: source.sampleRate };
+    cache = state.peaks,
+    base = state.timeBase;
+  if (source && cache && base) {
     const laneHeight = OVERVIEW_HEIGHT / source.channels;
     context.fillStyle = palette.wave;
     for (let lane = 0; lane < source.channels; lane++) {

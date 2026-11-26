@@ -27,9 +27,9 @@ export function createExporter(
       return;
     }
     const version = generation();
-    const base = { bpm: s.doc.bpm, shift: s.doc.shift, sampleRate: source.sampleRate };
-    const fadeoutMs = s.doc.fadeoutMs;
-    const noisegateDb = s.noisegateEnabled ? s.doc.noisegateDb : 0;
+    const base = s.timeBase;
+    if (!base) return;
+    const { fadeoutMs, noisegateDb } = s.sliceProcessing;
     const baseName = portableStem(s.baseName, 'slice');
     const { ranges, skipped } = sliceRanges(ticks, base, source.length);
     function assertCurrent(): void {
