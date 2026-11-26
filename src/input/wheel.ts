@@ -56,7 +56,7 @@ export type WheelEvent =
       type: 'point';
       x: number;
       y: number;
-      /** A stick springs back to the center; keep its last slot. */
+      /** A released D-pad keeps its last slot; a centered stick or mouse deselects. */
       keepAtCenter: boolean;
     }
   | { type: 'release'; time: number }

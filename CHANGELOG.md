@@ -4,6 +4,15 @@
 
 ## Unreleased
 
+### Changed
+
+- The command wheel is larger: two thirds of the smaller window side.
+- LT and RT respond to a light touch, so controllers with trigger stops work.
+
+### Fixed
+
+- Returning the right stick to its center no longer leaves a wheel command selected.
+
 ## 2.0.0-alpha.3 — 2026-11-27
 
 ### Changed

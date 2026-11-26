@@ -3,6 +3,8 @@ import {
   createGamepadReader,
   GAMEPAD_DEAD_ZONE,
   pointingVector,
+  TRIGGER_PRESS,
+  type Pointing,
   type GamepadEvent,
   type UiNavigation,
 } from './gamepad';
@@ -12,7 +14,7 @@ import { visibleDialog } from './context';
 /** One controller poll: its events and the pointing direction for the command wheel. */
 export interface GamepadFrame {
   events: readonly GamepadEvent[];
-  pointing: { x: number; y: number };
+  pointing: Pointing;
   time: number;
 }
 
@@ -45,7 +47,7 @@ export function useInputControls(
     const enabled = !document.hidden && document.hasFocus();
     const activity = pad
       ? [
-          ...pad.buttons.map((button) => (button.value > GAMEPAD_DEAD_ZONE ? 1 : 0)),
+          ...pad.buttons.map((button) => (button.pressed || button.value > TRIGGER_PRESS ? 1 : 0)),
           ...pad.axes.map((axis) => (Math.abs(axis) > GAMEPAD_DEAD_ZONE ? Math.sign(axis) : 0)),
         ].join(',')
       : '';
