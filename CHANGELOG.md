@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+## 2.0.0-alpha.4 — 2026-11-27
+
 ### Changed
 
 - The command wheel is larger: two thirds of the smaller window side.
