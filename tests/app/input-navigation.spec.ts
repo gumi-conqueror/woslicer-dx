@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { expectViewportLayout } from './layout-assertions';
-import { encodeWav16 } from '../../src/core/wav';
+import { wavFile } from '../support/audio';
 
 test('navigates menus during audio loading and keeps the help input view manual', async ({
   page,
@@ -68,7 +68,7 @@ test('navigates menus during audio loading and keeps the help input view manual'
   ).setFiles({
     name: 'controller.wav',
     mimeType: 'audio/wav',
-    buffer: Buffer.from(encodeWav16([samples], 48000, samples.length)),
+    buffer: Buffer.from(wavFile([samples], 48000)),
   });
   await expect(page.locator('.track-loading')).toBeVisible();
   await page.getByRole('button', { name: 'Help', exact: true }).click();

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { useEditorStore, type CueMode } from '../../src/slicing/editor-store';
 import { createPlayback, type Playback } from '../../src/playback';
-import { renderSlice } from '../../src/core/slicer';
+import { renderSlice } from '../../src/core/audio/slice';
 import { createCommands } from '../../src/app/commands';
 import { setupWorkspace, audioFile } from '../app/workspace-fixture';
 
@@ -279,7 +279,7 @@ describe('Pinia playback lifetime and audio clock', () => {
     if (!source) throw new Error('Missing source');
     const expected = renderSlice(source, { start: 0, end: 2000, fadeoutMs: 5, noisegateDb: -40 });
     expect(preview.buffer?.getChannelData(0)).toEqual(
-      Float32Array.from(required(expected.channelsData[0]), (sample) => sample / 32768),
+      Float32Array.from(required(expected.channels[0]), (sample) => sample / 32768),
     );
     playback.previewSlice();
     expect(preview.stop).toHaveBeenCalled();

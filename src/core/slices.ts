@@ -1,63 +1,42 @@
-/**
- * Slice export pipeline shared by the workspace exporters (which write the
- * files to disk) and the browser host (which packs them into a ZIP): sorts
- * the marker ticks, checks the timeline bounds, renders every slice with the
- * exact export DSP and encodes it as a canonical 16-bit WAV file.
- */
-
-import { renderSlice, type SourceAudio } from './slicer.js';
-import { encodeWav16 } from './wav.js';
 import { tickToSampleExport, type TimeBase } from './timebase.js';
 
-export interface SliceFileRequest {
-  baseName: string;
-  bpm: number;
-  shift: number;
-  fadeoutMs: number;
-  noisegateDb: number;
-  markers: number[];
-}
-
-export interface SliceFile {
-  name: string;
-  data: Uint8Array;
-}
-
-export interface SliceExport {
-  files: SliceFile[];
-  /** Cut marks beyond the end of the source: illegal, skipped (counted). */
-  skipped: number;
+/** One exported slice: marker `index` in tick order, and its source frames. */
+export interface SliceRange {
+  readonly index: number;
+  readonly tick: number;
+  readonly start: number;
+  readonly end: number;
 }
 
 /**
- * Renders every requested slice into an in-memory WAV file. Cut marks beyond
- * the end of the source are illegal (a confirmed defect of the original
- * tool) and are skipped; a cut exactly at the end of the source is legal and
- * renders a zero-duration WAV, keeping the cut-to-file numbering 1:1.
+ * Splits the source at the markers. A slice runs from its marker to the next
+ * marker, or to the source end. A marker beyond the source end has no slice
+ * (a confirmed defect of the original tool) but keeps its number, so file
+ * numbers stay equal to marker numbers. A marker exactly at the source end
+ * gives an empty slice.
  */
-export function renderSliceFiles(source: SourceAudio, request: SliceFileRequest): SliceExport {
-  const base: TimeBase = { bpm: request.bpm, shift: request.shift, sampleRate: source.sampleRate };
-  const sorted = [...request.markers].sort((a, b) => a - b);
-  const files: SliceFile[] = [];
+export function sliceRanges(
+  markers: readonly number[],
+  base: TimeBase,
+  sourceLength: number,
+): { ranges: SliceRange[]; skipped: number } {
+  const ticks = [...markers].sort((a, b) => a - b);
+  const ranges: SliceRange[] = [];
   let skipped = 0;
-  for (let i = 0; i < sorted.length; i++) {
-    const startSample = tickToSampleExport(sorted[i], base);
-    if (startSample > source.length) {
-      skipped += 1;
-      continue;
+  ticks.forEach((tick, index) => {
+    const start = tickToSampleExport(tick, base);
+    if (start > sourceLength) {
+      skipped++;
+      return;
     }
-    const endSample =
-      i + 1 < sorted.length ? tickToSampleExport(sorted[i + 1], base) : source.length;
-    const rendered = renderSlice(source, {
-      start: startSample,
-      end: endSample,
-      fadeoutMs: request.fadeoutMs,
-      noisegateDb: request.noisegateDb,
-    });
-    files.push({
-      name: `${request.baseName}_${String(i).padStart(3, '0')}.wav`,
-      data: encodeWav16(rendered.channelsData, rendered.sampleRate, rendered.length),
-    });
-  }
-  return { files, skipped };
+    const next = ticks[index + 1];
+    const end = next === undefined ? sourceLength : tickToSampleExport(next, base);
+    ranges.push({ index, tick, start, end });
+  });
+  return { ranges, skipped };
+}
+
+/** Exported slice files and `#WAV` definitions use this name. */
+export function sliceFileName(baseName: string, index: number): string {
+  return `${baseName}_${String(index).padStart(3, '0')}.wav`;
 }

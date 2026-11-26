@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { encodeWav16 } from '../../src/core/wav';
+import { wavFile } from '../support/audio';
 
 async function zoom(page: Page, deltaY: number, count: number): Promise<void> {
   await page.locator('.timeline-ruler').evaluate(
@@ -59,7 +59,7 @@ test('keeps sine waves connected through 24 zoom-out levels from maximum', async
   const pcm = Int16Array.from({ length: 48000 }, (_, i) =>
     Math.round(Math.sin((i * 2 * Math.PI) / 96) * 24576),
   );
-  const bytes = Buffer.from(encodeWav16([pcm], 48000, pcm.length));
+  const bytes = Buffer.from(wavFile([pcm], 48000));
   const scales = info.project.name === 'low' ? [1, 1.25] : [2, 1.5];
   // Each scale owns an isolated context; their frame waits can run together.
   await Promise.all(

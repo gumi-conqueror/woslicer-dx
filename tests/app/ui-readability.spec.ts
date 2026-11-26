@@ -5,7 +5,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { encodeWav16 } from '../../src/core/wav';
+import { wavFile } from '../support/audio';
 import { writeSmfSequence } from '../../src/core/smf';
 
 const TABS: ReadonlyArray<{ name: string; label: string; ready: string }> = [
@@ -45,7 +45,7 @@ async function pick(page: Page, label: string, name: string, bytes: Uint8Array):
 
 async function openAudio(page: Page): Promise<void> {
   const pcm = Int16Array.from({ length: 48000 }, (_, i) => Math.round(Math.sin(i / 12) * 16000));
-  await pick(page, 'Open', 'tone.wav', encodeWav16([pcm], 48000, pcm.length));
+  await pick(page, 'Open', 'tone.wav', wavFile([pcm], 48000));
   await expect(page.locator('.status-message')).toContainText('Ready: tone');
 }
 

@@ -6,9 +6,8 @@ import {
   parseEditorSession,
   readEditorSession,
 } from '../../src/workspace/session';
-import { renderSliceFiles } from '../../src/core/slices';
 import { suggestOnsets } from '../../src/core/audio/onsets';
-import { encodeWav16 } from '../../src/core/wav';
+import { wavFile } from '../support/audio';
 import { readWos, writeWos } from '@gumi-conqueror/wos-file';
 import type { DecodedAudio } from '../../src/audio/audio-jobs';
 import { createEmptyProject, encodeProject, projectToWos } from '../../src/project/codec';
@@ -300,25 +299,18 @@ describe('workspace and editor business operations', () => {
     workspace.actions.undo();
     expect(editor.ticks).toEqual([]);
   });
-  it('exports one slice at a time byte-identically, preserving EOF empty output and skip numbering', async () => {
+  it('exports an empty slice for a marker at the source end and skips later markers', async () => {
     const f = setup();
+    // 48000 frames at 120 BPM: 500 frames per tick, so tick 96 is the source end.
     await f.workspace.loadAudio(audioFile());
     f.editor.setNoisegateEnabled(false);
     f.editor.addTicks([0, 48, 96, 120]);
-    const source = f.editor.source;
-    if (!source) throw new Error('Expected source');
-    const expected = renderSliceFiles(source, {
-      baseName: 'tone',
-      bpm: 120,
-      shift: 0,
-      fadeoutMs: 0,
-      noisegateDb: 0,
-      markers: f.editor.ticks,
-    });
     await f.workspace.exportAll();
-    expect(f.exported.map((file) => file.name)).toEqual(expected.files.map((file) => file.name));
-    for (let i = 0; i < f.exported.length; i++)
-      expect(f.exported[i].bytes).toEqual(expected.files[i].data);
+    expect(f.exported.map((file) => file.name)).toEqual([
+      'tone_000.wav',
+      'tone_001.wav',
+      'tone_002.wav',
+    ]);
     expect(f.exported[2].bytes.byteLength).toBe(44);
     expect(f.editor.exportLock).toBe(false);
     expect(f.editor.status.segments.some((segment) => segment.key === 'exportSkippedBeyond')).toBe(
@@ -849,7 +841,7 @@ describe('workspace and editor business operations', () => {
     await f.workspace.loadAudio({
       name: 'bursts.wav',
       reference: null,
-      bytes: encodeWav16([pcm], 48000, pcm.length),
+      bytes: wavFile([pcm], 48000),
     });
     f.editor.bandSnap = false;
     await f.workspace.detect();

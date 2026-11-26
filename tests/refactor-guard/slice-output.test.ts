@@ -3,7 +3,7 @@
 // so they prove only that exported bytes did not change. Delete this file in R8.
 import { createHash } from 'node:crypto';
 import { expect, test } from 'vitest';
-import { encodeWav16 } from '../../src/core/wav';
+import { wavFile } from '../support/audio';
 import { setupWorkspace } from '../app/workspace-fixture';
 
 const pcm = (frames: number, phase: number) =>
@@ -13,12 +13,12 @@ const pcm = (frames: number, phase: number) =>
 const mono = () => ({
   name: 'mono.wav',
   reference: null,
-  bytes: encodeWav16([pcm(48000, 0)], 48000, 48000),
+  bytes: wavFile([pcm(48000, 0)], 48000),
 });
 const stereo = () => ({
   name: 'stereo.wav',
   reference: null,
-  bytes: encodeWav16([pcm(44100, 0), pcm(44100, 1)], 44100, 44100),
+  bytes: wavFile([pcm(44100, 0), pcm(44100, 1)], 44100),
 });
 const cases = [
   {

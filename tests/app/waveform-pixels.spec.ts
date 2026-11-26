@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { encodeWav16 } from '../../src/core/wav';
+import { wavFile } from '../support/audio';
 
 test('keeps a constant waveform one device pixel thick across zoom and fractional DPR', async ({
   browser,
 }, info) => {
   const scales = info.project.name === 'low' ? [1, 1.25] : [2, 1.5];
   const pcm = new Int16Array(48000).fill(8192);
-  const wav = encodeWav16([pcm], 48000, pcm.length);
+  const wav = wavFile([pcm], 48000);
   // Each scale owns an isolated context; their frame waits can run together.
   await Promise.all(
     scales.map(async (dpr) => {

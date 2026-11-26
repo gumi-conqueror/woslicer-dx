@@ -1,7 +1,7 @@
 import { wavBytesDepth, writeWavHeader } from '../fixtures';
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { encodeWav16 } from '../../src/core/wav';
+import { wavFile } from '../support/audio';
 import { decodeProject } from '../../src/project/codec';
 import { readBmh } from '@gumi-conqueror/bmh-file';
 import { expectViewportLayout } from './layout-assertions';
@@ -107,7 +107,7 @@ test('opens, saves and relinks a project at native browser scale', async ({ page
   const overviewBefore = await page.locator('.track-overview-container').boundingBox();
   const waveformBefore = await page.locator('.timeline-viewport').boundingBox();
   const pcm = Int16Array.from({ length: 48000 }, (_, i) => Math.round(Math.sin(i / 12) * 16000));
-  const wav = encodeWav16([pcm], 48000, pcm.length);
+  const wav = wavFile([pcm], 48000);
   await pick(page, 'Open', 'tone.wav', wav);
   const loading = page.locator('.track-header .track-loading');
   await expect(loading).toBeVisible();

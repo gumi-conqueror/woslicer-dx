@@ -57,7 +57,8 @@ The decoder repository also exposes a native Rust API, which this application do
 
 Source buffers hold Float32 values on a full-scale amplitude of 32768. Playback buffers use normalized Float32 values.
 Editing and analysis preserve fractional samples and floating-point headroom. Export remains 16-bit PCM WAV.
-The compatibility reader in `src/core/wav.ts` supports legacy/output tests. Runtime input uses `src/audio/decode.ts`.
+`src/core/audio/pcm.ts` owns the amplitude scale. Runtime input uses `src/audio/decode.ts`.
+`src/core/audio/slice.ts` renders one slice for both preview and export. `src/core/slices.ts` owns slice ranges and file names.
 
 The decoder detects the container from the file contents. File pickers and project metadata use extensions from `src/core/audio-formats.ts`.
 Keep the native file allowlist in `src-tauri/src/files.rs` aligned when adding an input format.

@@ -4,7 +4,8 @@ import type { TimeBase } from '../core/timebase';
 import { decodeAudio } from './decode';
 import { buildPeakCache, type PeakCache } from '../core/peaks';
 import { analyzeBands, type BandAnalysis } from '../core/bands';
-import { renderSliceToWav, type SliceParams } from '../core/slicer';
+import { renderSlice, type SliceParams } from '../core/audio/slice';
+import { encodePcm16 } from '../core/formats/wave';
 
 import { detectBandCuts, type DetectRequest, type DetectResult } from '../core/banddetect';
 export type DetectionParams = Omit<DetectRequest, 'analysis'>;
@@ -80,7 +81,12 @@ export function createAudioProcessor(): (request: AudioRequest) => Promise<Audio
         }
         case 'slice': {
           if (!source) throw new Error('No source loaded');
-          return { kind: 'slice', id: request.id, bytes: renderSliceToWav(source, request.params) };
+          const slice = renderSlice(source, request.params);
+          return {
+            kind: 'slice',
+            id: request.id,
+            bytes: encodePcm16(slice.channels, slice.sampleRate),
+          };
         }
       }
     } catch (error) {

@@ -2,7 +2,7 @@ import { createPinia, disposePinia } from 'pinia';
 import { createAudioProcessor, type AudioEngine } from '../../src/audio/audio-jobs';
 import { useEditorStore } from '../../src/slicing/editor-store';
 import { createWorkspace, type WorkspaceOptions } from '../../src/workspace/workspace';
-import { encodeWav16 } from '../../src/core/wav';
+import { wavFile } from '../support/audio';
 import type { Platform, OpenedFile, OutputFile } from '../../src/platform/contracts';
 import { onTestFinished } from 'vitest';
 
@@ -60,7 +60,7 @@ export function processorEngine(): AudioEngine {
 }
 export function audioFile(name = 'tone.wav', frames = 48000): OpenedFile {
   const pcm = Int16Array.from({ length: frames }, (_, i) => Math.round(Math.sin(i / 12) * 16000));
-  return { name, reference: `/audio/${name}`, bytes: encodeWav16([pcm], 48000, pcm.length) };
+  return { name, reference: `/audio/${name}`, bytes: wavFile([pcm], 48000) };
 }
 export function fixture(createEngine = processorEngine) {
   const pinia = createPinia(),

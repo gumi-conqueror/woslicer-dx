@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { expectViewportLayout } from './layout-assertions';
-import { encodeWav16 } from '../../src/core/wav';
+import { wavFile } from '../support/audio';
 
 test('toggles ordered modules without losing drafts and integrates the track overview', async ({
   page,
@@ -19,7 +19,7 @@ test('toggles ordered modules without losing drafts and integrates the track ove
   ).setFiles({
     name: 'Rhythm study.wav',
     mimeType: 'audio/wav',
-    buffer: Buffer.from(encodeWav16([samples], 48000, samples.length)),
+    buffer: Buffer.from(wavFile([samples], 48000)),
   });
   await expect(page.locator('.track-name')).toContainText('Rhythm study');
   await expect(page.locator('.track-header .track-overview')).toBeVisible();

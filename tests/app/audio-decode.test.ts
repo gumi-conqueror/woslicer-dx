@@ -1,8 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { decodeAudio } from '../../src/audio/decode';
-import { encodeWav16, parseWav } from '../../src/core/wav';
-import { renderSliceToWav } from '../../src/core/slicer';
+import { renderSlice } from '../../src/core/audio/slice';
+import { encodePcm16 } from '../../src/core/formats/wave';
+import { wavFile } from '../support/audio';
+import { readPcm16Wav } from '../support/wav-reader';
 import { buildPeakCache, peakRange } from '../../src/core/peaks';
 import { wavBytesDepth, writeWavHeader } from '../fixtures';
 
@@ -19,9 +21,6 @@ describe('published Symphonia decoder', () => {
       expect(result.channels).toBe(2);
       expect(result.data).toEqual(reference.data);
     }
-    const legacy = parseWav(new Uint8Array(fixture('tone.wav')).buffer);
-    const params = { start: 37, end: 2800, fadeoutMs: 10, noisegateDb: -48 };
-    expect(renderSliceToWav(reference, params)).toEqual(renderSliceToWav(legacy, params));
   });
 
   it('retains sub-16-bit PCM samples and floating-point headroom until export', async () => {
@@ -42,8 +41,12 @@ describe('published Symphonia decoder', () => {
     expect([...result.data[0]]).toEqual([0.25, 40960, -49152]);
     const peaks = buildPeakCache([Float32Array.of(40000, 41000)], 1);
     expect(peakRange(peaks, 2, 0, 2)).toMatchObject({ min: 40000, max: 41000 });
-    const output = renderSliceToWav(result, { start: 0, end: 3, fadeoutMs: 0, noisegateDb: 0 });
-    expect(parseWav(new Uint8Array(output).buffer).sourceFormat).toEqual({ kind: 'pcm', bits: 16 });
+    const slice = renderSlice(result, { start: 0, end: 3, fadeoutMs: 0, noisegateDb: 0 });
+    // Export clips the float headroom to PCM16.
+    // 40960 clips to 32767; the attack gain at frame 1 of 3 is 0.25.
+    expect([...readPcm16Wav(encodePcm16(slice.channels, slice.sampleRate)).channels[0]]).toEqual([
+      0, 8191,
+    ]);
   });
 
   it('decodes compressed formats and includes the final Vorbis page', async () => {
@@ -65,9 +68,7 @@ describe('published Symphonia decoder', () => {
     await expect(decodeAudio(new Uint8Array([1, 2, 3]))).rejects.toThrow();
     await expect(decodeAudio(fixture('tone-opus.mka'))).rejects.toThrow();
     await expect(
-      decodeAudio(
-        encodeWav16([new Int16Array(10), new Int16Array(10), new Int16Array(10)], 48000, 10),
-      ),
+      decodeAudio(wavFile([new Int16Array(10), new Int16Array(10), new Int16Array(10)], 48000)),
     ).rejects.toThrow(/channel count/);
     expect((await decodeAudio(fixture('tone.flac'))).length).toBe(6000);
   });

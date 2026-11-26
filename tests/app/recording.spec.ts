@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { encodeWav16 } from '../../src/core/wav';
+import { wavFile } from '../support/audio';
 import { expectViewportLayout } from './layout-assertions';
 import { readFile } from 'node:fs/promises';
 import { decodeProject } from '../../src/project/codec';
@@ -102,7 +102,7 @@ test('records with keyboard, Xbox and YuanCon while preserving menus and playbac
   ).setFiles({
     name: 'recording.wav',
     mimeType: 'audio/wav',
-    buffer: Buffer.from(encodeWav16([samples], 48000, samples.length)),
+    buffer: Buffer.from(wavFile([samples], 48000)),
   });
   const toggle = page.getByRole('button', { name: 'Record', exact: true });
   await expect(toggle).toBeEnabled();
