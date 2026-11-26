@@ -7,6 +7,15 @@ import { gridStepTicks } from '../core/gridlines';
 import { MAX_TICKS, resolveBreakpointTick } from '../core/timebase';
 import type { Ghost } from './render';
 
+/** CSS pixels: a press this close to a marker grabs it. */
+const HIT_RADIUS_PX = 10;
+/** CSS pixels: the eraser removes markers this close to the pointer path. */
+const ERASE_RADIUS_PX = 8;
+/** CSS pixels: a press becomes a paint stroke after this much movement. */
+const DRAG_START_PX = 3;
+/** CSS pixels: free (unsnapped) painting adds a marker after this much movement. */
+const FREEHAND_STEP_PX = 2;
+
 export interface TimelinePointer {
   x: number;
   y: number;
@@ -70,7 +79,7 @@ export function createTimelineGestures(editor: EditorStore) {
   function near(x: number): number | undefined {
     const target = tickAt(x);
     let nearest: number | undefined,
-      distance = 10 / editor.pxPerTick;
+      distance = HIT_RADIUS_PX / editor.pxPerTick;
     for (const tick of editor.ticks)
       if (Math.abs(tick - target) <= distance) {
         nearest = tick;
@@ -97,7 +106,7 @@ export function createTimelineGestures(editor: EditorStore) {
     } else paint(to, changed, draft);
   }
   function erase(first: number, last: number, draft: Uint8Array): number {
-    const radius = 8 / editor.pxPerTick;
+    const radius = ERASE_RADIUS_PX / editor.pxPerTick;
     const hits = markerTicks(draft).filter(
       (tick) => tick >= Math.min(first, last) - radius && tick <= Math.max(first, last) + radius,
     );
@@ -190,11 +199,13 @@ export function createTimelineGestures(editor: EditorStore) {
       case 'pending':
       case 'paint': {
         if (current.kind === 'pending') {
-          if (Math.hypot(point.x - current.anchor.x, point.y - current.anchor.y) < 3) break;
+          if (Math.hypot(point.x - current.anchor.x, point.y - current.anchor.y) < DRAG_START_PX)
+            break;
           current.kind = 'paint';
           paint(current.anchorTick, current.changed, current.bitmap);
         }
-        if ((!editor.snap || point.altKey) && Math.abs(point.x - current.lastX) < 2) break;
+        if ((!editor.snap || point.altKey) && Math.abs(point.x - current.lastX) < FREEHAND_STEP_PX)
+          break;
         const tick = paintTick(point);
         paintSegment(current.lastTick, tick, point, current.changed, current.bitmap);
         current.lastTick = tick;
