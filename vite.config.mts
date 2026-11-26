@@ -23,6 +23,22 @@ const tauriIpcCsp: Plugin = {
   },
 };
 
+/**
+ * Hosts and tools that request `/favicon.ico` directly get the app icon. The
+ * page itself links the hashed copies; the desktop icon is the one source.
+ */
+const siteIcon: Plugin = {
+  name: 'site-icon',
+  apply: 'build',
+  generateBundle() {
+    this.emitFile({
+      type: 'asset',
+      fileName: 'favicon.ico',
+      source: readFileSync(resolve(root, 'src-tauri/icons/icon.ico')),
+    });
+  },
+};
+
 export default defineConfig(async ({ command }) => {
   await buildFonts(root);
   if (command === 'serve') {
@@ -51,6 +67,7 @@ export default defineConfig(async ({ command }) => {
         dropMessageCompiler: true,
       }),
       tauriIpcCsp,
+      siteIcon,
     ],
     server: { host: '127.0.0.1', port: 1420, strictPort: true },
     build: {

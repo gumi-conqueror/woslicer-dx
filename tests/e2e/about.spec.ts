@@ -35,6 +35,17 @@ test('shows embedded build information under offline CSP and opens only clicked 
   expect(requests.some((url) => url.includes('build-info.json'))).toBe(false);
   expect(requests.every((url) => new URL(url).hostname === '127.0.0.1')).toBe(true);
   expect(errors).toEqual([]);
+  // Every linked icon and the root favicon load as images.
+  const icons = await page
+    .locator('link[rel="icon"], link[rel="apple-touch-icon"]')
+    .evaluateAll((links) => links.map((link) => (link as HTMLLinkElement).href));
+  expect(icons).toHaveLength(3);
+  for (const url of [...icons, new URL('favicon.ico', page.url()).href]) {
+    if (url.startsWith('data:image/')) continue;
+    const response = await page.request.get(url);
+    expect(response.status(), url).toBe(200);
+    expect(response.headers()['content-type'], url).toMatch(/^image\//);
+  }
   await page.screenshot({
     path: info.outputPath('about.png'),
     fullPage: true,
