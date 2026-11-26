@@ -1,7 +1,7 @@
 # CI and releases
 
 This guide describes the checked-in GitHub Actions workflows. For local commands, see [Development](DEVELOPMENT.md).
-For version changes and changelog requirements, see [Versioning](VERSIONING.md).
+For version numbers, see [Versioning](VERSIONING.md). For the release steps, see [Releasing](RELEASING.md).
 
 ## Build triggers and outputs
 
@@ -112,6 +112,7 @@ Diagnostics are retained for seven days. Inspect a timeout before rerunning it. 
 Changing a version or opening a PR does not start this workflow.
 
 The resolver selects the latest main push or manual build at the exact tagged commit.
+It waits up to 90 minutes for that build to finish, and up to 5 minutes for it to appear.
 That run, all selected jobs and all seven release artifacts must be successful and available.
 A failed or incomplete latest run stops publication. The resolver does not substitute an older run, a PR build or a debug package.
 Publication and website deployment consume the same source run and verified artifact IDs. They do not rebuild the application.
@@ -120,14 +121,15 @@ The workflow verifies clean-checkout identity, the run attempt and SHA-256 check
 [`release-notes.mjs`](../scripts/release-notes.mjs) extracts the matching English and Chinese changelog entries.
 Missing, duplicate or empty entries fail preparation. Preview the text with `node scripts/release-notes.mjs`.
 
-Assets are uploaded to a temporary draft and verified before publication as a public prerelease.
-New releases are not marked Latest until a maintainer promotes them.
+Assets are uploaded to a draft. The workflow compares the draft's asset list, sizes and SHA-256 digests with the verified packages, then publishes it.
+A version with a prerelease part (`2.0.0-alpha.1`) becomes a prerelease and never Latest. Other versions become a release marked Latest.
+[`publish-release.sh`](../.github/scripts/publish-release.sh) reads the draft with `gh release view`: the REST endpoint for a release by tag does not return drafts.
 Downloads contain application packages and an optional verification ZIP with manifests and `SHA256SUMS`.
 GitHub adds source archives separately. Application packages retain their license notices.
 
 Published immutable releases lock their assets and tag. Do not move a published tag or recreate its release to change artifacts.
-A rerun resumes an unpublished draft, or checks that a published release already contains identical bytes.
-Matching reruns preserve its prerelease and Latest flags. Mismatched bytes stop publication.
+A rerun completes an unpublished draft, or checks that a published release already contains identical bytes.
+A rerun leaves a published release's flags and notes unchanged. Mismatched bytes stop publication.
 
 If source artifacts expire, rerun all jobs in the original main build at the tagged commit, then rerun the release workflow.
 A new manual main run also works when main still points to that commit.
@@ -141,7 +143,7 @@ It requires the repository variable `CLOUDFLARE_PROJECT_NAME` and secrets `CLOUD
 The workflow reads the existing Pages production branch from the API and deploys through Wrangler.
 It does not modify Pages settings or require repository integration.
 The job requires a production deployment and compares its `build-info.json` with the tested archive.
-If deployment fails, the prerelease remains published. Rerun the deployment job after correcting the cause.
+If deployment fails, the release remains published. Rerun the deployment job after correcting the cause.
 
 ## Dependency updates
 

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
 import {
+  awaitSourceRun,
   recordManifest,
   selectSourceRun,
   targets,
@@ -169,4 +170,38 @@ test('source selection rejects expired, missing, duplicate and debug-only artifa
       /Missing, expired or ambiguous/,
     );
   }
+});
+
+test('the resolver waits for a running main build, then for a missing one only briefly', async () => {
+  const { run } = source();
+  let clock = 0;
+  const sleep = async (ms) => {
+    clock += ms;
+  };
+  const options = {
+    sleep,
+    now: () => clock,
+    pollMs: 60_000,
+    appearMs: 300_000,
+    deadlineMs: 600_000,
+  };
+  const states = [[], [{ ...run, status: 'in_progress', conclusion: null }], [run]];
+  const finished = await awaitSourceRun(() => states.shift() ?? [run], commit, options);
+  assert.equal(finished.id, run.id);
+  assert.equal(clock, 120_000);
+
+  clock = 0;
+  await assert.rejects(
+    awaitSourceRun(() => [], commit, options),
+    /No main build/,
+  );
+  assert.equal(clock, 300_000);
+
+  clock = 0;
+  const running = { ...run, status: 'in_progress', html_url: 'https://example.test/run' };
+  await assert.rejects(
+    awaitSourceRun(() => [running], commit, options),
+    /still running/,
+  );
+  assert.equal(clock, 600_000);
 });

@@ -6,30 +6,7 @@ Feature versions increment minor. Fix versions increment patch. Versioning is se
 Before a version is final, collaborators check it through alpha prereleases: `major.minor.patch-alpha.N`.
 N starts at 1 and increases by 1 for each published prerelease. No other prerelease form is accepted.
 
-## Prepare a version
-
-Run from the repository root, replacing the placeholder with the intended version:
-
-```sh
-npm version <version> --no-git-tag-version --ignore-scripts
-```
-
-This updates `package.json` and `package-lock.json` without a commit or tag.
-Add matching entries at the top of `CHANGELOG.md` and `CHANGELOG.zh-CN.md` using `## <version> — YYYY-MM-DD`.
-An alpha entry lists the changes since the previous alpha. The final version replaces its alpha entries with one entry.
-Then validate the version and preview the release-note text:
-
-```sh
-npm run check:version
-node scripts/release-notes.mjs
-```
-
-Run the relevant [development checks](DEVELOPMENT.md#validation), then submit the version changes through the normal PR route.
-[CI and releases](CI.md#publishing-and-deployment) describes the separate tag-driven publication process.
-
-Changelog entries describe changes users can see, operate or hear. Keep English and Chinese entries consistent.
-Use Added and Fixed sections where applicable. Omit empty sections, build results, dependency details and documentation maintenance.
-Use repository history to distinguish new behavior from existing behavior. Do not copy command transcripts into release notes.
+[Releasing](RELEASING.md) describes how to prepare a version, record changes and publish it.
 
 ## Version consumers
 

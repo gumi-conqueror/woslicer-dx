@@ -1,7 +1,7 @@
 {
   "name": "woslicer-dx",
   "productName": "woslicer-dx",
-  "version": "2.0.0-alpha.1",
+  "version": "2.0.0-alpha.2",
   "description": "Offline BMS audio slicer with compatible .wos and original .bmh formats",
   "private": true,
   "engines": {
@@ -16,6 +16,7 @@
     "package:desktop": "node scripts/tauri.mjs build",
     "check": "npm run lint && npm run format:check && npm run typecheck && npm run check:version",
     "check:version": "node scripts/check-version.js",
+    "version:prepare": "node scripts/prepare-version.mjs",
     "typecheck": "npm run generate:i18n && vue-tsc -p tsconfig.app.json --noEmit && tsc -p tests/tsconfig.tests.json --noEmit",
     "test": "npm run test:tooling && npm run test:units",
     "test:tooling": "node --test scripts/*.test.mjs",

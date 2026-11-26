@@ -116,7 +116,7 @@ test('navigates menus during audio loading and keeps the help input view manual'
   await press(15);
   const view = page.getByRole('menu', { name: 'View', exact: true });
   await expect(view).toBeVisible();
-  await expect(view.getByRole('img', { name: 'RT', exact: true })).toBeVisible();
+  await expect(view.getByRole('img', { name: 'RS ↑', exact: true })).toBeVisible();
   // Unmapped editor buttons cannot leak through menu mode.
   await press(2);
   await expect(view).toBeVisible();
@@ -145,22 +145,48 @@ test('navigates menus during audio loading and keeps the help input view manual'
   await expect(page.locator('.track-name')).toContainText('controller');
   await expect(page.locator('.timeline-viewport')).toHaveAttribute('aria-busy', 'false');
   await expect(bpm).toHaveValue('175');
+  const statusbar = page.locator('.statusbar');
+  // D-pad right moves one grid step; A adds a marker; X toggles the marker at the cursor.
   await press(15);
-  await expect(page.locator('.statusbar')).toContainText('tick 24');
-  await press(2);
-  await expect(page.locator('.statusbar')).toContainText('Markers: 1');
-  await press(3);
-  await expect(page.locator('.statusbar')).toContainText('Markers: 0');
-  await press(4);
-  await expect(page.locator('.statusbar')).toContainText('Markers: 1');
-  await press(5);
-  await expect(page.locator('.statusbar')).toContainText('Markers: 0');
+  await expect(statusbar).toContainText('tick 24');
+  await expect(page.getByRole('note', { name: 'Controller buttons' })).toContainText(
+    'Add marker at playhead or cursor',
+  );
   await press(0);
+  await expect(statusbar).toContainText('Markers: 1');
+  await press(2);
+  await expect(statusbar).toContainText('Markers: 0');
+  await press(2);
+  await expect(statusbar).toContainText('Markers: 1');
+  // RB and LB move by measures.
+  await press(5);
+  await expect(statusbar).toContainText('tick 216');
+  await press(4);
+  await expect(statusbar).toContainText('tick 24');
+  // A tap on LT keeps the wheel open; D-pad left points at Undo and A runs it.
+  await press(6);
+  const wheel = page.getByRole('menu', { name: 'Command wheel', exact: true });
+  await expect(wheel).toBeVisible();
+  await press(14);
+  await expect(wheel.locator('.wheel-slot.selected')).toHaveText('Undo');
+  await press(0);
+  await expect(wheel).toBeHidden();
+  await expect(statusbar).toContainText('Markers: 0');
+  // Keyboard: hold R, move the mouse right toward Redo and release R.
+  await page.mouse.move(640, 400);
+  await page.keyboard.down('r');
+  await expect(wheel).toBeVisible();
+  await page.mouse.move(760, 400);
+  await expect(wheel.locator('.wheel-slot.selected')).toHaveText('Redo');
+  await page.keyboard.up('r');
+  await expect(wheel).toBeHidden();
+  await expect(statusbar).toContainText('Markers: 1');
+  await press(7);
   await expect(page.getByRole('button', { name: 'Play', exact: true })).toHaveAttribute(
     'aria-pressed',
     'true',
   );
-  await press(0);
+  await press(7);
   await expect(page.getByRole('button', { name: 'Play', exact: true })).toHaveAttribute(
     'aria-pressed',
     'false',

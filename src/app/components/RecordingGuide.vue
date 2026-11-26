@@ -1,15 +1,41 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { RECORDING_SEEK_SECONDS } from '../../input/recording';
 import {
-  RECORDING_BINDINGS,
-  RECORDING_KEYS,
-  RECORDING_SEEK_SECONDS,
-  codeLabel,
-} from '../../input/recording';
+  boundCommands,
+  formatChords,
+  gamepadControls,
+  keyboardChords,
+  recordingKeys,
+  yuanconControls,
+} from '../../input/bindings';
+import { commandLabel } from '../commands';
 import GamepadIcon from '../../ui/GamepadIcon.vue';
 import YuanconIcon from '../../ui/YuanconIcon.vue';
-defineProps<{ device: 'keyboard' | 'gamepad' | 'yuancon' }>();
+const props = defineProps<{ device: 'keyboard' | 'gamepad' | 'yuancon' }>();
 const { t } = useI18n();
+const keys = recordingKeys();
+// Every command with recording bindings, with the controls that act in recording mode.
+const commands = boundCommands('recording').map((command) => ({
+  command,
+  keyboard: formatChords(keyboardChords(command, 'recording')),
+  gamepad: gamepadControls(command, 'recording'),
+  yuancon: yuanconControls(command).filter(
+    (control) => control === 'positive' || control === 'negative',
+  ),
+}));
+const rows = computed(() =>
+  commands.filter(
+    (row) =>
+      row.command === 'recording-tap' ||
+      (props.device === 'keyboard'
+        ? row.keyboard
+        : props.device === 'gamepad'
+          ? row.gamepad.length
+          : row.yuancon.length),
+  ),
+);
 </script>
 <template>
   <section class="recording-guide">
@@ -17,56 +43,52 @@ const { t } = useI18n();
     <p>{{ t('recording.description', { seconds: RECORDING_SEEK_SECONDS }) }}</p>
     <dl>
       <template
-        v-for="binding in RECORDING_BINDINGS"
-        :key="binding.command"
+        v-for="row in rows"
+        :key="row.command"
       >
-        <template v-if="binding[device].length">
-          <dt>{{ t(binding.label) }}</dt>
-          <dd
-            v-if="binding.command === 'recording-tap'"
-            class="recording-keys"
-          >
-            <YuanconIcon
-              v-if="device === 'yuancon'"
-              class="numbered-controller"
-              numbered
-            />
-            <template v-else>
-              <span
-                v-for="keyBinding in RECORDING_KEYS"
-                :key="keyBinding.key"
-                class="key-binding"
-              >
-                <span>{{ keyBinding.key }}:</span>
-                <kbd v-if="device === 'keyboard'">{{ codeLabel(keyBinding.keyboard) }}</kbd>
-                <GamepadIcon
-                  v-else
-                  :control="keyBinding.gamepad"
-                  dpad-only
-                />
-              </span>
-            </template>
-          </dd>
-          <dd v-else-if="device === 'keyboard'">
-            <kbd>{{ binding.keyboard.map(codeLabel).join(' / ') }}</kbd>
-          </dd>
-          <dd v-else-if="device === 'gamepad'">
-            <GamepadIcon
-              v-for="control in binding.gamepad"
-              :key="control"
-              :control="control"
-              dpad-only
-            />
-          </dd>
-          <dd v-else>
+        <dt>{{ t(commandLabel(row.command)) }}</dt>
+        <dd
+          v-if="row.command === 'recording-tap'"
+          class="recording-keys"
+        >
+          <YuanconIcon
+            v-if="device === 'yuancon'"
+            class="numbered-controller"
+            numbered
+          />
+          <template v-else>
             <span
-              v-for="control in binding.yuancon"
-              :key="control"
-              class="yuancon-binding"
-              ><YuanconIcon :control="control" />{{ t(`recording.${control}`) }}</span
+              v-for="item in keys"
+              :key="item.key"
+              class="key-binding"
             >
-          </dd>
-        </template>
+              <span>{{ item.key }}:</span>
+              <kbd v-if="device === 'keyboard'">{{ item.keyboard }}</kbd>
+              <GamepadIcon
+                v-else
+                :control="item.gamepad"
+              />
+            </span>
+          </template>
+        </dd>
+        <dd v-else-if="device === 'keyboard'">
+          <kbd>{{ row.keyboard }}</kbd>
+        </dd>
+        <dd v-else-if="device === 'gamepad'">
+          <GamepadIcon
+            v-for="control in row.gamepad"
+            :key="control"
+            :control="control"
+          />
+        </dd>
+        <dd v-else>
+          <span
+            v-for="control in row.yuancon"
+            :key="control"
+            class="yuancon-binding"
+            ><YuanconIcon :control="control" />{{ t(`recording.${control}`) }}</span
+          >
+        </dd>
       </template>
     </dl>
     <p>{{ t('recording.keysHint') }}</p>

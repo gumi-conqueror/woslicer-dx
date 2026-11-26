@@ -3,6 +3,7 @@ import { createTestApp as setup } from '../support/app';
 import { restoredSession as parseEditorSession } from '../support/app';
 import { createEmptyProject, encodeProject } from '../../src/project/codec';
 import { createTimelineGestures } from '../../src/timeline/gestures';
+import { handleKeyDown } from '../../src/input/keyboard';
 
 it('cancels an active paint gesture when the project is replaced mid-stroke', async () => {
   vi.useFakeTimers();
@@ -41,12 +42,11 @@ it.each([false, true])(
     f.workspace.actions.setMarker(0);
     const gestures = createTimelineGestures(f.editor);
     const point = { x: 48, y: 10, button: 0, altKey: false, shiftKey: false, ctrlKey: false };
-    const { commands } = f;
     gestures.begin(point);
     gestures.move({ ...point, x: 120 });
     f.editor.setCursorTick(200);
     const event = new KeyboardEvent('keydown', { key: 'z', ctrlKey, cancelable: true });
-    commands.onKeyDown(event);
+    handleKeyDown(event, 'edit', f.commands);
     await Promise.resolve();
     expect(event.defaultPrevented).toBe(true);
     expect(f.editor.previewTicks).toBeNull();

@@ -2,14 +2,15 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useEditorStore } from '../../slicing/editor-store';
-import { APPLICATION_MENU, menuCommandEnabled, type MenuCommand } from '../menu';
+import { APPLICATION_MENU } from '../menu';
+import { commandEnabled, commandLabel, type AppCommand } from '../commands';
 import { shortcutLabel, gamepadShortcut } from '../../input/bindings';
 import { useInputState } from '../../input/state';
-import type { MenuNavigation } from '../../input/gamepad';
+import type { UiNavigation } from '../../input/gamepad';
 import GamepadIcon from '../../ui/GamepadIcon.vue';
 import MnemonicLabel from './MnemonicLabel.vue';
 const props = defineProps<{ disabled?: boolean; desktop?: boolean }>();
-const emit = defineEmits<{ command: [command: MenuCommand] }>();
+const emit = defineEmits<{ command: [command: AppCommand] }>();
 const { t } = useI18n();
 const editor = useEditorStore();
 const input = useInputState();
@@ -52,13 +53,15 @@ async function selectGroup(index: number, open: boolean, last = false): Promise<
     preventScroll: true,
   });
 }
-function dispatch(command: MenuCommand): void {
-  if (!menuCommandEnabled(command, editor)) return;
+function dispatch(command: AppCommand): void {
+  if (!commandEnabled(command, editor)) return;
   close();
   emit('command', command);
 }
-function navigate(action: MenuNavigation): boolean {
+/** Controller navigation. Previous and next move along the menu bar. */
+function navigate(navigation: UiNavigation): boolean {
   if (props.disabled) return false;
+  const action = navigation === 'previous' ? 'left' : navigation === 'next' ? 'right' : navigation;
   if (action === 'toggle') {
     if (active.value >= 0) close();
     else void selectGroup(0, true);
@@ -95,18 +98,61 @@ function navigate(action: MenuNavigation): boolean {
       choices[(index + (action === 'up' ? -1 : 1) + choices.length) % choices.length]?.focus();
       break;
     }
+    case 'scroll-up':
+    case 'scroll-down':
+      // Menus are short; scrolling belongs to dialogs.
+      break;
   }
+  return true;
+}
+/** A lone Alt press focuses the menu bar on release; see `keyup`. */
+function altPress(event: KeyboardEvent): boolean {
+  if (event.key !== 'Alt' || event.ctrlKey || event.metaKey || event.shiftKey) return false;
+  if (!event.repeat) altPending = true;
+  event.preventDefault();
+  return true;
+}
+/** Alt+letter opens the menu with that mnemonic. */
+function mnemonicKey(event: KeyboardEvent): boolean {
+  const group = groups.value.findIndex((item) => item.mnemonic === event.key.toLowerCase());
+  if (group < 0) return false;
+  cues.value = true;
+  void selectGroup(group, true);
+  return true;
+}
+/** Keys inside an active menu bar. Returns false when the key leaves the menu to the page. */
+function menuKey(event: KeyboardEvent): boolean {
+  const NAVIGATION: Partial<Record<string, UiNavigation>> = {
+    ArrowLeft: 'left',
+    ArrowRight: 'right',
+    ArrowUp: 'up',
+    ArrowDown: 'down',
+    Enter: 'confirm',
+    ' ': 'confirm',
+    Escape: 'cancel',
+  };
+  const navigation = NAVIGATION[event.key];
+  if (navigation) navigate(navigation);
+  else if (event.key === 'Home' || event.key === 'End') {
+    if (expanded.value) (event.key === 'Home' ? items()[0] : items().at(-1))?.focus();
+    else void selectGroup(event.key === 'Home' ? 0 : groups.value.length - 1, false);
+  } else if (event.key === 'Tab') {
+    trigger()?.focus();
+    close(false);
+    return false;
+  } else if (expanded.value) {
+    const letter = event.key.toLowerCase();
+    const item = groups.value[active.value]?.commands.find((item) => item.mnemonic === letter);
+    if (item) dispatch(item.id);
+  } else mnemonicKey(event);
   return true;
 }
 function keydown(event: KeyboardEvent): void {
   if (props.disabled || event.isComposing || event.key === 'Process') return;
-  if (event.key === 'Alt' && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
-    if (!event.repeat) altPending = true;
-    event.preventDefault();
-    return;
-  }
+  if (altPress(event)) return;
   altPending = false;
   if (event.ctrlKey || event.metaKey || event.shiftKey) return;
+  // Arrow keys on a focused menu button activate the bar without Alt.
   if (
     active.value < 0 &&
     event.target instanceof HTMLButtonElement &&
@@ -118,51 +164,8 @@ function keydown(event: KeyboardEvent): void {
       event.target,
     );
   }
-  const letter = event.key.toLowerCase();
-  const group = groups.value.findIndex((item) => item.mnemonic === letter);
-  if (event.altKey && group >= 0) {
-    cues.value = true;
-    void selectGroup(group, true);
-  } else if (active.value >= 0 && !event.altKey) {
-    switch (event.key) {
-      case 'ArrowLeft':
-        navigate('left');
-        break;
-      case 'ArrowRight':
-        navigate('right');
-        break;
-      case 'ArrowUp':
-        navigate('up');
-        break;
-      case 'ArrowDown':
-        navigate('down');
-        break;
-      case 'Enter':
-      case ' ':
-        navigate('confirm');
-        break;
-      case 'Escape':
-        navigate('cancel');
-        break;
-      case 'Home':
-      case 'End':
-        if (expanded.value) (event.key === 'Home' ? items()[0] : items().at(-1))?.focus();
-        else void selectGroup(event.key === 'Home' ? 0 : groups.value.length - 1, false);
-        break;
-      case 'Tab':
-        trigger()?.focus();
-        close(false);
-        return;
-      default: {
-        if (expanded.value) {
-          const item = groups.value[active.value]?.commands.find(
-            (item) => item.mnemonic === letter,
-          );
-          if (item) dispatch(item.id);
-        } else if (group >= 0) void selectGroup(group, true);
-      }
-    }
-  } else return;
+  const handled = event.altKey ? mnemonicKey(event) : active.value >= 0 && menuKey(event);
+  if (!handled) return;
   event.preventDefault();
   event.stopPropagation();
 }
@@ -250,12 +253,12 @@ defineExpose({ navigate, isActive: () => active.value >= 0 });
           role="menuitem"
           tabindex="-1"
           :data-command="item.id"
-          :aria-label="t(item.key)"
-          :disabled="!menuCommandEnabled(item.id, editor)"
+          :aria-label="t(commandLabel(item.id))"
+          :disabled="!commandEnabled(item.id, editor)"
           @click="dispatch(item.id)"
         >
           <MnemonicLabel
-            :label="t(item.key)"
+            :label="t(commandLabel(item.id))"
             :mnemonic="item.mnemonic"
             :visible="cues"
           />

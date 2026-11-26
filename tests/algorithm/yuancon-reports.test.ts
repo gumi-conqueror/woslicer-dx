@@ -1,117 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import capture from '../fixtures/input/yuancon-capture.json';
-import { createGamepadReader } from '../../src/input/gamepad';
 import { createYuanconReader } from '../../src/input/yuancon/recording';
 import { decodeYuanconReport } from '../../src/input/yuancon/protocol';
-import {
-  recordingCommandForKey,
-  recordingCommandForGamepad,
-  RECORDING_BINDINGS,
-} from '../../src/input/recording';
-import { shortcutLabel } from '../../src/input/bindings';
 
-function pad(buttons: number[] = [], axes = [0, 0]) {
-  return {
-    index: 0,
-    axes,
-    buttons: Array.from({ length: 17 }, (_, index) => ({
-      pressed: buttons.includes(index),
-      touched: false,
-      value: buttons.includes(index) ? 1 : 0,
-    })),
-  };
-}
 function report(keys: number, value: number, length = 15) {
   const data = new DataView(new ArrayBuffer(length));
   data.setUint8(0, keys);
   if (length >= 6) data.setInt16(4, value, true);
   return data;
 }
-describe('recording bindings', () => {
-  it('shares speed controls between keyboard and Xbox without invoking editing bindings', () => {
-    expect(recordingCommandForKey(new KeyboardEvent('keydown', { key: 'a' }))).toBe('rate-down');
-    expect(recordingCommandForKey(new KeyboardEvent('keydown', { key: 'g' }))).toBe('rate-up');
-    expect(recordingCommandForGamepad('lb')).toBe('rate-down');
-    expect(recordingCommandForGamepad('rb')).toBe('rate-up');
-    expect(shortcutLabel('clip-number-down', true)).toBe('');
-    expect(shortcutLabel('clip-number-down')).toBe('A');
-  });
-  it('uses the seven physical letter keys and keeps modifier shortcuts separate', () => {
-    for (const key of 'zsxdcfv')
-      expect(recordingCommandForKey(new KeyboardEvent('keydown', { key }))).toBe('recording-tap');
-    expect(recordingCommandForKey(new KeyboardEvent('keydown', { key: 'y', code: 'KeyZ' }))).toBe(
-      'recording-tap',
-    );
-    expect(recordingCommandForKey(new KeyboardEvent('keydown', { key: ' ', code: 'Space' }))).toBe(
-      'play-pause',
-    );
-    expect(recordingCommandForKey(new KeyboardEvent('keydown', { key: 'q' }))).toBe(
-      'seek-backward',
-    );
-    expect(recordingCommandForKey(new KeyboardEvent('keydown', { key: 't' }))).toBe('seek-forward');
-    expect(
-      recordingCommandForKey(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true })),
-    ).toBeUndefined();
-    expect(
-      recordingCommandForKey(new KeyboardEvent('keydown', { key: 'z', isComposing: true })),
-    ).toBeUndefined();
-    expect(shortcutLabel('import-wos', true)).toBe('');
-    expect(shortcutLabel('save-project', true)).toBe('Ctrl/Cmd+S');
-    expect(shortcutLabel('import-wos')).toBe('T');
-    expect(
-      RECORDING_BINDINGS.find((binding) => binding.command === 'recording-tap')?.gamepad,
-    ).toHaveLength(7);
-    expect(recordingCommandForGamepad('down')).toBeUndefined();
-  });
-  it('triggers each Xbox tap and RT once, while retaining Menu and View', () => {
-    const read = createGamepadReader();
-    read(pad(), 0, true, true);
-    for (const [index, control] of [
-      [0, 'a'],
-      [1, 'b'],
-      [2, 'x'],
-      [3, 'y'],
-      [12, 'up'],
-      [14, 'left'],
-      [15, 'right'],
-    ] as const) {
-      expect(read(pad([index]), 10, true, true)).toEqual([control]);
-      expect(recordingCommandForGamepad(control)).toBe('recording-tap');
-      expect(read(pad([index]), 900, true, true)).toEqual([]);
-      read(pad(), 1000, true, true);
-    }
-    expect(read(pad([7]), 1100, true, true)).toEqual(['rt']);
-    expect(read(pad([7]), 2000, true, true)).toEqual([]);
-    expect(read(pad([8, 9]), 2100, true, true)).toEqual(['menu', 'view']);
-  });
-  it('measures circular stick motion across the angle seam without turning deflection into taps', () => {
-    const read = createGamepadReader();
-    read(pad(), 0, true, true);
-    const position = (angle: number, time: number) =>
-      read(pad([], [Math.cos(angle), Math.sin(angle)]), time, true, true);
-    expect(position(0, 10)).toEqual([]);
-    expect(position(0, 500)).toEqual([]);
-    for (let step = 1; step <= 8; step++)
-      expect(position((step * Math.PI) / 4, step * 20 + 500)).toEqual(['ls-clockwise']);
-    for (let step = 7; step >= 0; step--)
-      expect(position((step * Math.PI) / 4, 900 - step * 20)).toEqual(['ls-counterclockwise']);
-    read(pad(), 1100, true, true);
-    expect(position(Math.PI, 1200)).toEqual([]);
-    expect(position(0, 1300)).toEqual([]);
-  });
-  it('requires neutral after entering recording mode or returning from focus loss', () => {
-    const read = createGamepadReader();
-    expect(read(pad([0]), 0, true, true)).toEqual([]);
-    read(pad(), 1, true, true);
-    expect(read(pad([0]), 2, true, true)).toEqual(['a']);
-    read(pad([0]), 3, false, true);
-    expect(read(pad([0]), 4, true, true)).toEqual([]);
-    read(pad(), 5, true, true);
-    expect(read(pad([0]), 6, true, true)).toEqual(['a']);
-    expect(read(pad([0]), 7, true, false)).toEqual([]);
-  });
-});
 describe('YuanCon recording reports', () => {
   it('replays all captured state changes without merging distinct keys or sustained turns', () => {
     const reports = z.array(z.tuple([z.number(), z.number(), z.number()])).parse(capture.reports);

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CALIBRATION_TAP, CANCEL, matchesBindings, formatBindings } from '../input/bindings';
+import { CALIBRATION_TAP, CANCEL, matchesChords, formatChords } from '../input/bindings';
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { ElAlert, ElButton, ElDialog } from 'element-plus';
@@ -104,17 +104,17 @@ function apply(): void {
 // Capture-phase window handler so calibration keys win over app shortcuts.
 function keydown(event: KeyboardEvent): void {
   if (!props.modelValue) return;
-  if (matchesBindings(event, CANCEL)) {
+  if (matchesChords(event, CANCEL)) {
     event.preventDefault();
     event.stopImmediatePropagation();
     close();
     return;
   }
-  if (!CALIBRATION_TAP.some((binding) => binding.keys.includes(event.key))) return;
+  if (!CALIBRATION_TAP.some((chord) => chord.key === event.key)) return;
   // The modal owns tap keys even after Finish: never leak a timeline marker.
   event.preventDefault();
   event.stopImmediatePropagation();
-  if (event.repeat || !matchesBindings(event, CALIBRATION_TAP) || !active.value) return;
+  if (event.repeat || !matchesChords(event, CALIBRATION_TAP) || !active.value) return;
   calibrator?.tap();
   update();
 }
@@ -150,7 +150,7 @@ onBeforeUnmount(() => {
     <!-- instructions, current offset and live tap progress -->
     <p>
       {{ t('chrome.calibrationHintPrefix') }} {{ bpm }}
-      {{ t('chrome.calibrationHintBody', { keys: formatBindings(CALIBRATION_TAP) }) }}
+      {{ t('chrome.calibrationHintBody', { keys: formatChords(CALIBRATION_TAP) }) }}
     </p>
     <p>{{ t('chrome.offsetDisplay', { ms: offsetMs }) }}</p>
     <p>{{ t('chrome.beat') }} {{ elapsed }} · {{ t('chrome.taps') }} {{ result?.total ?? 0 }}</p>
