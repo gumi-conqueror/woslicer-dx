@@ -8,6 +8,7 @@ import { createEmptyProject, currentTrack } from '../project/codec';
 import type {
   ProjectDocument,
   ProjectFile,
+  ProjectTrack,
   OutputRecipe,
   SlicingSettings,
 } from '../project/schema';
@@ -58,7 +59,9 @@ export const useEditorStore = defineStore('editor', () => {
   const isDirty = computed(() => project.value.isDirty);
   // Read-only projections for consumers of the existing slicing time base.
   // Markers, processing and output settings belong to the track being edited.
-  const track = computed(() => currentTrack(document.value));
+  /** The track that the editor, panels and commands work on. */
+  const currentTrackId = shallowRef<string | null>(null);
+  const track = computed(() => currentTrack(document.value, currentTrackId.value));
   const doc = computed(() =>
     Object.freeze({
       bpm: document.value.timing.bpm,
@@ -227,9 +230,15 @@ export const useEditorStore = defineStore('editor', () => {
     if (result.changed) publish();
     return result;
   }
+  /** One undoable edit of the current track. */
+  function editTrack<T>(edit: (draft: ProjectTrack) => T) {
+    return transact((draft) => edit(currentTrack(draft, currentTrackId.value)));
+  }
   function replaceDocument(value: ProjectDocument, options: { saved?: boolean } = {}): void {
     cancelDraft();
     project.value.replace(value, options);
+    if (!value.tracks.some((item) => item.trackId === currentTrackId.value))
+      currentTrackId.value = value.tracks[0]?.trackId ?? null;
     selectedTicks.value = [];
     setSelection(null, null);
     publish();
@@ -257,39 +266,35 @@ export const useEditorStore = defineStore('editor', () => {
   }
   function setTicks(value: readonly number[], keys: MarkerKeys = markerKeys.value): boolean {
     return transact((draft) => {
-      currentTrack(draft).slicing.markers = normalizeSelection(value);
-      const retained = new Set(currentTrack(draft).slicing.markers);
-      currentTrack(draft).slicing.markerKeys = remapMarkerKeys(
+      const { slicing } = currentTrack(draft, currentTrackId.value);
+      slicing.markers = normalizeSelection(value);
+      const retained = new Set(slicing.markers);
+      slicing.markerKeys = remapMarkerKeys(
         keys.filter((entry) => retained.has(entry.tick)),
         (tick) => tick,
       );
     }).changed;
   }
   function addTicks(value: readonly number[]): number {
-    return transact((draft) => {
-      const additions = normalizeSelection(value).filter(
-        (t) => !currentTrack(draft).slicing.markers.includes(t),
-      );
-      currentTrack(draft).slicing.markers = normalizeSelection([
-        ...currentTrack(draft).slicing.markers,
-        ...additions,
-      ]);
+    return editTrack(({ slicing }) => {
+      const additions = normalizeSelection(value).filter((t) => !slicing.markers.includes(t));
+      slicing.markers = normalizeSelection([...slicing.markers, ...additions]);
       return additions.length;
     }).value;
   }
   function setOutputOptions(value: Partial<OutputRecipe>): void {
-    transact((draft) => {
-      Object.assign(currentTrack(draft).output, value);
+    editTrack((draft) => {
+      Object.assign(draft.output, value);
     });
   }
   function setBandDetection(value: Partial<SlicingSettings['bandDetection']>): void {
-    transact((draft) => {
-      Object.assign(currentTrack(draft).slicing.bandDetection, value);
+    editTrack((draft) => {
+      Object.assign(draft.slicing.bandDetection, value);
     });
   }
   function setNoisegateEnabled(value: boolean): void {
-    transact((draft) => {
-      currentTrack(draft).slicing.noisegateEnabled = value;
+    editTrack((draft) => {
+      draft.slicing.noisegateEnabled = value;
     });
   }
   function setStatus(
@@ -388,9 +393,9 @@ export const useEditorStore = defineStore('editor', () => {
         Number.isInteger(fadeoutMs) &&
         inRange(fadeoutMs, FIELD_RANGES.fadeoutMs)
       )
-        currentTrack(draft).slicing.fadeoutMs = fadeoutMs;
+        currentTrack(draft, currentTrackId.value).slicing.fadeoutMs = fadeoutMs;
       if (noisegateDb !== undefined && inRange(noisegateDb, FIELD_RANGES.noisegateDb))
-        currentTrack(draft).slicing.noisegateDb = noisegateDb;
+        currentTrack(draft, currentTrackId.value).slicing.noisegateDb = noisegateDb;
     });
   }
   function reset(): void {
@@ -413,6 +418,8 @@ export const useEditorStore = defineStore('editor', () => {
   return {
     document,
     doc,
+    track,
+    currentTrackId,
     timeBase,
     docRevision,
     documentGeneration,
@@ -462,6 +469,7 @@ export const useEditorStore = defineStore('editor', () => {
     canUndo,
     canRedo,
     transact,
+    editTrack,
     replaceDocument,
     undo,
     redo,

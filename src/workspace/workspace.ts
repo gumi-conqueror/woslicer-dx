@@ -16,7 +16,6 @@ import {
   type ProjectDocument,
 } from '../project/schema';
 import {
-  activeMedia,
   identifyAudio,
   projectFileName,
   projectWithAudio,
@@ -127,7 +126,7 @@ export function createWorkspace(options: WorkspaceOptions) {
     const request = beginOpening({
         stage: 'verifying',
         name: file.name,
-        mediaId: preserveBaseName ? activeMedia(editor.document)?.mediaId : undefined,
+        mediaId: preserveBaseName ? editor.track.media?.mediaId : undefined,
       }),
       documentGeneration = editor.documentGeneration;
     const previousPhase = editor.source ? { kind: 'ready' as const } : { kind: 'empty' as const };
@@ -146,7 +145,7 @@ export function createWorkspace(options: WorkspaceOptions) {
       // the document invalidates this result; merge audio into the latest state.
       if (documentGeneration !== editor.documentGeneration)
         throw new Error('Project changed during audio loading; select the audio again');
-      const expected = preserveBaseName ? activeMedia(editor.document) : null;
+      const expected = preserveBaseName ? editor.track.media : null;
       if (expected) {
         const different = !matchesProjectAudio(expected, identity, result);
         if (different) {
@@ -162,9 +161,7 @@ export function createWorkspace(options: WorkspaceOptions) {
           (expected.originHint?.kind !== 'desktop' ||
             expected.originHint.pathHint !== file.absolutePath);
         if (different || pathChanged)
-          editor.transact((draft) =>
-            relinkMedia(currentTrack(draft), file, identity, result, different),
-          );
+          editor.editTrack((track) => relinkMedia(track, file, identity, result, different));
       }
       const next = expected
         ? null
@@ -225,9 +222,9 @@ export function createWorkspace(options: WorkspaceOptions) {
     }
   }
   async function relinkAudio(): Promise<void> {
-    if (!activeMedia(editor.document)) return;
+    if (!editor.track.media) return;
     const documentGeneration = editor.documentGeneration,
-      request = beginOpening({ stage: 'opening', name: activeMedia(editor.document)?.name });
+      request = beginOpening({ stage: 'opening', name: editor.track.media?.name });
     try {
       const file = await platform.openFile('audio');
       if (
@@ -264,7 +261,7 @@ export function createWorkspace(options: WorkspaceOptions) {
       throw new Error(`Unsupported project version: ${parsed.version}`);
     requireEditableTracks(parsed.project);
     replaceWorkspace(parsed.project);
-    const media = activeMedia(editor.document);
+    const media = editor.track.media;
     if (parsed.unknownFields.length)
       editor.setStatus([
         {
@@ -366,7 +363,7 @@ export function createWorkspace(options: WorkspaceOptions) {
   async function reopen(reference: string, preserveBaseName = false): Promise<void> {
     const request = beginOpening({
         stage: 'reading',
-        name: activeMedia(editor.document)?.name ?? editor.lastFile?.name,
+        name: editor.track.media?.name ?? editor.lastFile?.name,
       }),
       documentGeneration = editor.documentGeneration;
     try {
@@ -375,11 +372,7 @@ export function createWorkspace(options: WorkspaceOptions) {
         await loadAudio(file, preserveBaseName);
     } catch {
       if (!disposed && request === opening)
-        editor.setStatus(
-          'lastFileMissing',
-          { name: activeMedia(editor.document)?.name ?? reference },
-          true,
-        );
+        editor.setStatus('lastFileMissing', { name: editor.track.media?.name ?? reference }, true);
     } finally {
       finishOpening(request);
     }
@@ -395,7 +388,7 @@ export function createWorkspace(options: WorkspaceOptions) {
       const imported = currentTrack(wos).slicing;
       editor.transact((draft) => {
         draft.timing = { ...wos.timing };
-        const { slicing } = currentTrack(draft);
+        const { slicing } = currentTrack(draft, editor.currentTrackId);
         slicing.fadeoutMs = imported.fadeoutMs;
         slicing.noisegateDb = imported.noisegateDb;
         slicing.markers = imported.markers;
@@ -431,7 +424,7 @@ export function createWorkspace(options: WorkspaceOptions) {
   async function saveWos(): Promise<void> {
     const version = generation;
     try {
-      const bytes = writeWos(projectToWos(editor.document));
+      const bytes = writeWos(projectToWos(editor.document, editor.currentTrackId));
       const name = `${editor.source?.name ?? 'untitled'}.wos`;
       if ((await platform.saveFile('wos', name, bytes)) && !disposed && version === generation)
         editor.setStatus('savedWos', { file: name });

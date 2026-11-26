@@ -22,9 +22,6 @@ export async function identifyAudio(file: OpenedFile) {
   return { format, byteLength, integrity };
 }
 /** The audio file of the track being edited, or null before audio is chosen. */
-export function activeMedia(document: ProjectDocument): ProjectDocument['tracks'][number]['media'] {
-  return currentTrack(document).media;
-}
 export function matchesProjectAudio(
   asset: NonNullable<ProjectDocument['tracks'][number]['media']>,
   identity: Awaited<ReturnType<typeof identifyAudio>>,
