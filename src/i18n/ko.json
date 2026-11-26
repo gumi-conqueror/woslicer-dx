@@ -218,7 +218,8 @@
     "pressKey": "사용할 키 입력. Esc로 취소.",
     "pressControl": "사용할 컨트롤러 버튼 입력. Menu로 취소.",
     "keyReserved": "메뉴와 대화 상자용 예약 키. 다른 키 입력.",
-    "inputSettingsTitle": "입력 설정"
+    "inputSettingsTitle": "입력 설정",
+    "trackGain": "트랙 게인(dB)"
   },
   "status": {
     "projectOpened": "프로젝트 열기 완료: {name}",

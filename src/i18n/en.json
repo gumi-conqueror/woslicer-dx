@@ -218,7 +218,8 @@
     "pressKey": "Press the key to use. Esc cancels.",
     "pressControl": "Press the controller button to use. Menu cancels.",
     "keyReserved": "This key is reserved for menus and dialogs. Press another key.",
-    "inputSettingsTitle": "Input settings"
+    "inputSettingsTitle": "Input settings",
+    "trackGain": "Track gain (dB)"
   },
   "status": {
     "projectOpened": "Opened project: {name}",

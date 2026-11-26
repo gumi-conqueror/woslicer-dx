@@ -218,7 +218,8 @@
     "pressKey": "使用するキーを押す。Esc で取消。",
     "pressControl": "使用するコントローラーのボタンを押す。Menu で取消。",
     "keyReserved": "このキーはメニューとダイアログ用。別のキーを押す。",
-    "inputSettingsTitle": "入力設定"
+    "inputSettingsTitle": "入力設定",
+    "trackGain": "トラックのゲイン（dB）"
   },
   "status": {
     "projectOpened": "プロジェクトを開いた：{name}",

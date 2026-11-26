@@ -7,12 +7,17 @@ import { getPlatform } from '../../platform';
 import type { BuildIdentity } from '../../platform/contracts';
 import { appDataFolders, openDataFolder, type AppDataFolder } from '../../platform/app-data';
 import { useInputState } from '../../input/state';
+import { useBindingOverrides } from '../../input/binding-overrides';
+import { useWheelLayout } from '../../input/wheel-layout';
+import { DEFAULT_WHEELS } from '../../input/wheel';
 import UninstallGuide from './UninstallGuide.vue';
 const open = defineModel<boolean>({ required: true });
 const props = defineProps<{ identity: BuildIdentity | null }>();
 const { t } = useI18n();
 const platform = getPlatform();
 const input = useInputState();
+const bindings = useBindingOverrides();
+const wheels = useWheelLayout();
 const folders = ref<AppDataFolder[]>([]);
 const diagnostics = ref('');
 const message = ref('');
@@ -32,6 +37,9 @@ async function refresh(): Promise<void> {
       userAgent: navigator.userAgent,
       viewport: { width: innerWidth, height: innerHeight, dpr: devicePixelRatio },
       input: input.device,
+      // Changed bindings explain input reports that do not match the guide.
+      customBindings: Object.keys(bindings.overrides).length > 0,
+      customWheels: wheels.wheels !== DEFAULT_WHEELS,
       gamepads: Array.from(navigator.getGamepads?.() ?? [])
         .filter((pad) => pad?.connected)
         .map((pad) => pad && { id: pad.id, mapping: pad.mapping }),

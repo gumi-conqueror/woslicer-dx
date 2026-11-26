@@ -218,7 +218,8 @@
     "pressKey": "按下要使用的按键，Esc 取消。",
     "pressControl": "按下要使用的手柄按键，Menu 取消。",
     "keyReserved": "这个按键保留给菜单和对话框，请换一个。",
-    "inputSettingsTitle": "输入设置"
+    "inputSettingsTitle": "输入设置",
+    "trackGain": "音轨增益（dB）"
   },
   "status": {
     "projectOpened": "已打开工程：{name}",
