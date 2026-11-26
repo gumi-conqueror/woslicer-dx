@@ -78,8 +78,7 @@ key is pressed. Presses at the same resolved tick merge their key sets. Moves,
 quantization, internal clipboard operations, undo and recovery retain the sets.
 Replacing markers from WOS, BMSE, MIDI or edge detection clears old key attributes.
 
-Readers before 1.2.0 report `markerKeys` as an unknown field and discard it when
-they save an editable project. Current readers accept projects without the field.
+Projects without the field remain valid.
 Legacy `.wos` and original `.bmh` formats remain unchanged and do not store these
 attributes. WOS export retains the marker positions.
 
