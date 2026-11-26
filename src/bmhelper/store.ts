@@ -3,9 +3,8 @@ import { TICKS_PER_BEAT } from '../core/timebase';
 import { defineStore } from 'pinia';
 import {
   createDivision,
-  nextZz,
-  prevZz,
   setStartDefinition,
+  transposeDefinitions,
   type DivisionSetting,
 } from '../core/bmhelper';
 import { readBmh, writeBmh, type BmhProject, type BmhNameChange } from '@gumi-conqueror/bmh-file';
@@ -112,11 +111,7 @@ export const useBmhelperStore = defineStore('bmhelper', () => {
     const next = project.value ? structuredClone(project.value) : null;
     const division = next?.divisions[selectedIndex.value];
     if (!next || !division) return;
-    for (const definition of division.definitions)
-      definition.zz =
-        delta === 1
-          ? nextZz(definition.zz, !division.zzDefinition)
-          : prevZz(definition.zz, !division.zzDefinition);
+    transposeDefinitions(division, delta);
     commitProject(next);
   }
   function setStart(start: number): void {
@@ -125,7 +120,7 @@ export const useBmhelperStore = defineStore('bmhelper', () => {
     const next = project.value ? structuredClone(project.value) : null;
     const division = next?.divisions[selectedIndex.value];
     if (!next || !division) return;
-    setStartDefinition(division, start, !division.zzDefinition);
+    setStartDefinition(division, start);
     commitProject(next);
   }
   function exportMidiBytes(): Uint8Array {

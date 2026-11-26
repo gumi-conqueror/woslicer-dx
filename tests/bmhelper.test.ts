@@ -3,19 +3,16 @@ import assert from 'node:assert/strict';
 import { inspectSmf, readSmfSequence, writeSmfSequence, SmfFormatError } from '../src/core/smf.js';
 import { type MidiSequence } from '@gumi-conqueror/bmh-file';
 import {
-  BMSE_CLIPBOARD_HEADER,
   bmsSequenceClipboard,
   createDivision,
   cutPositionsClipboard,
   defaultDivisionSetting,
-  nextZz,
-  prevZz,
   setStartDefinition,
   transposeDefinitions,
   wavDefinitionText,
-  zzToString,
   type DivisionSetting,
 } from '../src/core/bmhelper.js';
+import { formatId, stepId } from '../src/core/formats/numbering.js';
 import { type Division } from '@gumi-conqueror/bmh-file';
 import { readBmh, writeBmh } from '@gumi-conqueror/bmh-file';
 
@@ -231,22 +228,22 @@ test('assigns sequential base-36 ZZ definitions', () => {
     makeSetting(),
   );
   assert.deepEqual(
-    division.definitions.map((definition) => zzToString(definition.zz)),
+    division.definitions.map((definition) => formatId(definition.zz)),
     ['01', '02', '03'],
   );
   assert.deepEqual(division.src2def, [0, 1, 2]);
 });
 
 test('ZZ ids wrap at ZZ and the FF mode wraps inside 00-FF', () => {
-  assert.equal(zzToString(0), '00');
-  assert.equal(zzToString(1295), 'ZZ');
-  assert.equal(nextZz(1295, false), 0);
-  assert.equal(prevZz(0, false), 1295);
+  assert.equal(formatId(0), '00');
+  assert.equal(formatId(1295), 'ZZ');
+  assert.equal(stepId(1295, 1, 'extended'), 0);
+  assert.equal(stepId(0, -1, 'extended'), 1295);
   // FF shape: 0F → 10, FF → 00 (each digit stays within 0-9A-F).
   // NB: the "FF" SHAPE is the base-36 value 15*36+15 = 555, not decimal 255.
-  assert.equal(zzToString(nextZz(15, true)), '10');
-  assert.equal(zzToString(nextZz(555, true)), '00');
-  assert.equal(nextZz(1295, true), 0);
+  assert.equal(formatId(stepId(15, 1, 'restricted')), '10');
+  assert.equal(formatId(stepId(555, 1, 'restricted')), '00');
+  assert.equal(stepId(1295, 1, 'restricted'), 0);
 });
 
 test('multi-definition spreads close repeats over several ids', () => {
@@ -265,7 +262,7 @@ test('multi-definition spreads close repeats over several ids', () => {
   assert.equal(division.notes[0].referrers.length, 2);
   assert.deepEqual(division.src2def, [0, 1, 2]);
   assert.deepEqual(
-    division.definitions.map((definition) => [zzToString(definition.zz), definition.div]),
+    division.definitions.map((definition) => [formatId(definition.zz), definition.div]),
     [
       ['01', 0],
       ['02', 0],
@@ -280,22 +277,22 @@ test('setStartDefinition shifts ZZ ids with wraparound and renumbers in FF mode'
     { position: 960, gate: 480, nn: 62, vel: 100 },
   ]);
   const zzMode = createDivision(source, makeSetting());
-  setStartDefinition(zzMode, 5, false);
+  setStartDefinition(zzMode, 5);
   assert.deepEqual(
-    zzMode.definitions.map((d) => zzToString(d.zz)),
+    zzMode.definitions.map((d) => formatId(d.zz)),
     ['05', '06'],
   );
   const ffMode = createDivision(source, makeSetting({ zzDefinition: false }));
-  setStartDefinition(ffMode, 15 * 36 + 14, true); // the "FE" shape as a base-36 value
+  setStartDefinition(ffMode, 15 * 36 + 14); // the "FE" shape as a base-36 value
   // FF mode renumbers sequentially and stays inside 00-FF: FE, then FF.
   assert.deepEqual(
-    ffMode.definitions.map((d) => zzToString(d.zz)),
+    ffMode.definitions.map((d) => formatId(d.zz)),
     ['FE', 'FF'],
   );
   const transposed = createDivision(source, makeSetting());
-  transposeDefinitions(transposed, 1, false);
+  transposeDefinitions(transposed, 1);
   assert.deepEqual(
-    transposed.definitions.map((d) => zzToString(d.zz)),
+    transposed.definitions.map((d) => formatId(d.zz)),
     ['02', '03'],
   );
 });
@@ -313,7 +310,7 @@ test('cutPositionsClipboard emits the exact woslicer B-key payload', () => {
   // Recording positions: 0 and ceil((0+960+480)/480)*480 = 1440 → 48/quarter → 0, 144.
   const text = cutPositionsClipboard(division);
   const lines = text.split('\r\n');
-  assert.equal(lines[0], BMSE_CLIPBOARD_HEADER);
+  assert.equal(lines[0], 'BMSE ClipBoard Object Data Format');
   assert.deepEqual(lines.slice(1, 4), ['011000000001', '011000001441', '']);
 });
 
@@ -335,7 +332,7 @@ test('bmsSequenceClipboard spreads chords across BGM lanes with decimal zz', () 
     ]),
   );
   const lines = text.split('\r\n');
-  assert.equal(lines[0], BMSE_CLIPBOARD_HEADER);
+  assert.equal(lines[0], 'BMSE ClipBoard Object Data Format');
   // pos 0 → lane 01 and 02; pos 1920*48/480 = 192 → lane 01. NB: the nn/gate/vel
   // sort reorders the div notes, so the nn62 sound (source note 3) gets zz 02
   // and the chord's nn64 gets zz 03.

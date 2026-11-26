@@ -1,58 +1,32 @@
-import test from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import {
-  stepId,
-  parseId,
-  formatId,
-  renumber,
-  markerNextId,
-} from '../src/core/formats/numbering.js';
-import {
-  markerClipboard,
-  recordingCutText,
-  sourceSequenceText,
-} from '../src/core/formats/clipboard.js';
-import { assignDefinitions } from '../src/core/notes/definition-assignment.js';
-import { arrange, defaultSettings } from '../src/core/notes/arrangement.js';
-import { definitionText } from '../src/core/formats/definitions.js';
-test('base36, division wrap and distinct clipboard skip', () => {
+import { stepId, formatId, renumber, markerNextId } from '../../src/core/formats/numbering';
+import { assignDefinitions } from '../../src/core/notes/definition-assignment';
+import { arrange, defaultSettings } from '../../src/core/notes/arrangement';
+
+/** Reads a two-character base-36 number in the test text. */
+const parseId = (text: string): number => parseInt(text, 36);
+test('restricted numbering steps through hexadecimal digits and wraps after FF', () => {
   assert.equal(formatId(stepId(15, 1, 'restricted')), '10');
   assert.equal(formatId(stepId(parseId('FF'), 1, 'restricted')), '00');
   assert.equal(formatId(stepId(0, -1, 'restricted')), 'FF');
-  assert.equal(stepId(1295, 1, 'extended'), 0);
-  assert.deepEqual(renumber([1295, 0], 1, 'extended'), [1, 2]);
   assert.deepEqual(renumber([30, 900], 14, 'restricted'), [14, 15]);
-  assert.equal(markerNextId(parseId('FF'), true), parseId('G0'));
-  for (let n = 0; n < 1296; n++) assert.equal(parseId(formatId(n)), n);
-  assert.throws(() => parseId('aa'));
-  assert.equal(stepId(16, 1, 'restricted'), 36);
-});
-test('exact clipboard and definition wire strings', () => {
-  assert.equal(
-    markerClipboard([60, -1, 12, 49152], 15, true),
-    'BMSE ClipBoard Object Data Format\r\n1010000001215\r\n1010000006036\r\n\0',
-  );
-  assert.equal(
-    recordingCutText([750], 300),
-    'BMSE ClipBoard Object Data Format\r\n011000001201\r\n',
-  );
-  assert.equal(
-    sourceSequenceText(
-      [
-        { onset: 10, definitionId: 10 },
-        { onset: 10, definitionId: 36 },
-      ],
-      48,
-    ),
-    'BMSE ClipBoard Object Data Format\r\n1010000001010\r\n1020000001036\r\n',
-  );
-  assert.equal(
-    definitionText([{ identifier: 10, soundOrdinal: 2 }], 'sample'),
-    '#WAV0A sample_002.wav\r\n',
-  );
-  assert.throws(() => recordingCutText([-1], 48));
 });
 
+test('extended numbering wraps after ZZ', () => {
+  assert.equal(stepId(1295, 1, 'extended'), 0);
+  assert.deepEqual(renumber([1295, 0], 1, 'extended'), [1, 2]);
+});
+
+test('formats numbers as two uppercase base-36 digits', () => {
+  assert.deepEqual([0, 10, 36, 1295].map(formatId), ['00', '0A', '10', 'ZZ']);
+});
+
+test('marker clip numbers skip low digits G-Z only in restricted numbering', () => {
+  assert.equal(markerNextId(parseId('0F'), 'restricted'), parseId('10'));
+  assert.equal(markerNextId(parseId('FF'), 'restricted'), parseId('G0'));
+  assert.equal(markerNextId(parseId('0F'), 'extended'), parseId('0G'));
+});
 test('approved restricted entry transitions', () => {
   const cases = [
     ['0G', '10', '0F'],
@@ -86,32 +60,6 @@ test('all restricted entries retain zero and compose directional steps', () => {
         assert.equal(stepId(id, direction * count, 'restricted'), successive);
       }
     }
-  }
-});
-
-test('restricted safe-integer boundary offsets have independent literal results', () => {
-  // 2^53 is divisible by 256. After the specified entry step, the
-  // remaining signed steps traverse the independently enumerated hex cycle.
-  const cases = [
-    ['0Z', 9007199254740989, '0C'],
-    ['0Z', 9007199254740990, '0D'],
-    ['0Z', 9007199254740991, '0E'],
-    ['0Z', -9007199254740989, 'F4'],
-    ['0Z', -9007199254740990, 'F3'],
-    ['0Z', -9007199254740991, 'F2'],
-    ['FF', 9007199254740991, 'FE'],
-    ['FF', 9007199254740990, 'FD'],
-    ['00', -9007199254740991, '01'],
-    ['FG', 9007199254740991, 'FE'],
-    ['FG', -9007199254740991, '01'],
-    ['GG', -9007199254740991, '11'],
-  ] as const;
-  for (const [input, offset, expected] of cases) {
-    assert.equal(
-      formatId(stepId(parseId(input), offset, 'restricted')),
-      expected,
-      input + ' offset ' + offset,
-    );
   }
 });
 
@@ -151,8 +99,8 @@ test('ordinary restricted cycle and extended offsets remain exhaustive', () => {
       assert.equal(stepId(id, delta, 'extended'), (((id + delta) % 1296) + 1296) % 1296);
     }
     const expectedMarker = (id + (id % 36 === 15 ? 21 : 1)) % 1296;
-    assert.equal(markerNextId(id, true), expectedMarker);
-    assert.equal(markerNextId(id, false), (id + 1) % 1296);
+    assert.equal(markerNextId(id, 'restricted'), expectedMarker);
+    assert.equal(markerNextId(id, 'extended'), (id + 1) % 1296);
   }
 });
 

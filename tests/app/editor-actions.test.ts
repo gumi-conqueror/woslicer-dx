@@ -1,6 +1,6 @@
 import { createPinia, disposePinia, type Pinia } from 'pinia';
 import { afterEach, describe, expect, it } from 'vitest';
-import { buildBmseClipboard, parseBmseClipboard } from '../../src/core/bmse';
+import { buildBmseClipboard, parseBmseClipboard } from '../../src/core/formats/bmse';
 import { MAX_TICKS, MEASURE_TICKS } from '../../src/core/timebase';
 import { createEmptyProject } from '../../src/project/codec';
 import { createEditorActions } from '../../src/slicing/editor-actions';
@@ -309,7 +309,7 @@ describe('selection clipboard actions', () => {
     const { editor, actions } = fixture([5, 40]);
     editor.setSelectedTicks([5, 40]);
     actions.copySelection();
-    const text = buildBmseClipboard(editor.ticks, { startNumber: 1, useFfNumbering: false });
+    const text = buildBmseClipboard(editor.ticks, { startNumber: 1, numbering: 'extended' });
     editor.setTicks(parseBmseClipboard(text).ticks.map((tick) => tick + 200));
     editor.setCursorTick(100);
     actions.pasteSelection();
@@ -344,7 +344,7 @@ describe('measure clipboard actions', () => {
   it('keeps the measure clipboard independent of BMSE imports', () => {
     const { editor, actions } = fixture([10]);
     actions.measureCopy();
-    const text = buildBmseClipboard(editor.ticks, { startNumber: 1, useFfNumbering: false });
+    const text = buildBmseClipboard(editor.ticks, { startNumber: 1, numbering: 'extended' });
     editor.setTicks(parseBmseClipboard(text).ticks.map((tick) => tick + 50));
     editor.setCursorTick(MEASURE_TICKS);
     actions.measurePaste();

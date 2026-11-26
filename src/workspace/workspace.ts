@@ -16,7 +16,7 @@ import {
   matchesProjectAudio,
 } from './project-media';
 import { readWos, writeWos } from '@gumi-conqueror/wos-file';
-import { buildBmseClipboard, parseBmseClipboard } from '../core/bmse';
+import { buildBmseClipboard, parseBmseClipboard } from '../core/formats/bmse';
 import type { Platform, OpenedFile } from '../platform/contracts';
 import type { EditorStore } from '../slicing/editor-store';
 import { createEditorActions } from '../slicing/editor-actions';
@@ -560,7 +560,7 @@ export function createWorkspace(options: WorkspaceOptions) {
       await platform.writeClipboard(
         buildBmseClipboard(editor.ticks, {
           startNumber: editor.clipStartNumber,
-          useFfNumbering: editor.useFfNumbering,
+          numbering: editor.useFfNumbering ? 'restricted' : 'extended',
         }),
       );
       editor.setStatus('bmseClipboardOut', {
