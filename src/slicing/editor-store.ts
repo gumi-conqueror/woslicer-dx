@@ -235,13 +235,16 @@ export const useEditorStore = defineStore('editor', () => {
       }),
   });
   const noisegateEnabled = computed(() => track.value.slicing.noisegateEnabled);
-  /** Slice rendering settings for preview and export. A disabled noise gate renders as 0 dB. */
-  const sliceProcessing = computed(() =>
-    Object.freeze({
-      fadeoutMs: track.value.slicing.fadeoutMs,
-      noisegateDb: noisegateEnabled.value ? track.value.slicing.noisegateDb : 0,
-    }),
-  );
+  /** Slice rendering settings of a track. A disabled noise gate renders as 0 dB. */
+  function sliceProcessingOf(trackId: string) {
+    const { slicing } = currentTrack(document.value, trackId);
+    return Object.freeze({
+      fadeoutMs: slicing.fadeoutMs,
+      noisegateDb: slicing.noisegateEnabled ? slicing.noisegateDb : 0,
+    });
+  }
+  /** Slice rendering settings of the current track, for preview and export. */
+  const sliceProcessing = computed(() => sliceProcessingOf(track.value.trackId));
   const baseName = computed(() => track.value.output.baseName);
   const clipStartNumber = computed(() => track.value.output.clipStartNumber);
   const useFfNumbering = computed(() => track.value.output.useFfNumbering);
@@ -538,6 +541,7 @@ export const useEditorStore = defineStore('editor', () => {
     cueMode,
     noisegateEnabled,
     sliceProcessing,
+    sliceProcessingOf,
     baseName,
     clipStartNumber,
     useFfNumbering,

@@ -330,7 +330,9 @@
     "projectUnknownFields": "包含 {count} 个不支持的字段，保存时仅保留支持的工程数据。",
     "trackLimit": "一个工程最多 {count} 条音轨。",
     "lastTrackKept": "工程至少保留一条音轨。",
-    "trackRemoved": "已删除音轨 {name}。撤销可恢复。"
+    "trackRemoved": "已删除音轨 {name}。撤销可恢复。",
+    "exportNameConflict": "两条音轨都会写出 {name}。请为音轨设置不同的输出名称。",
+    "exportTracksWithoutAudio": "{count} 条没有音频的音轨未导出。"
   },
   "menu": {
     "file": "文件",
@@ -370,7 +372,8 @@
     "troubleshoot": "故障排查",
     "openDataFolder": "打开数据文件夹",
     "addTrack": "添加音轨…",
-    "removeTrack": "删除当前音轨"
+    "removeTrack": "删除当前音轨",
+    "exportAllTracks": "导出全部音轨的切片…"
   },
   "dialogs": {
     "loadAudio": "打开音频",

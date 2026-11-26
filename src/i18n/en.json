@@ -330,7 +330,9 @@
     "projectUnknownFields": "Unsupported fields: {count}. Saving keeps only supported project data.",
     "trackLimit": "A project holds at most {count} tracks.",
     "lastTrackKept": "A project keeps at least one track.",
-    "trackRemoved": "Removed track {name}. Undo restores it."
+    "trackRemoved": "Removed track {name}. Undo restores it.",
+    "exportNameConflict": "Two tracks would both write {name}. Give the tracks different output names.",
+    "exportTracksWithoutAudio": "{count} tracks without audio were not exported."
   },
   "menu": {
     "file": "File",
@@ -370,7 +372,8 @@
     "troubleshoot": "Troubleshoot",
     "openDataFolder": "Open data folder",
     "addTrack": "Add audio track…",
-    "removeTrack": "Remove current track"
+    "removeTrack": "Remove current track",
+    "exportAllTracks": "Export slices of all tracks…"
   },
   "dialogs": {
     "loadAudio": "Open audio",

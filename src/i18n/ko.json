@@ -330,7 +330,9 @@
     "projectUnknownFields": "지원하지 않는 항목 {count}개 있음. 저장 시 지원하는 데이터만 유지.",
     "trackLimit": "프로젝트당 트랙은 최대 {count}개.",
     "lastTrackKept": "프로젝트에는 트랙이 하나 이상 필요.",
-    "trackRemoved": "트랙 {name} 삭제. 실행 취소로 복원 가능."
+    "trackRemoved": "트랙 {name} 삭제. 실행 취소로 복원 가능.",
+    "exportNameConflict": "두 트랙이 같은 {name} 파일을 씀. 트랙마다 다른 출력 이름 지정 필요.",
+    "exportTracksWithoutAudio": "오디오가 없는 트랙 {count}개는 내보내지 않음."
   },
   "menu": {
     "file": "파일",
@@ -370,7 +372,8 @@
     "troubleshoot": "문제 해결",
     "openDataFolder": "데이터 폴더 열기",
     "addTrack": "오디오 트랙 추가…",
-    "removeTrack": "현재 트랙 삭제"
+    "removeTrack": "현재 트랙 삭제",
+    "exportAllTracks": "모든 트랙의 구간 내보내기…"
   },
   "dialogs": {
     "loadAudio": "음원 열기",

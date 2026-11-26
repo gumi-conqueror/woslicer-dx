@@ -24,6 +24,7 @@ export const APPLICATION_MENU = [
       { id: 'close-project', mnemonic: 'c' },
       { id: 'export-slice', mnemonic: 'e' },
       { id: 'export-all', mnemonic: 'x' },
+      { id: 'export-all-tracks', mnemonic: 'l' },
     ],
   },
   {

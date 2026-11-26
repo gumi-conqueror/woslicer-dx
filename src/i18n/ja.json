@@ -330,7 +330,9 @@
     "projectUnknownFields": "未対応の項目 {count} 個あり。保存時は対応するデータのみ保持。",
     "trackLimit": "1 プロジェクトのトラックは最大 {count}。",
     "lastTrackKept": "プロジェクトには 1 トラック以上が必要。",
-    "trackRemoved": "トラック {name} を削除。元に戻すで復元可能。"
+    "trackRemoved": "トラック {name} を削除。元に戻すで復元可能。",
+    "exportNameConflict": "2 つのトラックが同じ {name} を書き出す。トラックごとに別の出力名を設定。",
+    "exportTracksWithoutAudio": "音声のないトラック {count} 件は書き出していない。"
   },
   "menu": {
     "file": "ファイル",
@@ -370,7 +372,8 @@
     "troubleshoot": "問題の解決",
     "openDataFolder": "データフォルダーを開く",
     "addTrack": "オーディオトラックを追加…",
-    "removeTrack": "現在のトラックを削除"
+    "removeTrack": "現在のトラックを削除",
+    "exportAllTracks": "全トラックの区間を書き出す…"
   },
   "dialogs": {
     "loadAudio": "音声を開く",
