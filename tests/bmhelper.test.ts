@@ -1,6 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { inspectSmf, readSmfSequence, writeSmfSequence, SmfFormatError } from '../src/core/smf.js';
+import {
+  inspectSmf,
+  readSmfSequence,
+  writeSmfSequence,
+  SmfFormatError,
+} from '../src/core/formats/smf.js';
 import { type MidiSequence } from '@gumi-conqueror/bmh-file';
 import {
   bmsSequenceClipboard,

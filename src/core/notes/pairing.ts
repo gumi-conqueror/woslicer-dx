@@ -22,7 +22,7 @@ export type TrackEvent = NoteEvent | AuxiliaryEvent;
 export interface PairedNote extends Note {
   readonly channel: number;
 }
-export function pairTrack(
+export function pairNotes(
   events: readonly TrackEvent[],
   channels?: ReadonlySet<number>,
 ): {

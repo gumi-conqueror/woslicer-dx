@@ -14,7 +14,7 @@ import {
   defaultDivisionSetting,
   wavDefinitionText,
 } from '../../src/core/bmhelper';
-import { writeSmfSequence } from '../../src/core/smf';
+import { writeSmfSequence } from '../../src/core/formats/smf';
 
 /**
  * Dialog double for every panel test: renders the default slot (settings

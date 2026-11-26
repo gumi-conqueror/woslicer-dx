@@ -24,7 +24,7 @@ import {
   wavDefinitionText,
   type SortType,
 } from '../core/bmhelper';
-import type { SmfTrackInfo } from '../core/smf';
+import type { SmfTrackInfo } from '../core/formats/smf';
 import { useBmhelperStore } from './store';
 import PianoRoll from './PianoRoll.vue';
 

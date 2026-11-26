@@ -8,7 +8,7 @@ import {
   type DivisionSetting,
 } from '../core/bmhelper';
 import { readBmh, writeBmh, type BmhProject, type BmhNameChange } from '@gumi-conqueror/bmh-file';
-import { inspectSmf, readSmfSequence, writeSmfSequence } from '../core/smf';
+import { inspectSmf, readSmfSequence, writeSmfSequence } from '../core/formats/smf';
 import type { EditorStore } from '../slicing/editor-store';
 import {
   bmhelperDocumentSchema,

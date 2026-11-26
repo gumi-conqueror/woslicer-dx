@@ -1,6 +1,11 @@
 import type { MidiSequence } from '@gumi-conqueror/bmh-file';
-import { pairTrack as pairEvents, type TrackEvent } from './notes/pairing.js';
-import { recordingSmf } from './notes/recording-smf.js';
+import { pairNotes, type TrackEvent } from '../notes/pairing.js';
+
+/** Chunk identifiers "MThd" and "MTrk" as big-endian u32 values. */
+const MTHD = 0x4d546864;
+const MTRK = 0x4d54726b;
+/** Delta 0, meta event FF 2F with length 0. */
+const END_OF_TRACK = [0, 0xff, 0x2f, 0];
 
 export interface SmfTrackInfo {
   index: number;
@@ -54,8 +59,6 @@ class ByteReader {
   }
 
   u32(): number {
-    // Same truncation boundary and big-endian assembly as bmh.ts's ByteReader;
-    // the two format readers must stay in step.
     if (this.pos + 4 > this.bytes.length) throw new SmfFormatError('unexpected end of MIDI data');
     const value =
       this.bytes[this.pos] * 0x1000000 +
@@ -136,7 +139,8 @@ function parseTrack(reader: ByteReader, end: number): ParsedTrack {
   return { name, events };
 }
 
-function pairTrack(events: ChannelEvent[]) {
+/** Normalizes channel events, pairs notes and projects them to BMHelper sequence fields. */
+function trackSequence(events: ChannelEvent[]) {
   const normalized: TrackEvent[] = [];
   for (const event of events) {
     const kind = event.status & 0xf0;
@@ -166,7 +170,7 @@ function pairTrack(events: ChannelEvent[]) {
       });
     }
   }
-  const paired = pairEvents(normalized);
+  const paired = pairNotes(normalized);
   return {
     notes: paired.notes.map((note) => ({
       position: note.onset,
@@ -186,8 +190,7 @@ function pairTrack(events: ChannelEvent[]) {
 
 function parseSmf(bytes: Uint8Array): ParsedFile {
   const reader = new ByteReader(bytes);
-  if (reader.u32() !== 0x4d546864)
-    throw new SmfFormatError('not a Standard MIDI File (missing MThd)');
+  if (reader.u32() !== MTHD) throw new SmfFormatError('not a Standard MIDI File (missing MThd)');
   const headerSize = reader.u32();
   if (headerSize < 6) throw new SmfFormatError('malformed MIDI header');
   const format = reader.u16();
@@ -202,7 +205,7 @@ function parseSmf(bytes: Uint8Array): ParsedFile {
   reader.skip(headerSize - 6);
   const tracks: ParsedTrack[] = [];
   for (let index = 0; index < trackCount && reader.remaining >= 8; index++) {
-    if (reader.u32() !== 0x4d54726b) throw new SmfFormatError('missing MTrk chunk');
+    if (reader.u32() !== MTRK) throw new SmfFormatError('missing MTrk chunk');
     const size = reader.u32();
     const end = reader.position + size;
     tracks.push(parseTrack(reader, end));
@@ -224,7 +227,7 @@ export function inspectSmf(bytes: Uint8Array): {
     tracks: parsed.tracks.map((track, index) => ({
       index,
       name: track.name,
-      noteCount: pairTrack(track.events).notes.length,
+      noteCount: trackSequence(track.events).notes.length,
     })),
   };
 }
@@ -239,21 +242,67 @@ export function readSmfSequence(
   if (trackIndex < 0 || trackIndex >= parsed.tracks.length) {
     throw new SmfFormatError(`no such MIDI track: ${trackIndex}`);
   }
-  const paired = pairTrack(parsed.tracks[trackIndex].events);
+  const paired = trackSequence(parsed.tracks[trackIndex].events);
   const notes = paired.notes
     .filter((note) => channels.has(note.channel))
     .map(({ channel: _channel, ...note }) => note);
   return { quantize: parsed.division, notes, pitches: paired.pitches, controls: paired.controls };
 }
 
+function vlq(value: number): number[] {
+  if (!Number.isSafeInteger(value) || value < 0 || value > 0x0fffffff)
+    throw new RangeError('SMF delta exceeds supported range');
+  const bytes = [value % 128];
+  while ((value = Math.floor(value / 128)) > 0) bytes.unshift((value % 128) + 128);
+  return bytes;
+}
+
+function u32(value: number): number[] {
+  return [value >>> 24, (value >>> 16) & 255, (value >>> 8) & 255, value & 255];
+}
+
+/**
+ * Writes a format-1 SMF: an empty conductor track, then one track with the
+ * notes on channel 1. Positions and lengths are truncated to whole ticks.
+ */
 export function writeSmfSequence(sequence: MidiSequence): Uint8Array {
-  return recordingSmf(
-    sequence.notes.map((note) => ({
-      onset: note.position,
-      duration: note.gate,
-      pitch: note.nn,
-      velocity: note.vel,
-    })),
-    sequence.quantize,
-  );
+  const resolution = sequence.quantize;
+  if (!Number.isInteger(resolution) || resolution <= 0 || resolution > 32767)
+    throw new RangeError('Unsupported MIDI resolution');
+  const events: { time: number; order: number; bytes: number[] }[] = [];
+  sequence.notes.forEach((note, i) => {
+    if (![note.position, note.gate, note.nn, note.vel].every(Number.isFinite))
+      throw new RangeError('Nonfinite note');
+    const onset = Math.max(0, Math.trunc(note.position));
+    const end = onset + Math.max(0, Math.trunc(note.gate));
+    const pitch = Math.max(0, Math.min(127, Math.trunc(note.nn)));
+    const velocity = Math.max(1, Math.min(127, Math.trunc(note.vel)));
+    events.push(
+      { time: onset, order: i * 2, bytes: [0x90, pitch, velocity] },
+      { time: end, order: i * 2 + 1, bytes: [0x80, pitch, 0] },
+    );
+  });
+  events.sort((a, b) => a.time - b.time || a.order - b.order);
+  const track: number[] = [];
+  let previous = 0;
+  for (const event of events) {
+    track.push(...vlq(event.time - previous), ...event.bytes);
+    previous = event.time;
+  }
+  track.push(...END_OF_TRACK);
+  if (track.length > 0xffffffff) throw new RangeError('Track too large');
+  return Uint8Array.from([
+    ...u32(MTHD),
+    ...u32(6),
+    ...[0, 1], // format 1
+    ...[0, 2], // two tracks
+    resolution >> 8,
+    resolution & 255,
+    ...u32(MTRK),
+    ...u32(END_OF_TRACK.length),
+    ...END_OF_TRACK,
+    ...u32(MTRK),
+    ...u32(track.length),
+    ...track,
+  ]);
 }

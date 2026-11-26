@@ -4,7 +4,7 @@ import { useBmhelperStore } from '../../src/bmhelper/store';
 import { useEditorStore } from '../../src/slicing/editor-store';
 import { createEmptyProject } from '../../src/project/codec';
 import { defaultDivisionSetting } from '../../src/core/bmhelper';
-import { readSmfSequence, writeSmfSequence } from '../../src/core/smf';
+import { readSmfSequence, writeSmfSequence } from '../../src/core/formats/smf';
 import { nextTick } from 'vue';
 import { readBmh, writeBmh } from '@gumi-conqueror/bmh-file';
 import { readFileSync } from 'node:fs';

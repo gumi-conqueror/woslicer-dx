@@ -6,7 +6,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { wavFile } from '../support/audio';
-import { writeSmfSequence } from '../../src/core/smf';
+import { writeSmfSequence } from '../../src/core/formats/smf';
 
 const TABS: ReadonlyArray<{ name: string; label: string; ready: string }> = [
   { name: 'source', label: 'Source', ready: '.source-info' },
