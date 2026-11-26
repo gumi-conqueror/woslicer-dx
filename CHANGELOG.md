@@ -2,6 +2,19 @@
 
 **English** · [中文](CHANGELOG.zh-CN.md)
 
+## Unreleased
+
+### Changed
+
+- Projects are saved in a new file version that keeps markers and output settings with each track. Projects from 1.2 and earlier open as before and are upgraded when saved. Version 1.2 and earlier cannot open the saved projects.
+- Projects with several tracks or clips, or with trimmed audio, no longer open. Earlier versions opened them read-only.
+- Recovery data from version 1.2 and earlier is not restored. The app keeps it and asks before it replaces it. The **Import legacy recovery data** menu item is removed.
+- Exported slice names drop trailing dots and spaces from the base name.
+
+### Fixed
+
+- Markers that would start before the audio can no longer be placed. With a negative offset, such markers made the export fail.
+
 ## 1.2.0 — 2026-11-25
 
 ### Added
