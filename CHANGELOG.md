@@ -2,6 +2,8 @@
 
 **English** · [中文](CHANGELOG.zh-CN.md)
 
+## Unreleased
+
 ## 2.0.0-alpha.1 — 2026-11-26
 
 This is a prerelease for testing. It includes the unreleased 1.2.0 changes.
