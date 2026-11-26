@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+## 2.0.0-alpha.5 — 2026-11-27
+
 ### Added
 
 - Several audio tracks per project. **Project → Add audio track** adds a track with its own audio, markers, detection and output settings. Click a track to edit it, or press Ctrl/Cmd+↑ and Ctrl/Cmd+↓. Double-click a track name to rename it. **Project → Remove current track** removes it; undo restores it with its audio.
