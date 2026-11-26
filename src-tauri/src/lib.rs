@@ -4,6 +4,7 @@ mod about;
 mod app_data;
 mod clipboard;
 mod files;
+mod input;
 mod session;
 mod webview;
 
@@ -61,7 +62,17 @@ pub fn run() {
                 .build(),
         )
         .manage(clipboard::NativeClipboard::default())
+        .manage(input::NativeInput::default())
+        .on_window_event(|window, event| {
+            if matches!(event, tauri::WindowEvent::Destroyed) {
+                window.state::<input::NativeInput>().reset();
+            }
+        })
         .invoke_handler(tauri::generate_handler![
+            input::input_clock,
+            input::yuancon_devices,
+            input::yuancon_connect,
+            input::yuancon_disconnect,
             about::open_about_link,
             app_data::app_data_folders,
             app_data::open_data_folder,
@@ -108,6 +119,7 @@ pub fn run() {
                     .on_page_load(|window, payload| {
                         if payload.event() == tauri::webview::PageLoadEvent::Started {
                             window.state::<files::HostFiles>().reset_transfers();
+                            window.state::<input::NativeInput>().reset();
                         }
                     })
                     .build()?;

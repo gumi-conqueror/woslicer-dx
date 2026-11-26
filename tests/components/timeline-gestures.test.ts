@@ -133,6 +133,9 @@ describe('timeline gesture transactions', () => {
   });
   it('moves a group through a ghost, clamps its shared delta, and preserves spacing', () => {
     const { editor, gestures } = fixture([24, 48]);
+    editor.transact((draft) => {
+      draft.slicing.markerKeys = [{ tick: 24, keys: [1, 5] }];
+    });
     editor.setSelectedTicks([24, 48]);
     gestures.begin(point(24));
     gestures.move(point(-100));
@@ -140,9 +143,11 @@ describe('timeline gesture transactions', () => {
     expect(editor.ticks).toEqual([24, 48]);
     gestures.end(point(-100));
     expect(editor.ticks).toEqual([0, 24]);
+    expect(editor.markerKeys).toEqual([{ tick: 0, keys: [1, 5] }]);
     expect(editor.selectedTicks).toEqual([0, 24]);
     editor.undo();
     expect(editor.ticks).toEqual([24, 48]);
+    expect(editor.markerKeys).toEqual([{ tick: 24, keys: [1, 5] }]);
   });
   it('rejects cuts beyond source end and clamps group motion to the same end', () => {
     const { editor, gestures } = fixture([24, 48]);

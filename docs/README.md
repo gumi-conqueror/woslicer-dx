@@ -1,21 +1,30 @@
 # Developer documentation
 
-For installation and everyday use, start with the root README in
-[English](../README.md), [Chinese](../README.zh-CN.md),
-[Japanese](../README.ja.md) or [Korean](../README.ko.md).
+Start with [Development](DEVELOPMENT.md) to install dependencies and run a checkout.
+Then use [Architecture](ARCHITECTURE.md) to locate the behavior you want to change.
+[Contributing](../CONTRIBUTING.md) explains branch targets and pull requests.
 
-| Task | Document |
+| Task | Reference |
 | --- | --- |
-| Initialize or update the project skills | [Skills and submodules](SKILLS.md) |
-| Find a feature's owner, build locally or run checks | [Development guide](DEVELOPMENT.md) |
-| Maintain CI, release packages or Pages deployment | [CI and release workflows](CI.md) |
-| Change the application version or inspect build identity | [Version policy](VERSIONING.md) |
-| Work on original BMHelper files | [BMH format](BMH_FORMAT.md) |
-| Work on project files, compatibility or media recovery | [Project format](PROJECT_FORMAT.md) |
+| Build, run tests or diagnose setup | [Development](DEVELOPMENT.md) |
+| Find state owners, commands, audio or native input | [Architecture](ARCHITECTURE.md) |
+| Read or change `.wosdx` project handling | [Project format](PROJECT_FORMAT.md) |
+| Maintain original BMHelper file compatibility | [BMH format](BMH_FORMAT.md) |
+| Change the application version or inspect build identity | [Versioning](VERSIONING.md) |
+| Maintain builds, caches, release packages or deployment | [CI and releases](CI.md) |
+| Configure optional coding-agent instructions | [Project skills](SKILLS.md) |
 
-Maintain technical documentation in English. Original UI labels and error
-messages may be quoted with an English explanation when needed as evidence.
-Keep current implementation details here. The English and Chinese changelogs
-contain only brief changes that matter to end users. The
-[repository instructions](../AGENTS.md#documentation-and-versioning) define the
-documentation policy.
+## File types
+
+| Extension | Purpose |
+| --- | --- |
+| `.wosdx` | DX project: markers, settings, media references and optional BMHelper data |
+| `.wos` | Legacy woslicerIII settings exchange. Its binary layout is fixed. |
+| `.bmh` | Original Windows BMHelper beta 4′ project. Its binary layout and CP932 name encoding are fixed. |
+| `.wav` | Exported audio slices in 16-bit PCM |
+
+For installation and everyday use, see the root README in [English](../README.md), [Chinese](../README.zh-CN.md), [Japanese](../README.ja.md) or [Korean](../README.ko.md).
+The in-app Help menu contains input mappings and editing instructions.
+
+Technical documents use English. Keep requirements and procedures tied to repository files or public references.
+The English and Chinese changelogs describe user-visible changes. [AGENTS.md](../AGENTS.md) records repository constraints.

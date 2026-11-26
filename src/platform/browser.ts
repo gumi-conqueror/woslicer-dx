@@ -1,13 +1,14 @@
 import { Zip, ZipPassThrough } from 'fflate';
 import { PROJECT_FILE_MAX_BYTES, SESSION_FILE_MAX_BYTES } from '../project/schema';
 import type { FileKind, OpenedFile, OutputFile, Platform } from './contracts';
+import { AUDIO_EXTENSIONS } from '../core/audio-formats';
 
 const SESSION_KEY = 'woslicer.vue.session.v2';
 const CHUNK_BYTES = 1024 * 1024;
 const DOWNLOAD_LIMIT = 256 * 1024 * 1024;
 const FILE_LIMIT = 2 * 1024 * 1024 * 1024;
 const extensions: Record<FileKind, string> = {
-  audio: '.wav,.ogg',
+  audio: AUDIO_EXTENSIONS.map((extension) => `.${extension}`).join(','),
   wos: '.wos',
   wosdx: '.wosdx',
   midi: '.mid,.midi',

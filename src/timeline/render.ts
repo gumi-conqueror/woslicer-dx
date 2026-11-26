@@ -11,6 +11,7 @@ export type TimelineSnapshot = Pick<
   EditorStore,
   | 'doc'
   | 'ticks'
+  | 'markerKeys'
   | 'previewTicks'
   | 'source'
   | 'peaks'
@@ -205,6 +206,10 @@ export function drawTimeline(
     }
   }
   context.lineWidth = 1;
+  const recordedKeys = new Map(state.markerKeys.map((entry) => [entry.tick, entry.keys]));
+  context.font = '11px "WOS UI en", Consolas, monospace';
+  context.textBaseline = 'top';
+  let labelRight = -Infinity;
   for (const tick of state.previewTicks ?? state.ticks) {
     if (tick < state.scrollTick || tick > toTick) continue;
     const x = (tick - state.scrollTick) * state.pxPerTick;
@@ -218,6 +223,16 @@ export function drawTimeline(
     context.lineTo(x, 6);
     context.closePath();
     context.fill();
+    const keys = recordedKeys.get(tick);
+    if (keys?.length && x >= labelRight) {
+      const label = keys.join('+');
+      const labelWidth = label.length * 7 + 4;
+      context.fillStyle = palette.panel;
+      context.fillRect(x + 3, 8, labelWidth, 15);
+      context.fillStyle = state.selectedTicks.includes(tick) ? palette.selection : palette.accent;
+      context.fillText(label, x + 5, 10);
+      labelRight = x + labelWidth + 8;
+    }
   }
   if (state.selectionStartTick !== null && state.selectionEndTick !== null) {
     const first = Math.min(state.selectionStartTick, state.selectionEndTick),

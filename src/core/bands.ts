@@ -9,7 +9,7 @@
  * (Butterworth Q), so the whole module is deterministic and unit-testable.
  */
 
-import { floatToInternal } from './wav.js';
+import type { PcmChannel } from './wav.js';
 import { buildPeakCache, PeakCache } from './peaks.js';
 
 export type BandName = 'low' | 'mid' | 'high';
@@ -133,18 +133,12 @@ export interface BandAnalysis {
   high: BandSignal;
 }
 
-function toInt16(samples: Float32Array): Int16Array {
-  const out = new Int16Array(samples.length);
-  for (let i = 0; i < samples.length; i++) out[i] = floatToInternal(samples[i]);
-  return out;
-}
-
 /**
  * Filters every band/channel once and keeps only the derived data (peak cache
  * + RMS envelope). The filtered Float32 buffers are transient, so memory stays
  * proportional to the source rather than to bands x channels x length.
  */
-export function analyzeBands(channels: Int16Array[], sampleRate: number, hopMs = 10): BandAnalysis {
+export function analyzeBands(channels: PcmChannel[], sampleRate: number, hopMs = 10): BandAnalysis {
   const hopSamples = Math.max(1, Math.round((sampleRate * hopMs) / 1000));
   const build = (band: BandName): BandSignal => {
     const peaks: PeakCache[] = [];
@@ -153,7 +147,9 @@ export function analyzeBands(channels: Int16Array[], sampleRate: number, hopMs =
       const floats = new Float32Array(channel.length);
       for (let i = 0; i < channel.length; i++) floats[i] = channel[i] / 32768;
       const filtered = filterBand(floats, sampleRate, band);
-      peaks.push(buildPeakCache([toInt16(filtered)], BAND_PEAK_BUCKET));
+      peaks.push(
+        buildPeakCache([Float32Array.from(filtered, (sample) => sample * 32768)], BAND_PEAK_BUCKET),
+      );
       rms.push(rmsEnvelope(filtered, hopSamples));
     }
     return { peaks, rms };

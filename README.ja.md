@@ -10,10 +10,11 @@ wosderge の woslicerIII を基にした、BMS 向けオフライン音声分割
 
 ## 機能
 
-- WAV/OGG の読み込み、区間ごとの WAV 出力。音源情報には元の形式を表示。現在の音声処理と WAV 出力は 16-bit PCM。
+- WAV、AIFF、FLAC、Ogg Vorbis、MP3、AAC-LC、ALAC の読み込み。MKV/MKA 内の対応形式の音声も読み込み可能。内部処理は Float32、区間ごとの WAV 出力は 16-bit PCM。
 - `.wosdx` プロジェクトの保存・読み込み、旧形式 `.wos` 設定の入出力。BMSE とはクリップボードで分割点を交換。
 - スナップ、範囲選択、クオンタイズ、元に戻す／やり直しを備えたタイムライン編集。
 - 速度を変えた試聴、合図音、入力タイミングの補正。
+- キーボード、Xbox、YuanCon コントローラーで分割点を記録。キー番号と同時押しを `.wosdx` に保存。
 - 周波数帯域の表示と分割点の自動検出。
 - 内蔵 BMHelper で鍵盤音用 MIDI パートを録音シーケンスと WAVE 定義に分割。分割点を時間軸に適用可能。
 - 原版 BMHelper beta 4′ の `.bmh` ファイルの読み書きに対応。DX プロジェクトは Unicode の分割名を保持。BMH 出力では原版の CP932 文字置換を適用し、名前が変わる場合は警告を表示。
@@ -21,7 +22,7 @@ wosderge の woslicerIII を基にした、BMS 向けオフライン音声分割
 
 ## 実行
 
-Releases または Actions の成果物から、使用する OS 向けのパッケージをダウンロード。
+[Releases](https://github.com/gumi-conqueror/woslicer-dx/releases) または [Actions の成果物](https://github.com/gumi-conqueror/woslicer-dx/actions/workflows/build.yml)から、使用する OS 向けのパッケージをダウンロード。
 
 | プラットフォーム | 形式 | 使い方 |
 | --- | --- | --- |
@@ -40,7 +41,7 @@ Releases または Actions の成果物から、使用する OS 向けのパッ�
 
 ## プロジェクト情報
 
-[変更履歴](CHANGELOG.md) · [開発ガイド（英語）](docs/DEVELOPMENT.md)
+[変更履歴](CHANGELOG.md) · [開発資料（英語）](docs/README.md) · [開発への参加（英語）](CONTRIBUTING.md)
 
 ## ライセンスと謝辞
 

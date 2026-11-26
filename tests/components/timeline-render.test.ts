@@ -273,6 +273,7 @@ function componentFixture() {
     togglePlayPause: vi.fn(),
     seekSample: vi.fn(),
     currentSample: () => 0,
+    positionAt: () => ({ sample: 0, playing: false }),
     setRate: vi.fn(),
     previewSlice: vi.fn(),
     getAudioContext: () => {
@@ -361,8 +362,8 @@ describe('Vue timeline ownership', () => {
     });
     editor.setPhase({ kind: 'loading', name: 'replacement.wav' });
     await nextTick();
-    const first = controls.findAll('button')[0],
-      second = controls.findAll('button')[1];
+    const first = controls.findAll('button').find((button) => button.text() === 'Play'),
+      second = controls.findAll('button').find((button) => button.text() === 'Stop');
     if (!first || !second) throw new Error('Missing playback buttons');
     expect(first.attributes('disabled')).toBeUndefined();
     expect(second.attributes('disabled')).toBeUndefined();

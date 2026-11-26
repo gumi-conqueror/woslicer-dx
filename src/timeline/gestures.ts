@@ -1,6 +1,7 @@
 import { shallowRef } from 'vue';
 import type { EditorStore } from '../slicing/editor-store';
 import { clampGroupDelta } from '../core/markers';
+import { remapMarkerKeys } from '../project/marker-keys';
 import { markerTicks } from '@gumi-conqueror/wos-file';
 import { gridStepTicks } from '../core/gridlines';
 import { MAX_TICKS, resolveBreakpointTick } from '../core/timebase';
@@ -298,10 +299,15 @@ export function createTimelineGestures(editor: EditorStore) {
         const delta = ghost.value?.delta ?? 0;
         if (delta) {
           const applied = clampGroupDelta(current.ticks, delta);
-          editor.setTicks([
-            ...editor.ticks.filter((t) => !current.ticks.includes(t)),
-            ...current.ticks.map((t) => t + applied),
-          ]);
+          editor.setTicks(
+            [
+              ...editor.ticks.filter((t) => !current.ticks.includes(t)),
+              ...current.ticks.map((t) => t + applied),
+            ],
+            remapMarkerKeys(editor.markerKeys, (tick) =>
+              current.ticks.includes(tick) ? tick + applied : tick,
+            ),
+          );
           editor.setSelectedTicks(current.ticks.map((tick) => tick + applied));
           editor.setStatus('movedMarkersBy', { count: current.ticks.length, delta: applied });
         }

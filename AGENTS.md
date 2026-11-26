@@ -3,7 +3,7 @@
 ## Locked compatibility rule
 
 - The existing `.wos` binary format is locked. Preserve its layout, field encoding, size and read/write compatibility.
-- The original Windows BMHelper beta 4′ `.bmh` format is equally locked. Preserve its layout, field encoding and read/write compatibility at import and export. Use the original source and [format contract](docs/BMH_FORMAT.md) as the reference. DX projects use UTF-8 JSON independently of legacy BMH encoding. The unreleased application's incorrect encoding has no compatibility guarantee.
+- The original Windows BMHelper beta 4′ `.bmh` format is equally locked. Preserve its layout, field encoding and read/write compatibility at import and export. Use the [format contract](docs/BMH_FORMAT.md) and checked-in compatibility fixtures as references. DX projects use UTF-8 JSON independently of legacy BMH encoding.
 - These format contracts are the fixed project invariants. Other instructions are defaults that may change to support user goals and human maintenance.
 - If a user instruction would change `.wos` or original `.bmh` compatibility, explain the exact change and its compatibility effects. Obtain explicit user confirmation before implementation. The initial conflicting instruction does not count as confirmation. Continue unrelated work while confirmation is pending.
 
@@ -67,5 +67,6 @@
 
 - Use the relevant skills in [`.agents/skills/`](.agents/skills/README.md). Load only the skills needed for the task.
 - Repository constraints and explicit user instructions take precedence over generic skill advice. Prioritize human maintenance when choosing between valid implementations.
+- For maintainability refactors, preserve platform and audio-processing boundaries and audio output.
 - Keep upstream skills at their recorded submodule commits. Do not edit upstream files for project-specific rules.
 - Initialize missing submodules with the [setup guide](docs/SKILLS.md). Read the skill catalog for companion-skill references.

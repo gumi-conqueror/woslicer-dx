@@ -1,5 +1,6 @@
 import type { AppCommand } from './command-types';
 import type { GamepadControl } from './gamepad-controls';
+import { RECORDING_BINDINGS } from './recording-bindings';
 
 // Direct controller bindings cover frequent editing operations. Other commands
 // remain available through menu mode; the dispatcher and help read this table.
@@ -18,7 +19,12 @@ export const GAMEPAD_SHORTCUTS: readonly { control: GamepadControl; command: App
   { control: 'down', command: 'cursor-down-measure' },
   { control: 'view', command: 'help' },
 ];
-export function gamepadShortcut(command: AppCommand): GamepadControl | undefined {
+export function gamepadShortcut(
+  command: AppCommand,
+  recording = false,
+): GamepadControl | undefined {
+  if (recording && command !== 'help')
+    return RECORDING_BINDINGS.find((item) => item.command === command)?.gamepad[0];
   return GAMEPAD_SHORTCUTS.find((item) => item.command === command)?.control;
 }
 
@@ -207,6 +213,22 @@ export function formatBindings(bindings: readonly KeyBinding[]): string {
     )
     .join(' / ');
 }
-export function shortcutLabel(command: AppCommand): string {
-  return formatBindings(SHORTCUTS.find((shortcut) => shortcut.command === command)?.bindings ?? []);
+export function shortcutLabel(command: AppCommand, recording = false): string {
+  const bindings = SHORTCUTS.find((shortcut) => shortcut.command === command)?.bindings ?? [];
+  if (!recording) return formatBindings(bindings);
+  const direct = RECORDING_BINDINGS.find((item) => item.command === command);
+  if (direct) return direct.keyboard.map((key) => key.replace(/^Key/, '')).join(' / ');
+  const reserved = new Set(RECORDING_BINDINGS.flatMap((item) => item.keyboard));
+  return formatBindings(
+    bindings.map((binding) => ({
+      ...binding,
+      keys: binding.keys.filter(
+        (key) =>
+          binding.primary ||
+          binding.alt ||
+          binding.shift ||
+          !reserved.has(key === ' ' ? 'Space' : `Key${key.toUpperCase()}`),
+      ),
+    })),
+  );
 }

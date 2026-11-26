@@ -115,7 +115,7 @@ export function createDetection(
       });
       if (version !== generation() || revision !== editor.docRevision) return;
       const legal = ticks.filter(editor.legalTick);
-      editor.setTicks(legal);
+      editor.setTicks(legal, []);
       editor.setStatus('edgeDetectionCandidates', { count: legal.length });
     } catch (error) {
       if (generation() === version)

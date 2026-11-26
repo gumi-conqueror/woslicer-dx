@@ -14,6 +14,7 @@ import type { BuildIdentity } from '../../platform/contracts';
 import { getPlatform } from '../../platform';
 import { creditLinks, type AboutLink } from '../../platform/about-links';
 import { openTauriAboutLink } from '../../platform/tauri';
+import decoderNotices from '@gumi-conqueror/audio-decode/THIRD_PARTY_NOTICES.txt?raw';
 defineProps<{ modelValue: boolean; identity: BuildIdentity | null }>();
 const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>();
 // Build identity comes from the parent; closing flows through update:modelValue.
@@ -26,7 +27,7 @@ const credits = {
     label: 'waveform-playlist — Naomi',
     description: 'aboutWaveformPlaylistCredit',
   },
-  codecParser: { label: 'codec-parser — Ethan Halsall', description: 'aboutCodecParserCredit' },
+  audioDecode: { label: 'audio-decode / Symphonia', description: 'aboutAudioDecodeCredit' },
 } satisfies Record<keyof typeof creditLinks, { label: string; description: ChromeKey }>;
 
 function openLink(event: MouseEvent, link: AboutLink): void {
@@ -95,6 +96,13 @@ function openLink(event: MouseEvent, link: AboutLink): void {
         ><br />{{ t(`chrome.${credit.description}`) }}
       </li>
     </ul>
+    <details class="decoder-licenses">
+      <summary>{{ t('chrome.decoderLicenses') }}</summary>
+      <pre
+        tabindex="0"
+        data-gamepad-scroll
+        >{{ decoderNotices }}</pre>
+    </details>
     <p class="link-note">{{ t('chrome.aboutExternalLinks') }}</p>
     <ElAlert
       v-if="linkError"
@@ -140,6 +148,13 @@ a {
 }
 .link-note {
   color: var(--el-text-color-secondary);
+}
+.decoder-licenses pre {
+  max-height: 180px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
 }
 </style>
 

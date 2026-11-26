@@ -33,7 +33,7 @@ async function pick(page: Page, label: string, name: string, bytes: Uint8Array):
   if (label === 'Open' || label === 'Open .wosdx…') {
     await page.getByRole('button', { name: 'Project', exact: true }).click();
     await page
-      .getByRole('menuitem', { name: label === 'Open' ? 'Open WAV/OGG…' : label, exact: true })
+      .getByRole('menuitem', { name: label === 'Open' ? 'Open audio…' : label, exact: true })
       .click();
   } else {
     await page.getByRole('button', { name: label, exact: true }).click();

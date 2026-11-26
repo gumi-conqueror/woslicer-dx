@@ -144,6 +144,18 @@ export function parseProject(input: unknown): ProjectParseResult {
   if (new Set(markers).size !== markers.length)
     throw new ProjectFormatError('slicing.markers contains duplicate ticks');
   markers.sort((a, b) => a - b);
+  const markerTicks = new Set(markers);
+  const attributedTicks = new Set<number>();
+  for (const entry of project.slicing.markerKeys ?? []) {
+    if (!markerTicks.has(entry.tick) || attributedTicks.has(entry.tick))
+      throw new ProjectFormatError('slicing.markerKeys requires one entry per existing marker');
+    if (new Set(entry.keys).size !== entry.keys.length)
+      throw new ProjectFormatError('slicing.markerKeys contains duplicate keys');
+    attributedTicks.add(entry.tick);
+    entry.keys.sort((a, b) => a - b);
+  }
+  project.slicing.markerKeys?.sort((a, b) => a.tick - b.tick);
+  if (!project.slicing.markerKeys?.length) delete project.slicing.markerKeys;
   return {
     kind: 'supported',
     project,

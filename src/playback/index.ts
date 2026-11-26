@@ -6,6 +6,7 @@ import { tickToSampleExport } from '../core/timebase';
 import { DEFAULT_PLAYBACK_RATE, PLAYBACK_RATES, advanceSamples } from '../core/rate';
 import { findCueCrossing } from '../core/cuecursor';
 import { createCueSynth } from './cue';
+import { createInputTimeline } from './input-timeline';
 
 export interface Playback {
   play(): void;
@@ -14,6 +15,7 @@ export interface Playback {
   togglePlayPause(): void;
   seekSample(sample: number): void;
   currentSample(): number;
+  positionAt(time: number): { sample: number; playing: boolean } | null;
   setRate(rate: number): void;
   previewSlice(previous?: boolean): void;
   getAudioContext(): AudioContext;
@@ -27,6 +29,7 @@ export function createPlayback(editor: EditorStore): Playback {
   master.connect(context.destination);
   const cue = createCueSynth(context);
   const scope = effectScope(true);
+  const inputTimeline = createInputTimeline();
   let buffer: AudioBuffer | null = null;
   let track: AudioBufferSourceNode | null = null;
   let preview: AudioBufferSourceNode | null = null;
@@ -51,19 +54,30 @@ export function createPlayback(editor: EditorStore): Playback {
     }
     node.disconnect();
   }
-  function currentSample(): number {
+  function elapsedSample(): number {
     if (!track || !editor.source) return editor.playheadSample;
-    return Math.min(
-      editor.source.length,
-      advanceSamples(
-        anchorSample,
-        context.currentTime - anchorTime,
-        activeRate,
-        editor.source.sampleRate,
-      ),
+    return advanceSamples(
+      anchorSample,
+      context.currentTime - anchorTime,
+      activeRate,
+      editor.source.sampleRate,
+    );
+  }
+  function currentSample(): number {
+    return Math.min(editor.source?.length ?? 0, elapsedSample());
+  }
+  function remember(previousSample: number): void {
+    inputTimeline.record(
+      performance.now(),
+      previousSample,
+      currentSample(),
+      track && context.state !== 'suspended'
+        ? (activeRate * (editor.source?.sampleRate ?? 0)) / 1000
+        : 0,
     );
   }
   function stop(): void {
+    const previous = elapsedSample();
     const sample = currentSample();
     cancelAnimationFrame(frame);
     frame = 0;
@@ -74,6 +88,7 @@ export function createPlayback(editor: EditorStore): Playback {
     cue.silence();
     editor.setPlayheadSample(sample);
     editor.setPlaying(false);
+    remember(previous);
   }
   function tick(): void {
     if (disposed || !track || !editor.source) return;
@@ -88,9 +103,14 @@ export function createPlayback(editor: EditorStore): Playback {
     frame = requestAnimationFrame(tick);
   }
   function resume(node: AudioBufferSourceNode): void {
-    void context.resume().catch(() => {
-      if (!disposed && (track === node || preview === node)) stop();
-    });
+    void context
+      .resume()
+      .then(() => {
+        if (!disposed && track === node) remember(currentSample());
+      })
+      .catch(() => {
+        if (!disposed && (track === node || preview === node)) stop();
+      });
   }
   function play(): void {
     if (disposed || track || !buffer || !editor.source || buffer.length === 0) return;
@@ -114,6 +134,7 @@ export function createPlayback(editor: EditorStore): Playback {
     resume(node);
     node.start(0, anchorSample / buffer.sampleRate);
     editor.setPlaying(true);
+    remember(anchorSample);
     tick();
   }
   function pause(): void {
@@ -123,7 +144,9 @@ export function createPlayback(editor: EditorStore): Playback {
     if (disposed || !editor.source || !Number.isFinite(sample)) return;
     const playing = track !== null;
     stop();
+    const previous = editor.playheadSample;
     editor.setPlayheadSample(Math.floor(sample));
+    remember(previous);
     if (playing && editor.playheadSample < editor.source.length) play();
   }
   function setRate(rate: number): void {
@@ -193,6 +216,8 @@ export function createPlayback(editor: EditorStore): Playback {
           });
         }
         editor.setPlayheadSample(0);
+        inputTimeline.reset();
+        remember(0);
       },
       { immediate: true, flush: 'sync' },
     );
@@ -211,10 +236,12 @@ export function createPlayback(editor: EditorStore): Playback {
     watch(
       () => editor.playbackRate,
       (value) => {
+        const previous = elapsedSample();
         anchorSample = currentSample();
         anchorTime = context.currentTime;
         activeRate = value;
         if (track) track.playbackRate.value = value;
+        remember(previous);
       },
       { flush: 'sync' },
     );
@@ -233,6 +260,16 @@ export function createPlayback(editor: EditorStore): Playback {
     stop,
     seekSample,
     currentSample,
+    positionAt(time) {
+      if (!editor.source) return null;
+      const position = inputTimeline.at(time, { time: performance.now(), sample: elapsedSample() });
+      return (
+        position && {
+          sample: Math.floor(Math.min(editor.source.length, Math.max(0, position.sample))),
+          playing: position.playing,
+        }
+      );
+    },
     setRate,
     previewSlice,
     togglePlayPause(): void {

@@ -97,7 +97,7 @@ describe('application controls', () => {
         APPLICATION_MENU.find((group) => group.label === 'menu.tools')?.commands.map(
           (item) => item.id,
         ),
-      ).toEqual(['calibrate']);
+      ).toEqual(['toggle-recording', 'connect-yuancon', 'calibrate']);
       expect(
         APPLICATION_MENU.find((group) => group.label === 'menu.help')?.commands.map(
           (item) => item.id,
@@ -256,14 +256,14 @@ describe('application controls', () => {
         'woslicer II/III — wosderge',
         'Be-Music Helper — exclusion',
         'waveform-playlist — Naomi',
-        'codec-parser — Ethan Halsall',
+        'audio-decode / Symphonia',
       ]);
       expect(links.map((link) => link.attributes('href'))).toEqual(Object.values(creditLinks));
       for (const link of links) {
         expect(link.attributes('target')).toBe('_blank');
         expect(link.attributes('rel')).toBe('noopener noreferrer');
       }
-      expect(wrapper.text()).toContain('LGPL-3.0-or-later');
+      expect(wrapper.text()).toContain('MPL-2.0');
     } finally {
       wrapper.unmount();
       instance.dispose();

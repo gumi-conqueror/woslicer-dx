@@ -1,231 +1,152 @@
-# CI and release workflows
+# CI and releases
 
-See the [development guide](DEVELOPMENT.md) for local commands and test profiles.
+This guide describes the checked-in GitHub Actions workflows. For local commands, see [Development](DEVELOPMENT.md).
+For version changes and changelog requirements, see [Versioning](VERSIONING.md).
 
-## Build workflow
+## Build triggers and outputs
 
-`.github/workflows/build.yml` runs on pushes to `main` and `dev` and on pull
-requests targeting any branch. Manual runs offer an `all_platforms` checkbox.
-Main always builds all platforms. On other branches, select this checkbox to validate additional native targets before merging.
-The tag-based release workflow consumes its verified artifacts without rebuilding.
+[`build.yml`](../.github/workflows/build.yml) runs on pushes to `main` and `dev`, pull requests, and manual dispatch.
+Manual runs offer an `all_platforms` input. Main always builds every target.
 
-| Target | Runner | Packages | Gate |
+| Event or branch | Frontend profile | Native profile | Targets |
 | --- | --- | --- | --- |
-| Web | ubuntu-24.04 | Static site ZIP | Required |
-| Windows x64 | windows-2025 | Portable ZIP | Required |
-| Windows ARM64 | windows-11-arm | Portable ZIP | Required when selected |
-| Linux x64 | ubuntu-24.04 | deb + AppImage | Required when selected |
-| Linux ARM64 | ubuntu-24.04-arm | deb + AppImage | Required when selected |
-| macOS Apple Silicon | macos-15 | DMG | Required when selected |
-| macOS Intel | macos-15-intel | DMG | Required when selected |
+| Pull request or `dev` push | Release | Debug | Web and Windows x64 |
+| `main` push | Release | Release | All targets |
+| Manual run | Release | Release on `main`, otherwise debug | Web and Windows x64, plus all desktop targets when selected |
 
-CI builds production frontend assets on every branch. Native jobs use debug outside `main`.
-Main builds all release targets. Dev builds Windows x64 debug and supplies its cache to PR checks.
-Main does not need a separate debug build. All Node setup steps use Node 26.x.
-Static debug Tauri builds keep the application isolation and CSP. They do not use a development server.
+| Target | Runner | Package |
+| --- | --- | --- |
+| Web | ubuntu-24.04 | Static website ZIP |
+| Windows x64 | windows-2025 | Portable ZIP |
+| Windows ARM64 | windows-11-arm | Portable ZIP |
+| Linux x64 | ubuntu-24.04 | deb and AppImage |
+| Linux ARM64 | ubuntu-24.04-arm | deb and AppImage |
+| macOS Apple Silicon | macos-15 | DMG |
+| macOS Intel | macos-15-intel | DMG |
 
-The quality job runs lint, format checks, typecheck and all JavaScript test suites.
-After quality checks pass, Web and the selected desktop jobs run in parallel.
-Web runs the release build, both UI profiles and ZIP integrity validation.
-Its official Playwright container includes the browsers and system dependencies. The image version comes from `package-lock.json`.
-The job installs Node 26.x and the locked npm dependencies inside that container. It does not install browser dependencies through apt.
-The final required check waits for quality, Web and every selected desktop target.
+The Quality job checks version consistency, lint, formatting, types and JavaScript tests.
+After Quality succeeds, Web and the selected desktop jobs run in parallel.
+The Required release checks job requires every selected target to succeed. Unselected desktop targets are skipped.
+PR and manual build runs produce artifacts but do not publish releases or deploy the website.
 
-The shared desktop action runs these steps:
+### Web job
 
-1. Install system dependencies and the pinned Rust toolchain.
-2. Generate frontend build identity before Cargo.
-3. Run rustfmt.
-4. Run locked tests and Clippy with `--all-features` and the selected native profile.
-5. Build static Tauri bundles with that profile.
-6. Check native package metadata.
+The job uses the Playwright container version recorded in `package-lock.json`, then installs Node 26.x and locked npm dependencies.
+It builds production assets, runs both isolated 30-second UI profiles, and archives the tested output without rebuilding.
+`scripts/package-web.mjs` compares every uncompressed ZIP entry with the source files.
 
-Linux installs the listed build dependencies without recommended packages.
-On the x64 runner, the action selects the official Ubuntu archive instead of the regional mirror list.
-A regional mirror took over 23 minutes to download dependencies in the 1.0.2 build. ARM64 keeps its Ubuntu ports source.
+### Desktop jobs
 
-Swatinem/rust-cache caches Cargo registry and target dependencies per
-OS, target and profile. Debug and release dependencies are not interchangeable.
-Tests, Clippy and packaging use the same profile within each job. The cache does not replace checks.
-Every desktop job can restore a compatible cache. Successful `dev` jobs save debug caches.
-Successful `main` jobs save release caches for all native targets. PR jobs only read Rust caches. Tags do not compile Rust.
-Dev supplies the shared Windows x64 debug cache. Manual builds on dev can also supply debug caches for other platforms.
-Manually selected debug jobs on other platforms can start with cold caches.
-GitHub scopes cache entries by ref, including PR merge refs.
+The shared [desktop action](../.github/actions/build-desktop/action.yml) owns this order:
 
-### Reuse validation for a dev-to-main PR
+1. Set the profile and platform environment, then install npm and system dependencies.
+2. Install the pinned Rust toolchain and restore compatible Cargo caches.
+3. Build the release frontend and generate build identity before Cargo.
+4. Run rustfmt, locked tests and Clippy with the selected native profile and `--all-features`.
+5. Build the executable or bundles, reusing the prepared frontend.
+6. Validate package metadata and record artifact checksums.
 
-Only a PR from this repository's `dev` branch to `main` can reuse source checks.
-Contribution PRs, dev pushes, main pushes and manual runs execute their normal checks.
-Dev remains the integration gate and debug cache producer. Main still builds every release target.
+Windows ZIPs contain the executable, LICENSE, NOTICE, decoder notices and build identity.
+The packager checks each entry by SHA-256. The application requires an installed WebView2 runtime.
+Linux jobs collect deb and AppImage packages. macOS jobs check version, architecture and DMG integrity.
+The workflow does not sign Windows binaries or perform Apple Developer ID signing and notarization.
+Hosted package checks do not replace physical-controller or native UI testing on each operating system.
 
-`scripts/ci-reuse.mjs` requires all of the following evidence:
+## Caches and validation reuse
 
-- The latest dev push run at the exact PR head commit completed successfully within 24 hours.
-- Quality, Web, Windows x64 and the aggregate check all succeeded in that run attempt.
-- The actual PR merge tree equals the tested dev tree. A matching head tree alone is insufficient.
-- A receipt from that attempt matches the tree, Node version and Ubuntu quality runner image.
+### Cargo caches
 
-The tree comparison covers workflows, dependency locks, the pinned Rust compiler, Playwright version,
-runner labels and build profiles. Both dev and PR validation use release frontend assets and Windows debug builds.
-The comparison does not assert identical hosted Windows VM images or identical package bytes.
-The short reuse window limits environment drift. Main performs fresh release validation before publication.
+`Swatinem/rust-cache` keys include the OS, architecture, target, profile, compiler, relevant environment and Cargo manifests/lockfiles.
+Debug and release dependencies use different caches. A restored cache does not skip tests or guarantee that compilation is unnecessary.
+Successful `dev` runs save debug caches. Successful `main` runs save release caches. PR jobs restore caches but do not save shared caches.
 
-The quality job always checks the current commit identity and application version.
-If evidence matches, it reuses source checks and skips the Web and Windows jobs.
-It does not create packages for the new PR commit. The aggregate check verifies this path and links the source run.
-Missing receipts, changed inputs, failed runs, pending runs or API errors trigger normal checks.
-CI does not wait for a pending dev run. No external action or separate cache database manages this decision.
-A manual run always performs fresh validation.
+GitHub also scopes caches by branch. PR jobs can restore caches from their base branch, including `dev`.
+PR merge-reference caches are unavailable to other PRs and branches. Main's release caches do not supply dev's debug builds.
+See [GitHub cache access rules](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#restrictions-for-accessing-a-cache).
 
-### Rust cache scope and invalidation
+Use a manual `dev` run to populate debug caches for additional platforms. Select `all_platforms` when those targets are needed.
+Toolchain changes, dependency changes and cache eviction can require compilation again.
+In logs, `Restored from cache key` indicates a restore. `cache-hit` indicates an exact key match only.
 
-The root `rust-toolchain.toml` pins Rust for local work and CI. Dependabot can propose compiler updates.
-A moving `stable` channel can invalidate caches
-between two runs of the same PR.
+On macOS, the action sets `MACOSX_DEPLOYMENT_TARGET` before cache restoration and all Cargo commands.
+The value comes from `bundle.macOS.minimumSystemVersion` in `src-tauri/tauri.conf.json`.
+Use the same value for direct Cargo checks and Tauri packaging. Different values can invalidate native helper dependencies.
+Cargo fingerprint logs identify which inputs caused recompilation.
 
-The pinned [rust-cache source](https://github.com/Swatinem/rust-cache/blob/d1527c8f67ef9af357290475d4af4b0fab8f12e0/src/config.ts)
-constructs the key from these inputs:
+### Reusing checks for dev-to-main PRs
 
-- The shared key, runner OS and CPU architecture.
-- The Rust compiler version and relevant environment variables.
-- Cargo manifests, lockfiles and Rust configuration files.
+Only a PR from this repository's `dev` to `main` can reuse checks through [`ci-reuse.mjs`](../scripts/ci-reuse.mjs).
+It requires all of the following:
 
-`shared-key` replaces the job-specific part. It does not remove GitHub's ref scope.
-The action can restore an older dependency cache when the manifest hash changes.
-A compiler or environment change also changes the restore prefix.
-Keep platform and compiler distinctions: their compiled dependencies are not interchangeable.
+- The latest push run at the exact dev head succeeded within 24 hours.
+- Quality, Web, Windows x64 and the aggregate check succeeded in that attempt.
+- The PR merge tree matches the tested dev tree.
+- The saved validation receipt matches the tree, Node version and Ubuntu runner image.
 
-[GitHub's cache scope rules](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#restrictions-for-accessing-a-cache)
-allow runs to restore caches from the current ref and the default branch.
-PR runs can also restore caches from their base branch.
-A cache written under `refs/pull/<number>/merge` is available only to that PR's later runs.
-It is not available to `dev`, `main`, another PR or a release tag.
-Default-branch caches can serve all these consumers. Cache keys cannot grant broader access.
-This repository uses `dev` as its default branch. Dev writes the debug caches that contribution PRs can restore.
-Main can restore its own release caches. A new cache key cannot make main's caches available to dev.
-The save condition permits these two branches. PR builds do not write shared Rust caches.
+The current version and build identity are always checked. If reuse succeeds, Web and Windows checks are skipped and the aggregate links the source run.
+This path creates no packages for the PR merge commit. It does not assert identical runner machines or package bytes.
+Missing evidence, changed inputs, pending runs or API errors cause normal validation. Main pushes and manual runs always perform their own checks.
 
-The first dev build after the default branch changes may have a cold cache.
-New compiler versions or evicted entries also require a cold build.
-To populate or refresh missing entries, select **Build and test** in Actions.
-Choose `dev` for debug caches or `main` for release caches. Start the run.
-Select `all_platforms` on dev only when you need additional debug targets.
-Manual runs validate and archive builds. They do not publish a release or deploy Pages.
-Existing PR-scoped caches can remain until GitHub expires them. They do not become shared caches.
+## Artifacts and failure diagnosis
 
-The action's `cache-hit` output reports an exact match only.
-`Restored from cache key` confirms restoration, including a partial match.
-`No cache found.` means a cold build, even when the cache step succeeds.
-The post-job step can save a cache for later runs.
-GitHub caches are immutable and can expire, so a cache hit is never guaranteed.
+Successful packages are uploaded as Actions artifacts with 14-day retention.
+Each platform artifact includes a manifest with commit, version, profile, platform, target, run ID, attempt and package checksums.
+[`release-artifacts.mjs`](../scripts/release-artifacts.mjs) owns artifact selection and validation.
+When changing targets, update its target list and the workflow matrix together.
 
-### macOS compilation reuse
+Start with the first failed step, rather than the aggregate check:
 
-The action exports `MACOSX_DEPLOYMENT_TARGET` before cache restoration and every Cargo command.
-Its value comes from `bundle.macOS.minimumSystemVersion` in `src-tauri/tauri.conf.json`.
-The explicit value preserves Tauri's previous default, `10.13`. Tauri packaging reads the same configuration.
-The cache key includes this variable. Direct Cargo checks and Tauri builds must use the same value.
-Otherwise, the Objective-C helper build can invalidate dependent crates despite an exact cache hit.
+| Failure | Relevant evidence |
+| --- | --- |
+| Quality | Command output for version, lint, typecheck or the failing test |
+| Browser UI | `diagnostics-web-*`: traces, screenshots and `test-artifacts/` |
+| Native build | Desktop action logs, Cargo errors, `diagnostics-<platform>-*` |
+| Package validation | Package paths, metadata and checksum output |
+| Release selection | Exact commit, source run result, artifact expiration and profile |
 
-macOS jobs enable Cargo fingerprint diagnostics. After merging, compare two successful main runs at the same commit.
-Check restored keys and Cargo's dirty reasons, especially for `objc2-exception-helper` and its dependents.
-A restored cache alone does not prove compilation reuse. Workspace crate compilation is expected.
-Hosted CI validates compilation and packages. It does not validate native macOS UI behavior.
+Diagnostics are retained for seven days. Inspect a timeout before rerunning it. Keep both browser profiles within their 30-second deadlines.
 
-### Workflow implementation
+## Publishing and deployment
 
-Actions use fixed SHAs. The workflows define triggers, runners, permissions
-and artifact transfer. The scripts in [`.github/scripts/`](../.github/scripts/)
-validate and collect native packages and prepare or publish releases.
-`scripts/package-web.mjs` uses the existing `fflate` dependency to archive the tested Web output.
-It checks the entry list and compares every unpacked file with its source. It does not require system ZIP tools.
+[`release.yml`](../.github/workflows/release.yml) starts on `v*` tags. The tag version must match `package.json`.
+Changing a version or opening a PR does not start this workflow.
 
-For artifact selection, manifests and checksums, start at [`scripts/release-artifacts.mjs`](../scripts/release-artifacts.mjs).
-Its `resolve`, `record` and `verify` commands own the transfer contract between build and release.
-When adding or removing a platform, update both the build matrix and that script's `targets` list.
-Keep the runner matrix in YAML so maintainers can inspect it directly in the workflow.
+The resolver selects the latest main push or manual build at the exact tagged commit.
+That run, all selected jobs and all seven release artifacts must be successful and available.
+A failed or incomplete latest run stops publication. The resolver does not substitute an older run, a PR build or a debug package.
+Publication and website deployment consume the same source run and verified artifact IDs. They do not rebuild the application.
 
-The Required release checks job requires quality, Web, Windows x64 and every selected additional platform to succeed.
-For an eligible dev-to-main PR, it can instead accept the verified reuse result described above.
-Additional platforms run on `main` or when a manual run selects `all_platforms`.
-Their failures block the run and publication. PR and `dev` runs normally skip those platforms.
-The workflow uploads successful packages and failure diagnostics as artifacts.
+The workflow verifies clean-checkout identity, the run attempt and SHA-256 checksums before publication.
+[`release-notes.mjs`](../scripts/release-notes.mjs) extracts the matching English and Chinese changelog entries.
+Missing, duplicate or empty entries fail preparation. Preview the text with `node scripts/release-notes.mjs`.
 
-Windows CI builds the selected native profile with Tauri's `--no-bundle` option and
-ships it with LICENSE and NOTICE in a portable ZIP. It compares each ZIP entry
-against its source by SHA-256. The ZIP requires an installed WebView2 runtime.
-The app stores settings and recovery data in its usual local app data directory.
-Local packaging still follows the Tauri configuration.
+Assets are uploaded to a temporary draft and verified before publication as a public prerelease.
+New releases are not marked Latest until a maintainer promotes them.
+Downloads contain application packages and an optional verification ZIP with manifests and `SHA256SUMS`.
+GitHub adds source archives separately. Application packages retain their license notices.
 
-macOS builds verify the app version, executable architecture and DMG integrity.
-The workflow does not use Developer ID signing or Apple notarization.
+Published immutable releases lock their assets and tag. Do not move a published tag or recreate its release to change artifacts.
+A rerun resumes an unpublished draft, or checks that a published release already contains identical bytes.
+Matching reruns preserve its prerelease and Latest flags. Mismatched bytes stop publication.
 
-## Release workflow
+If source artifacts expire, rerun all jobs in the original main build at the tagged commit, then rerun the release workflow.
+A new manual main run also works when main still points to that commit.
 
-`.github/workflows/release.yml` handles `v*` tags. The tag must match the root package version.
-It selects the latest main build at the exact tag commit, from a push or manual run.
-That run and every job must succeed. All seven release artifacts must exist and must not be expired.
-An incomplete or failed latest run stops publication. The resolver does not fall back to an older successful run.
-It never substitutes a PR build, a debug artifact or another commit.
+### Cloudflare Pages
 
-The source job returns a run ID and exact artifact IDs. Publication and Pages consume that same source run.
-Each artifact includes a manifest with the commit, version, profile, platform, target, run ID, attempt and package checksums.
-The workflow verifies those fields and SHA-256 hashes before publication or deployment.
-Packages must come from a clean checkout and the same run attempt.
-Public downloads contain the application packages and one optional `<name>-<version>-verification.zip`.
-That archive contains all platform manifests and `SHA256SUMS`. Application packages retain their LICENSE and NOTICE files.
-`scripts/release-downloads.mjs` prepares this layout after source verification and checks every verification archive entry.
-The publication script downloads and compares the new archive before removing legacy loose metadata from an unpublished draft.
-Internal build artifacts retain their manifests for release verification. GitHub adds source archives separately.
-
-Artifacts expire after 14 days. If they are missing, expired or from mixed attempts, the release stops without rebuilding.
-Rerun all jobs in the original main build at the tag commit, then rerun the release workflow.
-A manual main run also works if main still points to that commit.
-Do not move a published tag to compensate for missing artifacts.
-
-`scripts/release-notes.mjs` extracts the current version's entries from both changelogs.
-The release description contains those English and Chinese user-facing changes, without build logs
-or artifact summaries. Missing, duplicate or empty entries fail release preparation before publication.
-Preview the description with `node scripts/release-notes.mjs`.
-
-The workflow uploads assets to a temporary draft, verifies their names and GitHub SHA-256 digests,
-then publishes a public **prerelease**. Successful runs do not leave a draft.
-This order supports [immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases).
-Publishing locks the assets and tag. Existing immutable releases, including v1.0.2, cannot adopt a new attachment layout.
-Do not delete and recreate a published release to work around that restriction.
-
-Reruns can resume an unpublished draft. For a published release, they only verify that the expected assets already exist with identical bytes.
-Verification archives use a fixed ZIP timestamp so reruns produce the same bytes.
-A mismatch stops publication. A matching rerun preserves the release's current prerelease and Latest flags.
-New releases are not marked as Latest until a maintainer promotes them.
-
-After publishing the release, the workflow deploys the tested web ZIP to the existing Cloudflare Pages Direct Upload project. Pages is not connected to the Git repository:
-GitHub Actions uploads the prebuilt files through Wrangler and the Cloudflare API.
-Configure the repository variable `CLOUDFLARE_PROJECT_NAME` and the secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
-The deployment job fails if any required value is missing. The workflow reads the project's existing
-`production_branch` from the API and passes it to Wrangler. This Pages deployment target is independent of the repository branch or release tag.
-The workflow does not change Pages settings or require Git integration. After upload, the
-job requires a production deployment and compares the deployed `build-info.json`
-with the tested archive's copy.
-If deployment fails, the prerelease remains published and the failed job can be
-rerun without rebuilding or changing the desktop release gate.
-
-Use a workflow run to verify hosted platforms.
+After publication, the workflow uploads the verified Web ZIP to a Cloudflare Pages Direct Upload project.
+It requires the repository variable `CLOUDFLARE_PROJECT_NAME` and secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+The workflow reads the existing Pages production branch from the API and deploys through Wrangler.
+It does not modify Pages settings or require repository integration.
+The job requires a production deployment and compares its `build-info.json` with the tested archive.
+If deployment fails, the prerelease remains published. Rerun the deployment job after correcting the cause.
 
 ## Dependency updates
 
-`.github/dependabot.yml` schedules weekly version-update PRs against `dev` for npm, Cargo, Rust toolchains and GitHub Actions.
-Action scanning covers both workflows and the desktop composite action directory.
-Minor and patch updates are grouped per ecosystem. Major updates and compiler updates remain separate PRs.
-npm and Cargo updates have a seven-day cooldown. No automatic merge is configured.
-Pinned skill submodules remain under manual review.
+[`.github/dependabot.yml`](../.github/dependabot.yml) schedules weekly PRs against `dev` for npm, Cargo, Rust toolchains and GitHub Actions.
+Minor and patch updates are grouped per ecosystem. Major and compiler updates remain separate.
+npm and Cargo updates use a seven-day cooldown. The repository does not configure automatic merging.
+Skill submodule pins are maintained separately through [Project skills](SKILLS.md).
 
-Dependabot alerts, security-update PRs and scheduled version-update PRs are separate features.
-Repository settings control alerts and security updates. This configuration does not enable those settings.
-Security-update PRs target the default branch, `dev`, regardless of the version-update target.
-Release validated security fixes through the dev-to-main route. Urgent maintainer hotfixes can use the main-to-dev route in [Contributing](../CONTRIBUTING.md).
-The configuration takes effect after it reaches the default branch. Referenced manifests must also exist on dev.
-
-See [Dependabot options](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference)
-and [Rust toolchain updates](https://github.blog/changelog/2025-08-19-dependabot-now-supports-rust-toolchain-updates/).
+Dependabot alerts and security updates are separate repository settings. The version-update file does not enable them.
+Security-update PRs target the default branch. Use the branch routes in [Contributing](../CONTRIBUTING.md) when releasing a validated fix.

@@ -30,6 +30,7 @@ to the schema and cross-field business rules to the codec. The parser rejects in
 | `slicing.fadeoutMs` | Integer milliseconds. |
 | `slicing.noisegateDb`, `slicing.noisegateEnabled` | Threshold in dB and a separate enable flag. |
 | `slicing.markers` | Ticks at 192 ticks per measure, from 0 through 49,151. The codec sorts ticks and rejects duplicates. |
+| `slicing.markerKeys` | Optional `{tick, keys}` entries for recorded markers. `keys` contains unique integers 1–7, including chords. Entries must reference existing marker ticks. |
 | `slicing.bandDetection` | `bands {low,mid,high}`, `thresholdDb`, `minGapUnits`, `snap`. Detection settings are separate from waveform visibility. |
 | `output` | `baseName`, `clipStartNumber`, `useFfNumbering`. |
 | `global` | `masterGainDb`, `masterMuted`, `cueGainDb`, `cueMode`, `playbackRate`, `views`. |
@@ -39,6 +40,29 @@ to the schema and cross-field business rules to the codec. The parser rejects in
 | `track.views` | `rms` and `bands` accept `null` (inherit), `true` or `false`. Spectrum is `"reserved"`. |
 | `clip` | `clipId`, `mediaId`, `timelineStartSeconds`, `sourceOffsetFrames`, `frameCount`. |
 | `bmhelper` | `null` or `{format: "bmhelper", source, divisions}` containing structured BMHelper work. |
+
+### Recorded marker keys
+
+The optional `slicing.markerKeys` field extends v1 without changing the numeric
+`slicing.markers` array. For example, `[{"tick":96,"keys":[1,3,5]}]` records a
+three-key chord at tick 96. Missing entries mean that a marker has no recorded
+key identity. The codec sorts entries and keys, rejects duplicate ticks or keys,
+and omits an empty collection.
+
+Key numbers are logical marker attributes, independent of the input device.
+[`recording-bindings.ts`](../src/app/recording-bindings.ts) defines the keyboard,
+Xbox and YuanCon mappings and supplies the in-app guide. Device protocol evidence
+and limitations are documented with the [input fixture](../tests/fixtures/input/README.md).
+
+Only new presses create markers; held keys do not become new notes when another
+key is pressed. Presses at the same resolved tick merge their key sets. Moves,
+quantization, internal clipboard operations, undo and recovery retain the sets.
+Replacing markers from WOS, BMSE, MIDI or edge detection clears old key attributes.
+
+Readers before 1.2.0 report `markerKeys` as an unknown field and discard it when
+they save an editable project. Current readers accept projects without the field.
+Legacy `.wos` and original `.bmh` formats remain unchanged and do not store these
+attributes. WOS export retains the marker positions.
 
 ### BMHelper data
 
@@ -61,11 +85,13 @@ Users can rename the division before another export, or save `.wosdx` to preserv
 
 | `MediaAsset` field | Meaning |
 | --- | --- |
-| `mediaId`, `name`, `format` | Stable identity, original filename, and `wav` or `ogg`. |
+| `mediaId`, `name`, `format` | Stable identity, original filename, and `wav`, `ogg`, `oga`, `flac`, `mp3`, `aac`, `m4a`, `mp4`, `aif`, `aiff`, `mka` or `mkv` (filename extension). |
 | `byteLength` | Original file size or `null`, not decoded PCM buffer size. |
 | `sampleRateHz`, `channels`, `framesPerChannel` | Known values or `null`. Frames are per channel. Duration is frames divided by sample rate. |
 | `integrity` | `null` or `{algorithm: "sha256", digest: <64 hex chars>}`. The parser converts digests to lowercase. |
 | `originHint` | `null`, `{kind: "desktop", pathHint}` or `{kind: "browser", name, relativePathHint?, lastModified?}`. |
+
+The expanded media extension enum keeps schema version 1. Readers before 1.2.0 accept only WAV and Ogg and reject projects containing newer format values. Existing WAV/Ogg projects remain compatible.
 
 ## Timing, playback and views
 
@@ -83,7 +109,7 @@ The current editor applies only the supported single-track values. It does not i
 
 Track `rms` and `bands` values override global defaults unless they are `null`.
 Spectrum is reserved: there is no enabled control or analysis task.
-The following table lists supported editing layouts.
+See [Opening and saving](#opening-and-saving) for supported editing layouts.
 
 ## Limits and defaults
 
@@ -107,22 +133,10 @@ schema contain the complete validation rules.
 | Actual audio input | Platform limit of 2 GiB. Decoding also depends on memory and format limits. |
 | `playbackRate` | 0.25 through 1.5. |
 
-These are application memory budgets, not format requirements. The former 16 MiB project
-cap was introduced with the Vue workspace. The 64 MiB cap permits larger note collections and project metadata.
-Recovery has an additional 1 MiB for local bindings and UI settings. JSON remains uncompressed.
-Structured JSON can be larger than binary BMH. The byte limit applies after UTF-8 serialization, not to the original MIDI file size.
-
-The original BMHelper beta 4′ source (`src/serialize.h`, `src/project.cpp`, `src/midi_sr.cpp`)
-has no 32 MiB check and does not use base64. Its Windows build writes 32-bit chunk lengths
-and allocates the declared data size. That is not a guarantee that multi-gigabyte projects
-are usable. The earlier application's 32 Mi-character Base64 cap represented at most 24 MiB of binary data.
-That cap was an application policy, not an original BMHelper restriction.
-DX now stores structured data, so the former Base64 cap and its roughly one-third encoding overhead no longer apply.
-The browser recovery store also depends on the browser's local-storage quota. Raising the
-project file limit does not raise that quota. Failed recovery writes remain visible to users.
-
-The BMH codec reads and writes the original little-endian chunk format.
-No fallback reads the unreleased application's earlier big-endian encoding or its Base64 project field.
+The JSON byte limits are application memory budgets. They do not change the original `.wos` or `.bmh` binary contracts.
+Recovery reserves an additional 1 MiB for local bindings and UI settings. JSON remains uncompressed.
+The byte limit applies after UTF-8 serialization, not to the original MIDI or BMH file size.
+Browser recovery also depends on the browser's local-storage quota. Failed recovery writes remain visible to users.
 
 `createEmptyProject` creates one empty track without media or clips.
 `createSingleTrackProject` creates one track with a full-source clip at timeline
@@ -186,10 +200,10 @@ Decode failures must not delete bindings. Desktop paths must not become browser 
 Desktop media stores its absolute native path in `originHint.pathHint`.
 Opening a selected `.wosdx` file resolves its active media through `open_project_media`.
 This command accepts the selected project's host reference and a media ID, not a path.
-The host reads the bounded project file and grants access only to that entry's absolute WAV or OGG path.
+The host reads the bounded project file and grants access only to that entry's absolute supported audio path.
 The workspace verifies the media metadata and hash before adoption.
 Recovery reuses the persisted host grant. Browser file inputs and drops cannot provide absolute paths and require manual relinking.
-Old projects without paths also require one manual relink before saving the path.
+Projects without paths require one manual relink before saving the path.
 
 Relinking stages and decodes the candidate, then compares size, format,
 sample rate, channels, frames and hash. Matching names do not prove matching

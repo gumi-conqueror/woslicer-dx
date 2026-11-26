@@ -35,7 +35,11 @@ pub(crate) enum FileKind {
 impl FileKind {
     fn extensions(&self) -> &[&str] {
         match self {
-            Self::Audio => &["wav", "ogg"],
+            // Keep aligned with AUDIO_EXTENSIONS in src/core/audio-formats.ts.
+            Self::Audio => &[
+                "wav", "ogg", "oga", "flac", "mp3", "aac", "m4a", "mp4", "aif", "aiff", "mka",
+                "mkv",
+            ],
             Self::Wos => &["wos"],
             Self::Wosdx => &["wosdx"],
             Self::Midi => &["mid", "midi"],
@@ -186,7 +190,7 @@ impl HostFiles {
             .ok_or("missing media path")?;
         let path = Path::new(path);
         if !path.is_absolute() || !FileKind::Audio.accepts(path) {
-            return Err("project media requires an absolute WAV or OGG path".into());
+            return Err("project media requires an absolute supported audio path".into());
         }
         self.grant(path).map(Some)
     }
@@ -628,7 +632,7 @@ mod tests {
     fn selected_project_resolves_absolute_media_and_persists_its_grant()
     -> Result<(), Box<dyn std::error::Error>> {
         let directory = tempfile::tempdir()?;
-        let media = directory.path().join("audio.wav");
+        let media = directory.path().join("audio.FLAC");
         fs::write(&media, [0, 1, 2])?;
         let project = directory.path().join("project.wosdx");
         fs::write(

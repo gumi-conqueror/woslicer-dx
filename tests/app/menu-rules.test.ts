@@ -40,6 +40,10 @@ const table: ReadonlyArray<readonly [MenuCommand, MenuEditorState, boolean]> = [
   ['help', limited, true],
   ['troubleshoot', limited, true],
   ['open-data-folder', limited, true],
+  ['connect-yuancon', state(), true],
+  ['toggle-recording', state(), false],
+  ['toggle-recording', withSource, true],
+  ['toggle-recording', state({ ...withSource, limited: true }), false],
   ['calibrate', state(), false],
   ['calibrate', withSource, true],
   // Content and WOS transfer refuse read-only projects.

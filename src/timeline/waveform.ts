@@ -2,6 +2,7 @@ import { peakRange, type PeakCache } from '../core/peaks';
 import { BAND_DRAW_MIN_ABS } from '../core/bands';
 import type { TimeBase } from '../core/timebase';
 import { drawWaveform } from './waveform/canvas';
+import type { PcmChannel } from '../core/wav';
 
 export interface WaveViewport {
   width: number;
@@ -18,13 +19,13 @@ export function tickToFrame(tick: number, base: TimeBase): number {
   return ((tick + base.shift) * base.sampleRate * 5) / (base.bpm * 4);
 }
 // Source buffers are immutable after decoding. Weak keys release converted data with the source.
-const drawingSamples = new WeakMap<Int16Array, Float32Array>();
+const drawingSamples = new WeakMap<PcmChannel, Float32Array>();
 
 /** Draw one lane on the existing timeline canvas. */
 export function drawWaveLane(
   context: CanvasRenderingContext2D,
   view: WaveViewport,
-  data: Int16Array,
+  data: PcmChannel,
   mid: number,
   half: number,
   colors: { outer: string; rms: string },

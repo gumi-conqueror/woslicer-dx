@@ -1,7 +1,7 @@
 import type { DecodedWav } from '../core/wav';
 import { detectEdges } from '../core/edge';
 import type { TimeBase } from '../core/timebase';
-import { decodeAudio } from '../core/decode';
+import { decodeAudio } from './decode';
 import { buildPeakCache, type PeakCache } from '../core/peaks';
 import { analyzeBands, type BandAnalysis } from '../core/bands';
 import { renderSliceToWav, type SliceParams } from '../core/slicer';
@@ -45,7 +45,7 @@ export function createAudioProcessor(): (request: AudioRequest) => Promise<Audio
     try {
       switch (request.kind) {
         case 'decode': {
-          source = await decodeAudio(request.name, request.bytes);
+          source = await decodeAudio(request.bytes);
           analysis = null;
           return {
             kind: 'decoded',

@@ -1,11 +1,12 @@
 import { renderSlice as renderAudio, sliceWave } from './audio/slice.js';
 import { gateAudio } from './audio/gate.js';
+import type { PcmChannel } from './wav.js';
 
 export interface SourceAudio {
   sampleRate: number;
   channels: number;
   length: number;
-  data: Int16Array[];
+  data: PcmChannel[];
 }
 export interface SliceParams {
   start: number;

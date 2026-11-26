@@ -5,7 +5,8 @@ export default defineConfig({
   testDir: './tests/app',
   testMatch: '**/*.spec.ts',
   timeout: 30_000,
-  workers: 1,
+  // Run independent files concurrently within each isolated 30-second profile.
+  workers: 2,
   fullyParallel: false,
   outputDir: `test-artifacts/app-ui/${Date.now()}`,
   reporter: 'list',

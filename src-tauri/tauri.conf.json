@@ -6,8 +6,8 @@
   "build": {
     "frontendDist": "../dist/app-tauri",
     "devUrl": "http://127.0.0.1:1420",
-    "beforeDevCommand": "npm run dev:tauri",
-    "beforeBuildCommand": "npm run build:app:tauri"
+    "beforeDevCommand": "node scripts/build-app-frontend.mjs tauri --dev",
+    "beforeBuildCommand": "node scripts/build-app-frontend.mjs tauri"
   },
   "app": {
     "withGlobalTauri": false,

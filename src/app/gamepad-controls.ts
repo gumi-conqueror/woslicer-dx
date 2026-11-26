@@ -15,7 +15,13 @@ export const GAMEPAD_CONTROLS = [
   { id: 'left', button: 14, label: 'D-pad ← / LS ←' },
   { id: 'right', button: 15, label: 'D-pad → / LS →' },
 ] as const;
-export type GamepadControl = (typeof GAMEPAD_CONTROLS)[number]['id'];
+export const GAMEPAD_ROTATIONS = [
+  { id: 'ls-counterclockwise', label: 'LS ↺' },
+  { id: 'ls-clockwise', label: 'LS ↻' },
+] as const;
+export type GamepadControl =
+  | (typeof GAMEPAD_CONTROLS)[number]['id']
+  | (typeof GAMEPAD_ROTATIONS)[number]['id'];
 export type MenuNavigation = 'toggle' | 'confirm' | 'cancel' | 'up' | 'down' | 'left' | 'right';
 export const GAMEPAD_MENU_SHORTCUTS: readonly {
   control: GamepadControl;
@@ -39,12 +45,22 @@ export function createGamepadReader() {
   const held = new Map<GamepadControl, number>();
   let index: number | undefined;
   let suspended = false;
+  let recording = false;
+  let angle: number | undefined;
+  let rotation = 0;
   return (
     pad: Pick<Gamepad, 'index' | 'buttons' | 'axes'> | undefined,
     now: number,
     enabled: boolean,
+    recordingMode = false,
   ): GamepadControl[] => {
-    if (pad?.index !== index) held.clear();
+    if (pad?.index !== index || recordingMode !== recording) {
+      held.clear();
+      angle = undefined;
+      rotation = 0;
+    }
+    if (recordingMode !== recording) suspended = true;
+    recording = recordingMode;
     index = pad?.index;
     if (!enabled) suspended = true;
     const pressed = new Set<GamepadControl>();
@@ -60,10 +76,14 @@ export function createGamepadReader() {
       const x = pad.axes[0] ?? 0;
       const y = pad.axes[1] ?? 0;
       // A generous dead zone avoids stick drift. The dominant axis avoids diagonal double steps.
-      if (Math.abs(x) > 0.55 && Math.abs(x) >= Math.abs(y)) pressed.add(x < 0 ? 'left' : 'right');
-      else if (Math.abs(y) > 0.55) pressed.add(y < 0 ? 'up' : 'down');
+      if (!recording) {
+        if (Math.abs(x) > 0.55 && Math.abs(x) >= Math.abs(y)) pressed.add(x < 0 ? 'left' : 'right');
+        else if (Math.abs(y) > 0.55) pressed.add(y < 0 ? 'up' : 'down');
+      }
     }
-    if (pressed.size === 0 && enabled) suspended = false;
+    const x = pad?.axes[0] ?? 0;
+    const y = pad?.axes[1] ?? 0;
+    if (pressed.size === 0 && Math.hypot(x, y) <= 0.55 && enabled) suspended = false;
     const actions: GamepadControl[] = [];
     for (const control of GAMEPAD_CONTROLS) {
       if (!pressed.has(control.id)) {
@@ -75,11 +95,32 @@ export function createGamepadReader() {
         held.set(control.id, Infinity);
         continue;
       }
-      const repeat = ['up', 'down', 'left', 'right', 'lt', 'rt'].includes(control.id);
+      const repeat = !recording && ['up', 'down', 'left', 'right', 'lt', 'rt'].includes(control.id);
       if (next === undefined || (repeat && now >= next)) {
         actions.push(control.id);
         held.set(control.id, now + (next === undefined ? 380 : 110));
       }
+    }
+    if (recording && enabled && !suspended && Math.hypot(x, y) > 0.55) {
+      const current = Math.atan2(y, x);
+      if (angle !== undefined) {
+        const delta = Math.atan2(Math.sin(current - angle), Math.cos(current - angle));
+        // Large jumps have an ambiguous direction; reacquire instead of seeking.
+        if (Math.abs(delta) > Math.PI / 2 + 0.001) rotation = 0;
+        else {
+          rotation += delta;
+          const step = Math.PI / 4;
+          while (Math.abs(rotation) >= step - 0.000001) {
+            const clockwise = rotation > 0;
+            actions.push(clockwise ? 'ls-clockwise' : 'ls-counterclockwise');
+            rotation -= clockwise ? step : -step;
+          }
+        }
+      }
+      angle = current;
+    } else {
+      angle = undefined;
+      rotation = 0;
     }
     return actions;
   };

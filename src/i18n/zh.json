@@ -63,9 +63,9 @@
     "loadWos": "导入 .wos 设置",
     "edgeDetect": "边缘检测",
     "clearMarkers": "清除全部切点",
-    "hintDropOrOpen": "拖入 WAV/OGG，或点击“打开”",
+    "hintDropOrOpen": "拖入音频文件，或点击“打开”",
     "emptyTitle": "尚未加载音频",
-    "emptySub": "拖入 WAV/OGG，或点击“打开”",
+    "emptySub": "拖入音频文件，或点击“打开”",
     "calibrationTitle": "敲击校准",
     "restart": "重试",
     "finish": "完成",
@@ -97,13 +97,13 @@
     "offsetDisplay": "校准偏移 {ms} ms",
     "srcFormat": "{format} · {channels} 声道",
     "processingFormatLabel": "处理／输出",
-    "srcPcm": "WAV PCM {bits} 位",
-    "srcFloat": "WAV 浮点 {bits} 位",
+    "srcPcm": "PCM {bits} 位",
+    "srcFloat": "浮点 {bits} 位",
     "framesCount": "{count} 采样帧",
     "tapsLive": "匹配 {matched}/{total} 次 · 中位数 {median} ms · 平均 {mean} ms · ±{spread} ms",
     "tapsFinal": "结果：匹配 {matched}/{total} 次 · 中位数 {median} ms · 平均 {mean} ms · ±{spread} ms",
     "noTapsMatched": "无匹配的敲击（共 {total} 次）。点击“重试”，跟随节拍敲击。",
-    "titleOpen": "打开 WAV/OGG",
+    "titleOpen": "打开音频",
     "titleUndo": "撤销",
     "titleRedo": "重做",
     "titleSnap": "吸附到网格",
@@ -189,16 +189,17 @@
     "aboutWoslicerCredit": "原版应用。",
     "aboutBmhelperCredit": "原版 MIDI 分割工具。",
     "aboutWaveformPlaylistCredit": "依据 MIT 许可改编的波形峰值组件。",
-    "aboutCodecParserCredit": "Ogg 流解析组件（LGPL-3.0-or-later）。",
     "aboutExternalLinks": "链接将在外部浏览器或新标签页打开，不会自动联网。",
-    "aboutLinkFailed": "无法打开链接。"
+    "aboutLinkFailed": "无法打开链接。",
+    "aboutAudioDecodeCredit": "音频解码（封装为 MIT，Symphonia 为 MPL-2.0）。",
+    "decoderLicenses": "音频解码器许可证"
   },
   "status": {
     "projectOpened": "已打开工程：{name}",
     "projectMediaMissing": "已打开工程。需重新关联音频：{name}",
     "projectSaved": "已保存工程：{name}",
     "projectSnapshotSaved": "已保存：{name}。保存开始后的修改尚未保存。",
-    "statusEmpty": "尚未加载音频：拖入 WAV/OGG 开始",
+    "statusEmpty": "尚未加载音频：拖入音频文件开始",
     "lastFileMissing": "上次打开的文件未找到：{name}",
     "playing": "播放中",
     "paused": "已暂停",
@@ -346,7 +347,7 @@
     "relinkAudio": "重新关联音频……",
     "application": "应用菜单",
     "project": "工程",
-    "openAudio": "打开 WAV/OGG……",
+    "openAudio": "打开音频……",
     "importWos": "导入 .wos 设置……",
     "exportWos": "导出 .wos……",
     "exportSlice": "导出切片 WAV……",
@@ -371,12 +372,12 @@
     "openDataFolder": "打开数据文件夹"
   },
   "dialogs": {
-    "loadAudio": "打开 WAV/OGG",
+    "loadAudio": "打开音频",
     "loadWos": "打开 .wos",
     "saveWos": "导出 .wos",
     "exportSlice": "导出切片 WAV",
     "chooseExportFolder": "选择导出文件夹",
-    "filterWave": "WAV/OGG 文件",
+    "filterWave": "音频文件",
     "filterWos": ".wos 文件",
     "loadMidi": "导入 MIDI",
     "saveMidi": "导出录音 MIDI",
@@ -388,7 +389,7 @@
   "scopeRange": "范围：选区 M{m0}–M{m1}（{seconds} s）",
   "help": {
     "workflow": "开始使用",
-    "workflowBody": "打开或拖入 WAV/OGG，设置 BPM 和网格，在波形上添加切点。在“输出”中设置名称并导出切片。工作保存为 .wosdx 工程，音频移动后需“重新关联音频”。",
+    "workflowBody": "打开或拖入 音频文件，设置 BPM 和网格，在波形上添加切点。在“输出”中设置名称并导出切片。工作保存为 .wosdx 工程，音频移动后需“重新关联音频”。",
     "workspace": "音轨与面板",
     "workspaceBody": "点击或拖动音轨缩略图可定位时间轴。新面板在最右侧打开，已有面板向左移动。再次点击开关或关闭按钮可隐藏面板，输入内容保留。面板可铺满工作区，空间不足时从最早打开的面板开始关闭，无横向滚动条。",
     "mouse": "鼠标操作",
@@ -427,7 +428,8 @@
       "playback": "播放",
       "navigation": "导航",
       "output": "输出"
-    }
+    },
+    "audioFormats": "支持单声道或立体声的 WAV、AIFF、FLAC、Ogg Vorbis、MP3、AAC-LC 和 ALAC。内部使用 Float32，WAV 输出使用 16 位 PCM。AAC 可能含编码器产生的首尾填充。 MKV/MKA 支持上述编码，不含 Opus。 MKV/MKA 只读取一条音轨，默认标记省略时可能选中第一条。需要其他音轨时，请先单独提取。"
   },
   "input": {
     "keyboard": "键鼠",
@@ -445,7 +447,8 @@
     "gamepadNotice": "当前按键布局尚未验证日常操作的便利性。",
     "gamepadScope": "激活本窗口，用十字键或左摇杆移动。长按方向键或扳机可连续操作。编辑前退出输入框和对话框。上方按钮可切换键鼠和手柄操作一览。",
     "dialogNavigation": "对话框内用十字键或左摇杆选择控件，A 操作，B 关闭。选择上方切换按钮并按 A，可切换操作一览。",
-    "scrollHelp": "上下滚动帮助或故障排查内容"
+    "scrollHelp": "上下滚动帮助或故障排查内容",
+    "yuancon": "YuanCon"
   },
   "support": {
     "intro": "报告问题时可复制诊断信息，仅含版本、显示和手柄信息，不含音频、工程内容或文件路径，不会自动发送。",
@@ -471,5 +474,34 @@
     "webData": "在浏览器设置的 Cookie、网站数据或网站权限中找到本站，删除全部数据，包括 Cookie、本地存储和数据库。仅选择本站，保留其他网站的数据。",
     "webCache": "如需删除已下载的网页文件，在“清除浏览数据”中清除缓存的图片和文件。此操作可能清除整个浏览器配置文件的缓存，不要选择无关数据。",
     "personalFiles": "下载的工程、导出的音频和原始文件需单独管理。保留需要的文件，其余手动删除。"
+  },
+  "recording": {
+    "selectDevice": "选择 YuanCon 控制器",
+    "noDevices": "未找到支持的 YuanCon 控制器。请连接设备并刷新列表。",
+    "refreshDevices": "刷新",
+    "mode": "录制",
+    "modeHint": "边听边打点，将操作记录为切点",
+    "backward": "播放光标后退",
+    "forward": "播放光标前进",
+    "controller": "YuanCon 控制器",
+    "description": "开启播放栏中的“录制”，将打点操作记录为播放光标处的切点。每次前后移动 {seconds} 秒，保持播放或暂停状态。打点沿用吸附和打点偏移设置。",
+    "stickHint": "沿左摇杆外缘旋转：顺时针前进，逆时针后退，每转八分之一圈移动一次。保持偏转不移动。Menu 和 View 仍可打开菜单和帮助。",
+    "yuanconHint": "从工具 → YuanCon 控制器连接设备。七键均为打点。转盘正向每次切换一次播放状态；反向持续时连续后退。菜单使用键鼠操作。",
+    "yuanconDescription": "连接带转盘的 YuanCon 七键控制器，用于录制切点。",
+    "unavailable": "当前环境无法访问设备，请使用桌面版 Chrome 或 Edge 打开 Web 版。",
+    "connect": "连接",
+    "disconnect": "断开",
+    "connected": "已连接",
+    "disconnected": "未连接",
+    "invert": "反转转盘方向",
+    "directionHint": "向正方向转动转盘。如果显示“反向”，请开启“反转转盘方向”。",
+    "neutral": "停止",
+    "positive": "正向",
+    "negative": "反向",
+    "keys": "全部七键",
+    "previewHint": "此窗口仅显示输入，各键分别亮起。请核对编号 1～7 是否对应从左到右的实体键。",
+    "unsupportedReport": "不支持当前控制器模式，请检查设备模式后重新连接。",
+    "tap": "在播放光标处打点",
+    "keysHint": "切点记录 1～7 键号，支持组合键。同一切点的键号合并保存。请保存为 .wosdx；.wos 不保存键号。"
   }
 }

@@ -49,7 +49,11 @@ export const APPLICATION_MENU = [
   {
     label: 'menu.tools',
     mnemonic: 't',
-    commands: [{ id: 'calibrate', key: 'chrome.calibrate', mnemonic: 'c' }],
+    commands: [
+      { id: 'toggle-recording', key: 'recording.mode', mnemonic: 'r' },
+      { id: 'connect-yuancon', key: 'recording.controller', mnemonic: 'y' },
+      { id: 'calibrate', key: 'chrome.calibrate', mnemonic: 'c' },
+    ],
   },
   {
     label: 'menu.help',
@@ -88,7 +92,10 @@ export function menuCommandEnabled(id: MenuCommand, editor: MenuEditorState): bo
     case 'help':
     case 'troubleshoot':
     case 'open-data-folder':
+    case 'connect-yuancon':
       return true;
+    case 'toggle-recording':
+      return editor.source !== null && !editor.limited;
     case 'calibrate':
       return editor.source !== null;
     case 'open-audio':

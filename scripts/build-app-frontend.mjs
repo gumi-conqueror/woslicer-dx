@@ -30,5 +30,9 @@ if (dev) {
   await build({ configFile: 'vite.config.mts' });
   const output = `dist/app${variant === 'tauri' ? '-tauri' : ''}`;
   for (const notice of ['LICENSE', 'NOTICE']) copyFileSync(notice, `${output}/${notice}`);
+  copyFileSync(
+    'node_modules/@gumi-conqueror/audio-decode/THIRD_PARTY_NOTICES.txt',
+    `${output}/THIRD_PARTY_NOTICES.txt`,
+  );
   run('scripts/tauri-build-info.mjs', '--check', '--copy', `${output}/build-info.json`);
 }

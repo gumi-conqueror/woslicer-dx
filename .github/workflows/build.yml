@@ -56,7 +56,7 @@ jobs:
         run: node scripts/ci-reuse.mjs probe
       - run: npm ci
         if: steps.reuse.outputs.reused != 'true'
-      - run: npm run check:quality
+      - run: npm run check
         if: steps.reuse.outputs.reused != 'true'
       - run: npm test
         if: steps.reuse.outputs.reused != 'true'
@@ -101,7 +101,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - name: Test the production web output (isolated 30-second profiles)
-        run: npm run test:app-ui
+        run: npm run test:ui
       - name: Archive and validate the tested web output
         run: |
           node scripts/package-web.mjs
