@@ -2,9 +2,10 @@ import { onMounted, onUnmounted, watch } from 'vue';
 import { useYuancon } from './use-yuancon';
 import type { YuanconState } from './protocol';
 import { createYuanconReader } from './recording';
-import { recordingCommandForYuancon, RECORDING_KEYS, type RecordingInput } from '../recording';
+import type { RecordingInput } from '../recording';
+import { routeYuancon } from '../router';
 import { useInputState } from '../state';
-import type { AppCommand } from '../../app/command-types';
+import type { AppCommand } from '../../app/commands';
 
 export function useYuanconRecording(options: {
   active: () => boolean;
@@ -19,25 +20,10 @@ export function useYuanconRecording(options: {
     return options.active() && !document.hidden && document.hasFocus();
   }
   function dispatch(state: YuanconState | null, time: number): void {
-    const commands = new Set<AppCommand>();
     const controls = read(state, time, enabled());
-    for (const control of controls) {
-      input.device = 'yuancon';
-      const command = recordingCommandForYuancon(control);
-      if (command) commands.add(command);
-    }
-    for (const command of commands)
-      options.onCommand(
-        command,
-        command === 'recording-tap'
-          ? {
-              time,
-              keys: RECORDING_KEYS.filter((binding) => controls.includes(binding.yuancon)).map(
-                (binding) => binding.key,
-              ),
-            }
-          : undefined,
-      );
+    if (controls.length) input.device = 'yuancon';
+    for (const action of routeYuancon(controls, time))
+      if (action.kind === 'command') options.onCommand(action.command, action.args);
   }
   const connection = useYuancon((state, time) => {
     if (!state) {

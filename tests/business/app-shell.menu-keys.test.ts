@@ -33,7 +33,7 @@ describe('classic menu navigation', () => {
       expect(document.activeElement?.textContent).toBe('Project');
       await key('e');
       // Empty history and selection leave only Paste enabled in Edit.
-      expect(document.activeElement?.getAttribute('data-command')).toBe('select-paste');
+      expect(document.activeElement?.getAttribute('data-command')).toBe('paste-selection');
       await key('Escape');
       await key('Escape');
       expect(document.activeElement).toBe(field);

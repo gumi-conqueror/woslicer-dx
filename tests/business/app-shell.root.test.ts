@@ -44,30 +44,32 @@ vi.mock('../../src/playback', () => ({
   }),
   providePlayback: () => {},
 }));
-vi.mock('../../src/app/commands', () => ({
-  createCommands: (options: {
-    onClose: () => Promise<void>;
-    onOpenProject: () => Promise<void>;
-    onAbout: () => void;
-    onHelp: () => void;
-    onCalibrate: () => void;
-    report: (error: unknown) => void;
+vi.mock('../../src/app/commands', async (original) => ({
+  ...(await original<typeof import('../../src/app/commands')>()),
+  createCommands: ({
+    hosts,
+  }: {
+    hosts: {
+      close: () => Promise<void>;
+      openProject: () => Promise<void>;
+      about: () => void;
+      help: () => void;
+      calibrate: () => void;
+      report: (error: unknown) => void;
+    };
   }) => {
     async function execute(command: string) {
       effects.execute(command);
-      if (command === 'close-project') await options.onClose();
-      if (command === 'open-project') await options.onOpenProject();
-      if (command === 'calibrate') options.onCalibrate();
-      if (command === 'help') options.onHelp();
-      if (command === 'about') options.onAbout();
+      if (command === 'close-project') await hosts.close();
+      if (command === 'open-project') await hosts.openProject();
+      if (command === 'calibrate') hosts.calibrate();
+      if (command === 'help') hosts.help();
+      if (command === 'about') hosts.about();
     }
-    return {
-      execute,
-      run: (command: string) => execute(command).catch(options.report),
-      onKeyDown: effects.keydown,
-    };
+    return { run: (command: string) => execute(command).catch(hosts.report) };
   },
 }));
+vi.mock('../../src/input/keyboard', () => ({ handleKeyDown: effects.keydown }));
 afterEach(() => {
   vi.restoreAllMocks();
   vi.clearAllMocks();

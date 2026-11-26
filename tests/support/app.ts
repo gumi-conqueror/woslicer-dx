@@ -23,19 +23,21 @@ export function createTestApp(createEngine = processorEngine) {
     editor: app.editor,
     workspace: app.workspace,
     playback,
-    onClose() {},
-    onAbout() {},
-    onHelp() {},
-    onCalibrate() {},
-    onOpenProject: () => app.workspace.openProject(),
-    onNewProjectFromWos: () => app.workspace.newProjectFromWos(),
-    report: (error) => app.editor.setStatus('loadFailed', { message: errorMessage(error) }, true),
+    hosts: {
+      close() {},
+      about() {},
+      help() {},
+      calibrate() {},
+      openProject: () => app.workspace.openProject(),
+      newProjectFromWos: () => app.workspace.newProjectFromWos(),
+      report: (error) => app.editor.setStatus('loadFailed', { message: errorMessage(error) }, true),
+    },
   });
   return Object.assign(app, {
     playback,
     commands,
-    /** Runs a command as the menu, a shortcut or a controller would. */
-    run: commands.execute,
+    /** Runs a command as the menu, a shortcut, a controller or the wheel would. */
+    run: commands.run,
   });
 }
 

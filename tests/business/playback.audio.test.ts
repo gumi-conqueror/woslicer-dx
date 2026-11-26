@@ -5,6 +5,7 @@ import type { CueMode } from '../../src/project/schema';
 import { createPlayback, type Playback } from '../../src/playback';
 import { renderSlice } from '../../src/core/audio/slice';
 import { createCommands } from '../../src/app/commands';
+import { handleKeyDown } from '../../src/input/keyboard';
 import { createTestApp, audioFile } from '../support/app';
 
 class AudioNodeDouble {
@@ -133,13 +134,16 @@ describe('Pinia playback lifetime and audio clock', () => {
       editor,
       workspace,
       playback,
-      onClose() {},
-      onAbout() {},
-      onCalibrate() {},
-      onOpenProject() {},
-      onNewProjectFromWos() {},
-      report(error) {
-        throw error;
+      hosts: {
+        close() {},
+        about() {},
+        help() {},
+        calibrate() {},
+        openProject() {},
+        newProjectFromWos() {},
+        report(error) {
+          throw error;
+        },
       },
     });
     editor.snap = false;
@@ -157,9 +161,9 @@ describe('Pinia playback lifetime and audio clock', () => {
     playback.seekSample(240000);
     now = 3200;
     context.currentTime = 2.2;
-    await commands.execute('recording-tap', { time: 1500, keys: [1, 3] });
-    await commands.execute('recording-tap', { time: 2500, keys: [5] });
-    await commands.execute('recording-tap', { time: 3050, keys: [7] });
+    await commands.run('recording-tap', { time: 1500, keys: [1, 3] });
+    await commands.run('recording-tap', { time: 2500, keys: [5] });
+    await commands.run('recording-tap', { time: 3050, keys: [7] });
     expect(editor.ticks).toEqual([48, 120, 144]);
     expect(editor.markerKeys).toEqual([
       { tick: 48, keys: [1, 3] },
@@ -182,42 +186,44 @@ describe('Pinia playback lifetime and audio clock', () => {
       editor,
       workspace,
       playback,
-      onClose() {},
-      onAbout() {},
-      onHelp() {},
-      onCalibrate() {},
-      onOpenProject() {},
-      onNewProjectFromWos() {},
-      report(error) {
-        throw error;
+      hosts: {
+        close() {},
+        about() {},
+        help() {},
+        calibrate() {},
+        openProject() {},
+        newProjectFromWos() {},
+        report(error) {
+          throw error;
+        },
       },
     });
     editor.snap = false;
     editor.tapOffsetMs = 100;
     editor.setCursorTick(900);
     playback.seekSample(60000);
-    await commands.execute('recording-tap');
+    await commands.run('recording-tap');
     expect(editor.ticks).toEqual([120]);
     expect(playback.currentSample()).toBe(60000);
     expect(editor.playing).toBe(false);
     playback.play();
     context.currentTime = 0.25;
-    await commands.execute('seek-backward');
+    await commands.run('seek-backward');
     expect(playback.currentSample()).toBe(48000);
     expect(editor.playing).toBe(true);
     context.currentTime = 0.75;
-    commands.onKeyDown(new KeyboardEvent('keydown', { key: 'z' }), true);
+    handleKeyDown(new KeyboardEvent('keydown', { key: 'z' }), 'recording', commands);
     expect(editor.ticks).toEqual([120, 134]);
     context.currentTime = 0.9;
-    commands.onKeyDown(new KeyboardEvent('keydown', { key: 'z', repeat: true }), true);
+    handleKeyDown(new KeyboardEvent('keydown', { key: 'z', repeat: true }), 'recording', commands);
     expect(editor.ticks).toEqual([120, 134]);
-    commands.onKeyDown(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true }), true);
+    handleKeyDown(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true }), 'recording', commands);
     expect(editor.ticks).toEqual([120]);
     playback.pause();
     playback.seekSample(0);
-    await commands.execute('seek-backward');
+    await commands.run('seek-backward');
     expect(playback.currentSample()).toBe(0);
-    await commands.execute('seek-forward');
+    await commands.run('seek-forward');
     expect(playback.currentSample()).toBe(24000);
     expect(editor.playing).toBe(false);
   });

@@ -1,11 +1,23 @@
 import { onMounted, onUnmounted } from 'vue';
-import { createGamepadReader, GAMEPAD_DEAD_ZONE, type GamepadControl } from './gamepad';
+import {
+  createGamepadReader,
+  GAMEPAD_DEAD_ZONE,
+  pointingVector,
+  type GamepadEvent,
+  type UiNavigation,
+} from './gamepad';
 import { useInputState } from './state';
 import { visibleDialog } from './context';
-import { RECORDING_KEYS, type RecordingInput } from './recording';
+
+/** One controller poll: its events and the pointing direction for the command wheel. */
+export interface GamepadFrame {
+  events: readonly GamepadEvent[];
+  pointing: { x: number; y: number };
+  time: number;
+}
 
 export function useInputControls(
-  onControl: (control: GamepadControl, input?: RecordingInput) => void,
+  onFrame: (frame: GamepadFrame) => void,
   recordingActive: () => boolean = () => false,
 ): void {
   const input = useInputState();
@@ -39,22 +51,10 @@ export function useInputControls(
       : '';
     if (enabled && activity !== lastActivity && /1/.test(activity)) input.device = 'gamepad';
     lastActivity = activity;
-    const recording = recordingActive();
-    const actions = read(pad, now, enabled, recording);
+    const events = read(pad, now, enabled, recordingActive());
     if (!pad && input.device === 'gamepad') input.device = 'keyboard';
-    if (actions.length) {
-      input.device = 'gamepad';
-      const taps = recording
-        ? RECORDING_KEYS.filter((binding) => actions.includes(binding.gamepad))
-        : [];
-      let tapped = false;
-      for (const action of actions) {
-        if (taps.some((binding) => binding.gamepad === action)) {
-          if (!tapped) onControl(action, { time: now, keys: taps.map((binding) => binding.key) });
-          tapped = true;
-        } else onControl(action);
-      }
-    }
+    if (events.some((event) => event.phase !== 'release')) input.device = 'gamepad';
+    onFrame({ events, pointing: pointingVector(pad), time: now });
     frame = requestAnimationFrame(poll);
   }
   function suspend(): void {
@@ -80,35 +80,37 @@ export function useInputControls(
   });
 }
 
-/** Dialogs consume controller input before editor bindings. Focus stays inside
- * the visible modal, including the help's manually selected input guide. */
-export function navigateDialog(control: GamepadControl): boolean {
+/**
+ * Controller navigation inside the topmost visible dialog. Focus stays inside
+ * the dialog, including the help's manually selected input guide.
+ */
+export function navigateDialog(action: UiNavigation): void {
   const dialog = visibleDialog();
-  if (!dialog) return false;
+  if (!dialog) return;
   const controls = Array.from(
     dialog.querySelectorAll<HTMLElement>(
       'button:not(:disabled),input:not(:disabled),select:not(:disabled),[tabindex="0"]',
     ),
   ).filter((item) => item.getClientRects().length > 0 && !item.closest('[inert]'));
-  if (control === 'b' || control === 'menu') {
+  if (action === 'cancel' || action === 'toggle') {
+    // Element Plus dialogs close on Escape; a synthetic key reuses that path.
     (document.activeElement ?? dialog).dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
     );
-  } else if (control === 'a') {
+  } else if (action === 'confirm') {
     if (document.activeElement instanceof HTMLElement && controls.includes(document.activeElement))
       document.activeElement.click();
     else controls[0]?.focus();
-  } else if (['up', 'down', 'left', 'right'].includes(control)) {
+  } else if (action === 'up' || action === 'down' || action === 'left' || action === 'right') {
     const current = controls.findIndex((item) => item === document.activeElement);
-    const direction = control === 'up' || control === 'left' ? -1 : 1;
+    const direction = action === 'up' || action === 'left' ? -1 : 1;
     const target =
       controls[current < 0 ? 0 : (current + direction + controls.length) % controls.length];
     target?.focus();
     target?.scrollIntoView({ block: 'nearest' });
-  } else if (control === 'lt' || control === 'rt') {
+  } else if (action === 'scroll-up' || action === 'scroll-down') {
     dialog
       .querySelector<HTMLElement>('[data-gamepad-scroll]')
-      ?.scrollBy({ top: control === 'lt' ? -180 : 180 });
+      ?.scrollBy({ top: action === 'scroll-up' ? -180 : 180 });
   }
-  return true;
 }

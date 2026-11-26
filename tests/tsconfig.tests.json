@@ -18,7 +18,9 @@
   ],
   "exclude": [
     "algorithm/command-availability.test.ts",
+    "algorithm/command-wheel.test.ts",
     "algorithm/gamepad-input.test.ts",
+    "algorithm/input-bindings.test.ts",
     "algorithm/waveform-geometry.test.ts",
     "algorithm/zoom.test.ts"
   ]

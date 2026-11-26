@@ -113,12 +113,12 @@ const gate = computed({
       <el-button @click="workspace.importWosSettings()">{{ t('menu.importWos') }}</el-button>
       <el-button
         :disabled="!editor.ticks.length"
-        :title="shortcutLabel('bmse-out')"
+        :title="shortcutLabel('copy-bmse')"
         @click="workspace.bmseOut()"
         >{{ t('chrome.bmseOut') }}</el-button
       >
       <el-button
-        :title="shortcutLabel('bmse-in')"
+        :title="shortcutLabel('paste-bmse')"
         @click="workspace.bmseIn()"
         >{{ t('chrome.bmseIn') }}</el-button
       >

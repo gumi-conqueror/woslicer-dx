@@ -4,6 +4,18 @@
 
 ## Unreleased
 
+## 2.0.0-alpha.2 — 2026-11-26
+
+### Added
+
+- Command wheel: hold LT on a controller or R on the keyboard, point at a command and release to run it. Tap to keep the wheel open. Two wheels hold eight commands each, including undo, redo, clipboard, saving and export.
+- While you use a controller, a row above the status bar shows what the main buttons do.
+
+### Changed
+
+- Controller buttons follow common game conventions. A adds a marker, X toggles the marker at the cursor, Y previews, B clears the selection and RT plays. LB and RB move by measures, D-pad up and down change the grid, and the right stick zooms and moves by ticks. Recording keys are unchanged.
+- In recording mode, controller buttons that are not recording controls keep their editing functions, such as the command wheel and zoom.
+
 ## 2.0.0-alpha.1 — 2026-11-26
 
 This is a prerelease for testing. It includes the unreleased 1.2.0 changes.

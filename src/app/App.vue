@@ -24,12 +24,14 @@ import AboutDialog from './components/AboutDialog.vue';
 import TroubleshootDialog from './components/TroubleshootDialog.vue';
 import { useInputControls, navigateDialog } from '../input/use-gamepad';
 import { editingControl, visibleDialog } from '../input/context';
-import { canRecord } from './menu';
-import { gamepadNavigation } from '../input/gamepad';
-import { GAMEPAD_SHORTCUTS } from '../input/bindings';
+import { canRecord } from './commands';
+import { handleKeyDown } from '../input/keyboard';
+import { routeGamepad, type InputContext, type WheelAction } from '../input/router';
+import { useCommandWheel } from '../input/use-wheel';
+import CommandWheel from './components/CommandWheel.vue';
+import GamepadHints from './components/GamepadHints.vue';
 import { openDataFolder } from '../platform/app-data';
 import { useInputState } from '../input/state';
-import { recordingCommandForGamepad } from '../input/recording';
 import YuanconDialog from './components/YuanconDialog.vue';
 import { useYuanconRecording } from '../input/yuancon/use-recording';
 import { audioFileFormat } from '../core/audio-formats';
@@ -78,27 +80,45 @@ const commands = createCommands({
   editor,
   workspace,
   playback,
-  onClose: closeWorkspace,
-  onOpenProject: openProject,
-  onNewProjectFromWos: newProjectFromWos,
-  onCalibrate: calibrate,
-  onHelp: () => {
-    helpOpen.value = true;
+  hosts: {
+    close: closeWorkspace,
+    openProject,
+    newProjectFromWos,
+    calibrate,
+    help: () => {
+      helpOpen.value = true;
+    },
+    troubleshoot: () => {
+      troubleshootOpen.value = true;
+    },
+    openDataFolder,
+    about: () => {
+      aboutOpen.value = true;
+    },
+    toggleRecording: () => {
+      input.recording = !input.recording;
+    },
+    connectYuancon: () => {
+      yuanconOpen.value = true;
+    },
+    openWheel: () => {
+      // Opened without a held control, the wheel stays open like after a tap.
+      const time = performance.now();
+      wheel.holdFromController(time);
+      wheel.send({ type: 'release', time });
+    },
+    modalOpen: () => modalOpen.value,
+    report,
   },
-  onTroubleshoot: () => {
-    troubleshootOpen.value = true;
+});
+const wheel = useCommandWheel({
+  state: editor,
+  run: (command) => {
+    void execute(command);
   },
-  onOpenDataFolder: openDataFolder,
-  onAbout: () => {
-    aboutOpen.value = true;
-  },
-  onToggleRecording: () => {
-    input.recording = !input.recording;
-  },
-  onConnectYuancon: () => {
-    yuanconOpen.value = true;
-  },
-  report,
+});
+watch(modalOpen, (open) => {
+  if (open) wheel.cancel();
 });
 watch(
   () => editor.documentGeneration,
@@ -203,21 +223,30 @@ async function newProjectFromWos(): Promise<void> {
     await workspace.newProjectFromWos();
   }
 }
-// Keyboard gating, calibration entry and tap offset.
+// Input routing: keyboard, controller and YuanCon reach commands through one context.
 function keydown(event: KeyboardEvent): void {
-  if (!modalOpen.value) commands.onKeyDown(event, input.recording);
+  if (modalOpen.value) return;
+  handleKeyDown(event, input.recording ? 'recording' : 'edit', {
+    run: execute,
+    holdWheel: wheel.holdFromKey,
+  });
+}
+function inputContext(): InputContext {
+  if (visibleDialog()) return 'dialog';
+  if (modalOpen.value) return 'modal';
+  if (wheel.state.value.open) return 'wheel';
+  if (applicationMenu.value?.isActive()) return 'menu';
+  if (editingControl(document.activeElement)) return 'text';
+  return input.recording && canRecord(editor) ? 'recording' : 'edit';
 }
 function recordingActive(): boolean {
-  const focused = document.activeElement;
-  return (
-    input.recording &&
-    canRecord(editor) &&
-    !modalOpen.value &&
-    !applicationMenu.value?.isActive() &&
-    !editingControl(focused) &&
-    !focused?.closest('[role="dialog"]') &&
-    !visibleDialog()
-  );
+  return inputContext() === 'recording';
+}
+function wheelAction(action: WheelAction, time: number): void {
+  if (action === 'hold') wheel.holdFromController(time);
+  else if (action === 'release') wheel.send({ type: 'release', time });
+  else if (action === 'previous' || action === 'next') wheel.page(action === 'next' ? 1 : -1);
+  else wheel.send({ type: action });
 }
 const yuancon = useYuanconRecording({
   active: recordingActive,
@@ -225,22 +254,15 @@ const yuancon = useYuanconRecording({
     void execute(command, recordingInput);
   },
 });
-useInputControls((control, recordingInput) => {
-  if (navigateDialog(control)) return;
-  if (modalOpen.value) return;
-  const navigation = gamepadNavigation(control);
-  if (navigation && applicationMenu.value?.navigate(navigation)) return;
-  if (applicationMenu.value?.isActive()) return;
-  // Text editing keeps its focus; menu/help remain reachable from a controller.
-  if (control !== 'view' && editingControl(document.activeElement)) return;
-  if (recordingActive()) {
-    const command = recordingCommandForGamepad(control);
-    if (command) void execute(command, recordingInput);
-    else if (control === 'view') void execute('help');
-    return;
+useInputControls(({ events, pointing, time }) => {
+  const context = inputContext();
+  if (context === 'wheel') wheel.pointController(pointing);
+  for (const action of routeGamepad(events, context, time)) {
+    if (action.kind === 'dialog') navigateDialog(action.action);
+    else if (action.kind === 'menu') applicationMenu.value?.navigate(action.action);
+    else if (action.kind === 'wheel') wheelAction(action.action, time);
+    else void execute(action.command, action.args);
   }
-  const shortcut = GAMEPAD_SHORTCUTS.find((item) => item.control === control);
-  if (shortcut) void execute(shortcut.command);
 }, recordingActive);
 function calibrate(): void {
   if (!editor.source) {
@@ -351,6 +373,7 @@ onUnmounted(() => {
         </div>
         <WorkspacePanels :key="panelGeneration" />
       </section>
+      <GamepadHints v-if="input.device === 'gamepad'" />
       <!-- status bar -->
       <StatusBar
         :identity="identity"
@@ -376,6 +399,10 @@ onUnmounted(() => {
       <AboutDialog
         v-model="aboutOpen"
         :identity="identity"
+      />
+      <CommandWheel
+        :wheel="wheel"
+        :state="editor"
       />
       <!-- drop overlay -->
       <div

@@ -12,10 +12,10 @@ See [Project format](PROJECT_FORMAT.md) for that compatibility boundary.
 | --- | --- |
 | Application assembly and project replacement | [`src/app/App.vue`](../src/app/App.vue) |
 | Menu entries and availability | [`src/app/menu.ts`](../src/app/menu.ts), [`ApplicationMenu.vue`](../src/app/components/ApplicationMenu.vue) |
-| Commands and their availability | [`commands.ts`](../src/app/commands.ts), [`command-types.ts`](../src/app/command-types.ts), [`menu.ts`](../src/app/menu.ts) |
-| Keyboard and gamepad bindings, help labels | [`src/input/bindings.ts`](../src/input/bindings.ts) |
-| Where input goes (dialogs, menus, text fields) | [`src/input/context.ts`](../src/input/context.ts), `modalOpen` in [`App.vue`](../src/app/App.vue) |
-| Recording presets and help mappings | [`src/input/recording.ts`](../src/input/recording.ts) |
+| Commands: ids, labels, help groups, availability and execution | [`src/app/commands.ts`](../src/app/commands.ts) |
+| Keyboard, controller and YuanCon bindings, including recording keys 1–7 | [`src/input/bindings.ts`](../src/input/bindings.ts) |
+| Where input goes (dialogs, menus, wheel, text fields) | `inputContext` in [`App.vue`](../src/app/App.vue), [`src/input/router.ts`](../src/input/router.ts), [`context.ts`](../src/input/context.ts) |
+| Command wheel | [`src/input/wheel.ts`](../src/input/wheel.ts), [`use-wheel.ts`](../src/input/use-wheel.ts), [`CommandWheel.vue`](../src/app/components/CommandWheel.vue) |
 | Timeline rendering and gestures | [`src/timeline/`](../src/timeline/) |
 | Marker edits and undoable document state | [`editor-store.ts`](../src/slicing/editor-store.ts), [`editor-actions.ts`](../src/slicing/editor-actions.ts) |
 | Project loading, saving and recovery | [`src/workspace/`](../src/workspace/), [`src/project/`](../src/project/) |
@@ -25,7 +25,7 @@ See [Project format](PROJECT_FORMAT.md) for that compatibility boundary.
 | Slice export controls | [`src/export/OutputPanel.vue`](../src/export/OutputPanel.vue) |
 | BMHelper MIDI division | [`src/bmhelper/`](../src/bmhelper/) |
 | OS/browser services | [`src/platform/`](../src/platform/) |
-| Gamepad reader and polling | [`src/input/gamepad.ts`](../src/input/gamepad.ts), [`use-gamepad.ts`](../src/input/use-gamepad.ts) |
+| Gamepad reader, fixed menu and dialog navigation, polling | [`src/input/gamepad.ts`](../src/input/gamepad.ts), [`use-gamepad.ts`](../src/input/use-gamepad.ts) |
 | YuanCon protocol, device session and recording | [`src/input/yuancon/`](../src/input/yuancon/) |
 | Languages, fonts and theme | [`src/i18n/`](../src/i18n/), [`src/ui/`](../src/ui/), [`build-fonts.mjs`](../scripts/build-fonts.mjs) |
 | Native commands and permissions | [`src-tauri/src/`](../src-tauri/src/), [`capabilities/`](../src-tauri/capabilities/), [`permissions/`](../src-tauri/permissions/) |
@@ -37,9 +37,11 @@ The workspace owns file operations, recovery and transient loading state. `Track
 Playback and device sessions keep runtime resources outside the portable project document.
 Revision checks reject stale asynchronous results and gestures after document replacement.
 
-Discrete actions follow input → command → feature action. Menus, keyboard shortcuts and controllers share the command dispatcher.
-`src/input/bindings.ts` supplies keyboard labels and help groups. `src/input/recording.ts` supplies recording-mode mappings.
-While `modalOpen` in `App.vue` is true, keyboard, gamepad and YuanCon input do nothing. Register every new app dialog there.
+Discrete actions follow input → command → feature action. Menus, keyboard shortcuts, controllers, YuanCon and the command wheel run commands only through `createCommands().run`.
+To add a command, add one entry to `COMMANDS` and, if it needs keys, one row to `BINDINGS`. Menus, tooltips, help and the controller hint row read both.
+Bindings have two layers. The recording layer lies over the editing layer and hides only the controls that it binds or reserves.
+Menu, dialog and wheel navigation on a controller is fixed in `UI_NAVIGATION` and is not part of the binding table.
+`run` does nothing while a dialog is visible or `modalOpen` in `App.vue` is true. Register every new app dialog in `modalOpen`.
 The feature action owns validation and undo behavior. Continuous pointer gestures and form drafts remain local to their feature.
 
 `WindowTitlebar.vue` delegates native controls through `src/platform/desktop-window.ts`.
@@ -90,7 +92,7 @@ These timestamps measure host receipt, not mechanical contact. Hardware latency 
 
 The sanitized [YuanCon fixture](../tests/fixtures/input/README.md) can replay protocol behavior without hardware.
 Its metadata describes the available evidence and its limits. The seven logical keys map to marker numbers 1–7.
-The numbered device preview lets users check the physical key order. Binding definitions remain in `src/input/recording.ts`.
+The numbered device preview lets users check the physical key order. Binding definitions are in `src/input/bindings.ts`.
 
 ## Translations and fonts
 
