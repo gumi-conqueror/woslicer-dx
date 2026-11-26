@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CANCEL, matchesBindings } from '../app/shortcuts';
+import { CANCEL, matchesBindings } from '../input/bindings';
 import TrackHeader from '../app/components/TrackHeader.vue';
 import { computed, onBeforeUnmount, onMounted, shallowRef, useTemplateRef, watch } from 'vue';
 import { useDevicePixelRatio, useResizeObserver } from '@vueuse/core';
@@ -9,10 +9,10 @@ import { useEditorStore } from '../slicing/editor-store';
 import { usePlayback } from '../playback';
 import { useUiPreferencesStore } from '../ui/preferences';
 import { paletteFor } from '../ui/palette';
-import { MAX_TICKS, tickToSampleExport } from '../core/timebase';
+import { MAX_TICKS, sampleToTick, tickToSampleExport } from '../core/timebase';
 import { createTimelineGestures, type TimelinePointer } from './gestures';
 import { drawOverlay, drawRuler, drawTimeline, RULER_HEIGHT, setupCanvas } from './render';
-import { sampleToTick } from './waveform';
+const rulerHeightCss = `${RULER_HEIGHT}px`;
 import type { LoadingActivity } from '../workspace/workspace';
 
 defineProps<{ loading?: LoadingActivity | null }>();
@@ -282,8 +282,8 @@ onBeforeUnmount(() => {
 
 /* Ruler strip: fixed height, pointer cursor for seeking. */
 .timeline-ruler {
-  flex: 0 0 28px;
-  height: 28px;
+  flex: 0 0 v-bind(rulerHeightCss);
+  height: v-bind(rulerHeightCss);
   min-height: 0;
   min-width: 0;
   cursor: pointer;

@@ -26,6 +26,7 @@ for (const entry of readdirSync(root, { recursive: true, withFileTypes: true }))
   files[name] = new Uint8Array(readFileSync(path));
 }
 assert.ok(files['index.html'], 'The Web build must include index.html');
+assert.ok(files['favicon.ico'], 'The Web build must include favicon.ico at its root');
 
 const { name, version } = JSON.parse(readFileSync('package.json', 'utf8'));
 const archive = `release/web/${name}-${version}-web.zip`;

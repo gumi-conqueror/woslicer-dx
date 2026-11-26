@@ -1,7 +1,6 @@
 import type { SourceNote, Sound } from './sound-groups.js';
-import { chronological } from './sound-groups.js';
-import type { NumberingMode } from '../formats/numbering.js';
 import { stepId } from '../formats/numbering.js';
+import type { ArrangementSettings } from './arrangement.js';
 export interface Definition {
   readonly definitionId: number;
   readonly soundId: number;
@@ -10,48 +9,42 @@ export interface Assignment {
   readonly sourceId: string;
   readonly definitionId: number;
 }
+
+/**
+ * The fewest definitions that can play the occurrences in turn. A definition
+ * can be reused after its previous occurrence ends at least `freeGap` ticks earlier.
+ */
+function sharedDefinitionCount(occurrences: readonly SourceNote[], freeGap: number): number {
+  for (let count = 1; count < occurrences.length; count++) {
+    const fits = occurrences.every((note, i) => {
+      const previous = occurrences[i - count];
+      return !previous || note.onset - (previous.onset + previous.duration) >= freeGap;
+    });
+    if (fits) return count;
+  }
+  return occurrences.length;
+}
+
+/** `notes` are the validated source notes in chronological order (see `arrange`). */
 export function assignDefinitions(
   notes: readonly SourceNote[],
   sounds: readonly Sound[],
-  sharing: boolean,
-  freeGap: number,
-  first: number,
-  mode: NumberingMode,
+  settings: Pick<ArrangementSettings, 'sharing' | 'freeGap' | 'firstDefinition' | 'numbering'>,
 ): {
   definitions: Definition[];
   assignments: Assignment[];
 } {
-  if (!Number.isFinite(freeGap) || freeGap < 0) throw new RangeError('Invalid free gap');
-  stepId(first, 0, mode);
-  const ordered = chronological(notes);
   const definitions: Definition[] = [];
   const assignments: Assignment[] = [];
   for (const sound of sounds) {
-    const occurrences = ordered.filter((n) => sound.sourceIds.includes(n.sourceId));
+    const occurrences = notes.filter((n) => sound.sourceIds.includes(n.sourceId));
     if (!occurrences.length) throw new RangeError('Sound has no source occurrences');
-    let count = occurrences.length;
-    if (sharing)
-      for (let candidate = 1; candidate <= occurrences.length; candidate++) {
-        const last = new Map<number, SourceNote>();
-        let valid = true;
-        for (let i = 0; i < occurrences.length; i++) {
-          const note = occurrences[i];
-          if (!note) throw new Error('Missing occurrence');
-          const previous = last.get(i % candidate);
-          if (previous && note.onset - (previous.onset + previous.duration) < freeGap) {
-            valid = false;
-            break;
-          }
-          last.set(i % candidate, note);
-        }
-        if (valid) {
-          count = candidate;
-          break;
-        }
-      }
+    const count = settings.sharing
+      ? sharedDefinitionCount(occurrences, settings.freeGap)
+      : occurrences.length;
     const ids: number[] = [];
     for (let i = 0; i < count; i++) {
-      const id = stepId(first, definitions.length, mode);
+      const id = stepId(settings.firstDefinition, definitions.length, settings.numbering);
       if (definitions.some((d) => d.definitionId === id))
         throw new RangeError('Definition capacity exceeded');
       definitions.push({ definitionId: id, soundId: sound.soundId });

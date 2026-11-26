@@ -3,6 +3,7 @@
 // process-tree cleanup, mirroring scripts/test-app-ui.mjs. Build dist/app first;
 // the watchdog covers only test execution, never the build.
 import { spawn, spawnSync } from 'node:child_process';
+import { UI_PROFILES } from './ui-profiles.mjs';
 import { fileURLToPath } from 'node:url';
 
 const cli = fileURLToPath(new URL('../node_modules/@playwright/test/cli.js', import.meta.url));
@@ -29,7 +30,7 @@ const selectedScenarios =
 const profiles =
   arguments_.filter((value) => !value.startsWith('--grep=')).length > 0
     ? arguments_.filter((value) => !value.startsWith('--grep='))
-    : ['low', 'high'];
+    : UI_PROFILES.map((profile) => profile.name);
 
 const failures = [];
 for (const profile of profiles) {

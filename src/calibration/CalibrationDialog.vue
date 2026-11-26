@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CALIBRATION_TAP, CANCEL, matchesBindings, formatBindings } from '../app/shortcuts';
+import { CALIBRATION_TAP, CANCEL, matchesBindings, formatBindings } from '../input/bindings';
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { ElAlert, ElButton, ElDialog } from 'element-plus';

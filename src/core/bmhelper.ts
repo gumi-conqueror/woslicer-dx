@@ -1,12 +1,11 @@
 import type { Division } from '@gumi-conqueror/bmh-file';
 import { arrange, defaultSettings } from './notes/arrangement.js';
 import { chronological, type SortKey } from './notes/sound-groups.js';
-import { formatId, stepId, renumber } from './formats/numbering.js';
-import { CLIPBOARD_FORMAT, recordingCutText, sourceSequenceText } from './formats/clipboard.js';
+import { stepId, renumber, type NumberingMode } from './formats/numbering.js';
+import { recordingCutText, sourceSequenceText } from './formats/bmse.js';
 import { definitionText } from './formats/definitions.js';
 import type { MidiSequence } from '@gumi-conqueror/bmh-file';
 
-export const BMSE_CLIPBOARD_HEADER = CLIPBOARD_FORMAT;
 export type SortType =
   | 'none'
   | 'nn_gate_vel'
@@ -53,14 +52,9 @@ export function defaultDivisionSetting(name: string, quantize: number): Division
     mlThreshold: defaults.freeGap,
   };
 }
-export function zzToString(zz: number): string {
-  return formatId(zz);
-}
-export function nextZz(zz: number, ffMode: boolean): number {
-  return stepId(zz, 1, ffMode ? 'restricted' : 'extended');
-}
-export function prevZz(zz: number, ffMode: boolean): number {
-  return stepId(zz, -1, ffMode ? 'restricted' : 'extended');
+/** BMHelper's "ZZ definition" option selects extended numbering; off means FF mode. */
+function numbering(zzDefinition: boolean): NumberingMode {
+  return zzDefinition ? 'extended' : 'restricted';
 }
 function sourceNotes(source: MidiSequence) {
   return chronological(
@@ -82,7 +76,7 @@ export function createDivision(source: MidiSequence, setting: DivisionSetting): 
     durationTolerance: setting.gateThreshold,
     velocityTolerance: setting.velocityThreshold,
     sort: priorities[setting.sortType],
-    numbering: setting.zzDefinition ? 'extended' : 'restricted',
+    numbering: numbering(setting.zzDefinition),
     sharing: setting.mlDefinition,
     firstDefinition: setting.startDefinition,
     freeGap: setting.mlThreshold,
@@ -128,19 +122,19 @@ export function createDivision(source: MidiSequence, setting: DivisionSetting): 
     ),
   };
 }
-export function transposeDefinitions(division: Division, delta: 1 | -1, ffMode: boolean): void {
+export function transposeDefinitions(division: Division, delta: 1 | -1): void {
   const ids = division.definitions.map((definition) =>
-    stepId(definition.zz, delta, ffMode ? 'restricted' : 'extended'),
+    stepId(definition.zz, delta, numbering(division.zzDefinition)),
   );
   division.definitions.forEach((definition, index) => {
     definition.zz = ids[index];
   });
 }
-export function setStartDefinition(division: Division, start: number, ffMode: boolean): void {
+export function setStartDefinition(division: Division, start: number): void {
   const ids = renumber(
     division.definitions.map((definition) => definition.zz),
     start,
-    ffMode ? 'restricted' : 'extended',
+    numbering(division.zzDefinition),
   );
   division.definitions.forEach((definition, index) => {
     definition.zz = ids[index];

@@ -1,14 +1,25 @@
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
-    "module": "CommonJS",
-    "moduleResolution": "Node",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "lib": ["ES2022"],
     "types": ["node"],
-    "outDir": "../dist",
-    "rootDir": "..",
-    "sourceMap": false,
-    "declaration": false
+    "noEmit": true
   },
-  "include": ["../src/core/**/*.ts", "../src/i18n/generated.ts", "*.ts"]
+  "include": [
+    "../src/core/**/*.ts",
+    "../src/project/**/*.ts",
+    "../src/i18n/generated.ts",
+    "algorithm/**/*.ts",
+    "support/audio.ts",
+    "support/wav-reader.ts",
+    "fixtures.ts"
+  ],
+  "exclude": [
+    "algorithm/command-availability.test.ts",
+    "algorithm/gamepad-input.test.ts",
+    "algorithm/waveform-geometry.test.ts",
+    "algorithm/zoom.test.ts"
+  ]
 }

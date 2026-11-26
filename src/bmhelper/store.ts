@@ -1,14 +1,14 @@
 import { computed, ref, shallowRef, watch } from 'vue';
+import { TICKS_PER_BEAT } from '../core/timebase';
 import { defineStore } from 'pinia';
 import {
   createDivision,
-  nextZz,
-  prevZz,
   setStartDefinition,
+  transposeDefinitions,
   type DivisionSetting,
 } from '../core/bmhelper';
 import { readBmh, writeBmh, type BmhProject, type BmhNameChange } from '@gumi-conqueror/bmh-file';
-import { inspectSmf, readSmfSequence, writeSmfSequence } from '../core/smf';
+import { inspectSmf, readSmfSequence, writeSmfSequence } from '../core/formats/smf';
 import type { EditorStore } from '../slicing/editor-store';
 import {
   bmhelperDocumentSchema,
@@ -111,11 +111,7 @@ export const useBmhelperStore = defineStore('bmhelper', () => {
     const next = project.value ? structuredClone(project.value) : null;
     const division = next?.divisions[selectedIndex.value];
     if (!next || !division) return;
-    for (const definition of division.definitions)
-      definition.zz =
-        delta === 1
-          ? nextZz(definition.zz, !division.zzDefinition)
-          : prevZz(definition.zz, !division.zzDefinition);
+    transposeDefinitions(division, delta);
     commitProject(next);
   }
   function setStart(start: number): void {
@@ -124,7 +120,7 @@ export const useBmhelperStore = defineStore('bmhelper', () => {
     const next = project.value ? structuredClone(project.value) : null;
     const division = next?.divisions[selectedIndex.value];
     if (!next || !division) return;
-    setStartDefinition(division, start, !division.zzDefinition);
+    setStartDefinition(division, start);
     commitProject(next);
   }
   function exportMidiBytes(): Uint8Array {
@@ -167,7 +163,9 @@ export const useBmhelperStore = defineStore('bmhelper', () => {
   function cutTicks(): number[] {
     const division = selectedDivision.value;
     return division
-      ? division.recording.map((note) => Math.trunc((note.position * 48) / division.quantize))
+      ? division.recording.map((note) =>
+          Math.trunc((note.position * TICKS_PER_BEAT) / division.quantize),
+        )
       : [];
   }
   function reset(): void {

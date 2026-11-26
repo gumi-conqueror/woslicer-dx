@@ -2,7 +2,8 @@
 
 woslicer-dx edits audio markers and exports WAV slices for BMS charts.
 The browser and Tauri desktop application share the Vue interface, project model and audio Worker.
-The editor supports one full-source audio track. The project format can preserve additional layouts in read-only mode.
+The editor edits projects with one track; the project format already stores markers and output settings per track.
+`currentTrack` in `src/project/codec.ts` is the one place that picks the edited track.
 See [Project format](PROJECT_FORMAT.md) for that compatibility boundary.
 
 ## Source map
@@ -11,8 +12,10 @@ See [Project format](PROJECT_FORMAT.md) for that compatibility boundary.
 | --- | --- |
 | Application assembly and project replacement | [`src/app/App.vue`](../src/app/App.vue) |
 | Menu entries and availability | [`src/app/menu.ts`](../src/app/menu.ts), [`ApplicationMenu.vue`](../src/app/components/ApplicationMenu.vue) |
-| Commands, keyboard bindings and help | [`commands.ts`](../src/app/commands.ts), [`shortcuts.ts`](../src/app/shortcuts.ts), [`command-types.ts`](../src/app/command-types.ts) |
-| Recording presets and help mappings | [`recording-bindings.ts`](../src/app/recording-bindings.ts) |
+| Commands and their availability | [`commands.ts`](../src/app/commands.ts), [`command-types.ts`](../src/app/command-types.ts), [`menu.ts`](../src/app/menu.ts) |
+| Keyboard and gamepad bindings, help labels | [`src/input/bindings.ts`](../src/input/bindings.ts) |
+| Where input goes (dialogs, menus, text fields) | [`src/input/context.ts`](../src/input/context.ts), `modalOpen` in [`App.vue`](../src/app/App.vue) |
+| Recording presets and help mappings | [`src/input/recording.ts`](../src/input/recording.ts) |
 | Timeline rendering and gestures | [`src/timeline/`](../src/timeline/) |
 | Marker edits and undoable document state | [`editor-store.ts`](../src/slicing/editor-store.ts), [`editor-actions.ts`](../src/slicing/editor-actions.ts) |
 | Project loading, saving and recovery | [`src/workspace/`](../src/workspace/), [`src/project/`](../src/project/) |
@@ -22,7 +25,8 @@ See [Project format](PROJECT_FORMAT.md) for that compatibility boundary.
 | Slice export controls | [`src/export/OutputPanel.vue`](../src/export/OutputPanel.vue) |
 | BMHelper MIDI division | [`src/bmhelper/`](../src/bmhelper/) |
 | OS/browser services | [`src/platform/`](../src/platform/) |
-| YuanCon protocol and device session | [`src/input/yuancon/`](../src/input/yuancon/) |
+| Gamepad reader and polling | [`src/input/gamepad.ts`](../src/input/gamepad.ts), [`use-gamepad.ts`](../src/input/use-gamepad.ts) |
+| YuanCon protocol, device session and recording | [`src/input/yuancon/`](../src/input/yuancon/) |
 | Languages, fonts and theme | [`src/i18n/`](../src/i18n/), [`src/ui/`](../src/ui/), [`build-fonts.mjs`](../scripts/build-fonts.mjs) |
 | Native commands and permissions | [`src-tauri/src/`](../src-tauri/src/), [`capabilities/`](../src-tauri/capabilities/), [`permissions/`](../src-tauri/permissions/) |
 
@@ -34,7 +38,8 @@ Playback and device sessions keep runtime resources outside the portable project
 Revision checks reject stale asynchronous results and gestures after document replacement.
 
 Discrete actions follow input → command → feature action. Menus, keyboard shortcuts and controllers share the command dispatcher.
-`shortcuts.ts` supplies keyboard labels and help groups. `recording-bindings.ts` supplies recording-mode mappings.
+`src/input/bindings.ts` supplies keyboard labels and help groups. `src/input/recording.ts` supplies recording-mode mappings.
+While `modalOpen` in `App.vue` is true, keyboard, gamepad and YuanCon input do nothing. Register every new app dialog there.
 The feature action owns validation and undo behavior. Continuous pointer gestures and form drafts remain local to their feature.
 
 `WindowTitlebar.vue` delegates native controls through `src/platform/desktop-window.ts`.
@@ -57,7 +62,8 @@ The decoder repository also exposes a native Rust API, which this application do
 
 Source buffers hold Float32 values on a full-scale amplitude of 32768. Playback buffers use normalized Float32 values.
 Editing and analysis preserve fractional samples and floating-point headroom. Export remains 16-bit PCM WAV.
-The compatibility reader in `src/core/wav.ts` supports legacy/output tests. Runtime input uses `src/audio/decode.ts`.
+`src/core/audio/pcm.ts` owns the amplitude scale. Runtime input uses `src/audio/decode.ts`.
+`src/core/audio/slice.ts` renders one slice for both preview and export. `src/core/slices.ts` owns slice ranges and file names.
 
 The decoder detects the container from the file contents. File pickers and project metadata use extensions from `src/core/audio-formats.ts`.
 Keep the native file allowlist in `src-tauri/src/files.rs` aligned when adding an input format.
@@ -72,7 +78,7 @@ Audio processing and editing rules remain in the shared frontend.
 Native commands are constrained by Tauri capabilities. About links use fixed identifiers, not arbitrary URLs.
 Both application variants keep user data local and bundle runtime assets. Their CSP definitions are in `src/app/index.html`, `vite.config.mts` and `src-tauri/tauri.conf.json`.
 
-Standard gamepads enter through `src/app/use-input-controls.ts`.
+Standard gamepads enter through `src/input/use-gamepad.ts`.
 YuanCon uses the native HID backend on desktop and WebHID in supporting browsers, selected by `src/platform/input/`.
 The native reader opens the listed joystick interfaces on a dedicated thread and removes identical consecutive reports.
 Both backends separate the report ID from its payload and use the same TypeScript protocol decoder.
@@ -84,7 +90,7 @@ These timestamps measure host receipt, not mechanical contact. Hardware latency 
 
 The sanitized [YuanCon fixture](../tests/fixtures/input/README.md) can replay protocol behavior without hardware.
 Its metadata describes the available evidence and its limits. The seven logical keys map to marker numbers 1–7.
-The numbered device preview lets users check the physical key order. Binding definitions remain in `recording-bindings.ts`.
+The numbered device preview lets users check the physical key order. Binding definitions remain in `src/input/recording.ts`.
 
 ## Translations and fonts
 

@@ -135,6 +135,8 @@ A new manual main run also works when main still points to that commit.
 ### Cloudflare Pages
 
 After publication, the workflow uploads the verified Web ZIP to a Cloudflare Pages Direct Upload project.
+Prerelease tags (`v2.0.0-alpha.1` and similar) skip this job. The website keeps the latest release, and the prerelease Web ZIP stays on the release page.
+A prerelease cannot share the site under a path such as `/next`: each Direct Upload deployment replaces the whole site, and both copies would share one origin and its local storage.
 It requires the repository variable `CLOUDFLARE_PROJECT_NAME` and secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
 The workflow reads the existing Pages production branch from the API and deploys through Wrangler.
 It does not modify Pages settings or require repository integration.

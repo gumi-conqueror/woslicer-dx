@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { GAMEPAD_CONTROLS, GAMEPAD_ROTATIONS, type GamepadControl } from '../app/gamepad-controls';
+import { GAMEPAD_CONTROLS, GAMEPAD_ROTATIONS, type GamepadControl } from '../input/gamepad';
 const props = defineProps<{ control: GamepadControl; dpadOnly?: boolean }>();
 const label = computed(() => {
   const text = [...GAMEPAD_CONTROLS, ...GAMEPAD_ROTATIONS].find(

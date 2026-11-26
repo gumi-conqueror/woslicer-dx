@@ -2,14 +2,15 @@
 import { computed, watch } from 'vue';
 import { ElButton, ElCheckbox, ElOption, ElSelect, ElSlider } from 'element-plus';
 import { useI18n } from 'vue-i18n';
-import { useEditorStore, type CueMode } from '../slicing/editor-store';
+import { useEditorStore } from '../slicing/editor-store';
+import { CUE_MODES, type CueMode } from '../project/schema';
 import { PLAYBACK_RATES, formatRate } from '../core/rate';
 import { ampToDb, dbToAmp, dbToSlider, sliderToDb } from '../core/volume';
 import { usePlayback } from './index';
 import { useSliderDraft } from './use-slider-draft';
-import { shortcutLabel } from '../app/shortcuts';
+import { shortcutLabel } from '../input/bindings';
 import AppIcon from '../ui/AppIcon.vue';
-import { useInputState } from '../app/input-state';
+import { useInputState } from '../input/state';
 const input = useInputState();
 const emit = defineEmits<{ command: [command: 'toggle-recording'] }>();
 function toggleRecording(event: MouseEvent): void {
@@ -63,19 +64,20 @@ watch(
   { flush: 'sync' },
 );
 // Cue monitor modes offered by the select.
-const cues: { value: CueMode; label: string }[] = [
-  { value: 'off', label: 'chrome.cueOff' },
-  { value: 'cowbell', label: 'chrome.cueCowbell' },
-  { value: 'triangle', label: 'chrome.cueTriangle' },
-  { value: 'metronome', label: 'chrome.cueMetronome' },
-];
+const cueLabels: Record<CueMode, string> = {
+  off: 'chrome.cueOff',
+  cowbell: 'chrome.cueCowbell',
+  triangle: 'chrome.cueTriangle',
+  metronome: 'chrome.cueMetronome',
+};
+const cues = CUE_MODES.map((value) => ({ value, label: cueLabels[value] }));
 // Select payloads are narrowed before they reach playback or the store.
 function setRate(value: unknown): void {
   if (typeof value === 'number') playback.setRate(value);
 }
 function setCue(value: unknown): void {
-  if (value === 'off' || value === 'cowbell' || value === 'triangle' || value === 'metronome')
-    editor.cueMode = value;
+  const mode = CUE_MODES.find((item) => item === value);
+  if (mode) editor.cueMode = mode;
 }
 // Slider tooltip: the dB fader value for the hovered position.
 const formatVolume = (position: number) => `${sliderToDb(position).toFixed(1)} dB`;
@@ -89,7 +91,7 @@ const formatVolume = (position: number) => `${sliderToDb(position).toFixed(1)} d
   >
     <ElButton
       class="recording-toggle"
-      :disabled="disabled || editor.limited"
+      :disabled="disabled"
       :type="input.recording ? 'danger' : 'default'"
       :aria-pressed="input.recording"
       :title="t('recording.modeHint')"
@@ -114,7 +116,6 @@ const formatVolume = (position: number) => `${sliderToDb(position).toFixed(1)} d
     <!-- Drag previews the live audio route; release creates one document edit. -->
     <ElSlider
       class="volume-slider"
-      :disabled="editor.limited"
       :model-value="volumeDisplay"
       :format-tooltip="formatVolume"
       :aria-label="t('chrome.titleVolume')"
@@ -160,7 +161,6 @@ const formatVolume = (position: number) => `${sliderToDb(position).toFixed(1)} d
     <ElSlider
       class="volume-slider"
       :model-value="cueDisplay"
-      :disabled="editor.limited"
       :format-tooltip="formatVolume"
       :aria-label="t('chrome.titleCueVolume')"
       :title="t('chrome.titleCueVolume')"

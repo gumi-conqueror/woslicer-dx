@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
-import { RECORDING_BINDINGS, RECORDING_KEYS, RECORDING_SEEK_SECONDS } from '../recording-bindings';
+import {
+  RECORDING_BINDINGS,
+  RECORDING_KEYS,
+  RECORDING_SEEK_SECONDS,
+  codeLabel,
+} from '../../input/recording';
 import GamepadIcon from '../../ui/GamepadIcon.vue';
 import YuanconIcon from '../../ui/YuanconIcon.vue';
 defineProps<{ device: 'keyboard' | 'gamepad' | 'yuancon' }>();
@@ -33,9 +38,7 @@ const { t } = useI18n();
                 class="key-binding"
               >
                 <span>{{ keyBinding.key }}:</span>
-                <kbd v-if="device === 'keyboard'">{{
-                  keyBinding.keyboard.replace(/^Key/, '')
-                }}</kbd>
+                <kbd v-if="device === 'keyboard'">{{ codeLabel(keyBinding.keyboard) }}</kbd>
                 <GamepadIcon
                   v-else
                   :control="keyBinding.gamepad"
@@ -45,7 +48,7 @@ const { t } = useI18n();
             </template>
           </dd>
           <dd v-else-if="device === 'keyboard'">
-            <kbd>{{ binding.keyboard.map((key) => key.replace(/^Key/, '')).join(' / ') }}</kbd>
+            <kbd>{{ binding.keyboard.map(codeLabel).join(' / ') }}</kbd>
           </dd>
           <dd v-else-if="device === 'gamepad'">
             <GamepadIcon

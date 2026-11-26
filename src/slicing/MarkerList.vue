@@ -10,7 +10,9 @@ const editor = workspace.editor;
 const viewport = useTemplateRef<HTMLDivElement>('viewport');
 const offset = shallowRef(0);
 const viewportHeight = shallowRef(0);
+// The virtual list positions rows with this height; the row style reads it.
 const rowHeight = 32;
+const rowHeightCss = `${rowHeight}px`;
 const first = computed(() => Math.max(0, Math.floor(offset.value / rowHeight) - 3));
 const rows = computed(() =>
   editor.ticks.slice(first.value, first.value + Math.ceil(viewportHeight.value / rowHeight) + 6),
@@ -150,7 +152,7 @@ watch(
 .marker-row {
   display: flex;
   width: 100%;
-  height: 32px;
+  height: v-bind(rowHeightCss);
   margin: 0;
   border-radius: 0;
   justify-content: flex-start;

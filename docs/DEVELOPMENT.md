@@ -81,7 +81,7 @@ Regenerate translation metadata after changing `src/i18n/*.json`. Restart the se
 | Check Windows IPC | `npm run test:ipc` | Native command and permission checks |
 | Apply formatting or lint fixes | `npm run format` / `npm run lint:fix` | Source changes |
 
-Use `test:tooling`, `test:components` or `test:core` to run one unit-test group.
+Use `test:tooling` for script tests or `test:units` for algorithm and business tests. `npx vitest run --config tests/vitest.config.mts --project algorithm` runs one Vitest project.
 The package commands build fresh output. To archive an already tested website, run `node scripts/package-web.mjs`.
 On macOS, select the DMG bundle explicitly with `npm run package:desktop -- --bundles dmg`.
 Generated files under `dist/`, `src/app/generated/` and `src-tauri/generated/` are not source files.

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { shortcutLabel } from '../app/shortcuts';
+import { shortcutLabel } from '../input/bindings';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useWorkspace } from '../workspace/workspace';
-import { FADE_INPUT_LIMITS, GATE_INPUT_LIMITS } from '../slicing/control-limits';
+import { FIELD_RANGES, inRange } from '../project/schema';
 const { t } = useI18n();
 const workspace = useWorkspace();
 const editor = workspace.editor;
@@ -11,7 +11,11 @@ const editor = workspace.editor;
 const clipStart = computed({
   get: () => editor.clipStartNumber,
   set: (value: number | undefined) => {
-    if (value !== undefined && Number.isInteger(value) && value >= 0 && value <= 9999)
+    if (
+      value !== undefined &&
+      Number.isInteger(value) &&
+      inRange(value, FIELD_RANGES.clipStartNumber)
+    )
       editor.setOutputOptions({ clipStartNumber: value });
   },
 });
@@ -61,16 +65,16 @@ const gate = computed({
       <el-form-item :label="t('chrome.fadeLabel')"
         ><el-input-number
           v-model="fade"
-          :min="FADE_INPUT_LIMITS.min"
-          :max="FADE_INPUT_LIMITS.max"
+          :min="FIELD_RANGES.fadeoutMs.min"
+          :max="FIELD_RANGES.fadeoutMs.max"
           :precision="0"
           :aria-label="t('chrome.fadeLabel')"
       /></el-form-item>
       <el-form-item :label="t('chrome.gateLabel')"
         ><el-input-number
           v-model="gate"
-          :min="GATE_INPUT_LIMITS.min"
-          :max="GATE_INPUT_LIMITS.max"
+          :min="FIELD_RANGES.noisegateDb.min"
+          :max="FIELD_RANGES.noisegateDb.max"
           :step="1"
           :aria-label="t('chrome.gateLabel')"
         /><el-checkbox v-model="gateEnabled">{{
@@ -80,8 +84,8 @@ const gate = computed({
       <el-form-item :label="t('chrome.clipStartNoLabel')"
         ><el-input-number
           v-model="clipStart"
-          :min="0"
-          :max="9999"
+          :min="FIELD_RANGES.clipStartNumber.min"
+          :max="FIELD_RANGES.clipStartNumber.max"
           :precision="0"
           :aria-label="t('chrome.clipStartNoLabel')"
       /></el-form-item>

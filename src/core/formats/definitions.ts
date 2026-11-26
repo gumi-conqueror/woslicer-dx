@@ -1,4 +1,5 @@
 import { formatId } from './numbering.js';
+import { sliceFileName } from '../slices.js';
 export interface DefinitionLine {
   readonly identifier: number;
   readonly soundOrdinal: number;
@@ -9,15 +10,7 @@ export function definitionText(definitions: readonly DefinitionLine[], stem: str
     .map((d) => {
       if (!Number.isSafeInteger(d.soundOrdinal) || d.soundOrdinal < 0)
         throw new RangeError('Invalid recording sound ordinal');
-      return (
-        '#WAV' +
-        formatId(d.identifier) +
-        ' ' +
-        stem +
-        '_' +
-        String(d.soundOrdinal).padStart(3, '0') +
-        '.wav\r\n'
-      );
+      return `#WAV${formatId(d.identifier)} ${sliceFileName(stem, d.soundOrdinal)}\r\n`;
     })
     .join('');
 }

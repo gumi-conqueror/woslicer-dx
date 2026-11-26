@@ -7,6 +7,7 @@ import { useEditorStore } from '../slicing/editor-store';
 import { useUiPreferencesStore } from '../ui/preferences';
 import { paletteFor } from '../ui/palette';
 import { drawOverview, OVERVIEW_HEIGHT, setupCanvas } from './render';
+const overviewHeightCss = `${OVERVIEW_HEIGHT}px`;
 import type { LoadingActivity } from '../workspace/workspace';
 
 const props = defineProps<{ viewportWidth: number; loading?: LoadingActivity | null }>();
@@ -107,7 +108,7 @@ onBeforeUnmount(() => cancelAnimationFrame(frame));
 .track-overview-container {
   position: relative;
   min-width: 0;
-  height: 36px;
+  height: v-bind(overviewHeightCss);
   overflow: hidden;
 }
 .is-loading .track-overview {
@@ -169,7 +170,7 @@ onBeforeUnmount(() => cancelAnimationFrame(frame));
 .track-overview {
   display: block;
   width: 100%;
-  height: 36px;
+  height: v-bind(overviewHeightCss);
   min-width: 0;
   cursor: pointer;
   touch-action: none;

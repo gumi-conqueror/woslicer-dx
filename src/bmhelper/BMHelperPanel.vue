@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, shallowRef, watch } from 'vue';
+import { errorMessage } from '../core/messages';
+import { formatId } from '../core/formats/numbering';
 import { useI18n } from 'vue-i18n';
 import {
   ElAlert,
@@ -21,10 +23,9 @@ import {
   cutPositionsClipboard,
   defaultDivisionSetting,
   wavDefinitionText,
-  zzToString,
   type SortType,
 } from '../core/bmhelper';
-import type { SmfTrackInfo } from '../core/smf';
+import type { SmfTrackInfo } from '../core/formats/smf';
 import { useBmhelperStore } from './store';
 import PianoRoll from './PianoRoll.vue';
 
@@ -92,7 +93,7 @@ const definitionText = computed(() =>
 );
 // Definition numbers of the selected division as two-digit base-36 texts.
 const selectedDefinitionNumbers = computed(() =>
-  (store.selectedDivision?.definitions ?? []).map((definition) => zzToString(definition.zz)),
+  (store.selectedDivision?.definitions ?? []).map((definition) => formatId(definition.zz)),
 );
 // Numeric dialog fields iterated in the settings grid, each with its step size.
 // All are beat-level except velocityThreshold, which counts notes.
@@ -113,7 +114,7 @@ async function run(action: () => void | Promise<void>): Promise<void> {
     await action();
   } catch (cause: unknown) {
     error.value = t('status.bmhOpenFailed', {
-      message: cause instanceof Error ? cause.message : String(cause),
+      message: errorMessage(cause),
     });
   } finally {
     busy.value = false;
@@ -135,7 +136,7 @@ function resetSettings(): void {
     minInterval: defaults.minInterval / DEFAULT_SETTINGS_TPQN,
     gateThreshold: defaults.gateThreshold / DEFAULT_SETTINGS_TPQN,
     mlThreshold: defaults.mlThreshold / DEFAULT_SETTINGS_TPQN,
-    startDefinition: zzToString(defaults.startDefinition),
+    startDefinition: formatId(defaults.startDefinition),
   });
 }
 // Import flow: pick a MIDI file, inspect its tracks, then open the settings dialog.

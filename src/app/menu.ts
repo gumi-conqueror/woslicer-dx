@@ -1,8 +1,9 @@
 import type { EditorStore } from '../slicing/editor-store';
+import { currentTrack } from '../project/codec';
 
 export type MenuEditorState = Pick<
   EditorStore,
-  'document' | 'source' | 'ticks' | 'selectedTicks' | 'canUndo' | 'canRedo' | 'limited'
+  'document' | 'source' | 'ticks' | 'selectedTicks' | 'canUndo' | 'canRedo'
 >;
 
 // The visible menu is also the source of its command type and input validation.
@@ -18,7 +19,6 @@ export const APPLICATION_MENU = [
       { id: 'open-audio', key: 'menu.openAudio', mnemonic: 'a' },
       { id: 'new-project-wos', key: 'menu.newProjectWos', mnemonic: 'n' },
       { id: 'import-wos', key: 'menu.importWos', mnemonic: 'i' },
-      { id: 'import-legacy', key: 'menu.importLegacy', mnemonic: 'l' },
       { id: 'export-wos', key: 'menu.exportWos', mnemonic: 'w' },
       { id: 'close-project', key: 'chrome.close', mnemonic: 'c' },
       { id: 'export-slice', key: 'menu.exportSlice', mnemonic: 'e' },
@@ -72,8 +72,9 @@ export const MENU_COMMANDS = APPLICATION_MENU.flatMap((group) =>
   group.commands.map((item) => item.id),
 );
 
-export function isMenuCommand(value: unknown): value is MenuCommand {
-  return typeof value === 'string' && MENU_COMMANDS.some((command) => command === value);
+/** Recording needs audio. */
+export function canRecord(editor: Pick<MenuEditorState, 'source'>): boolean {
+  return editor.source !== null;
 }
 
 /**
@@ -95,16 +96,16 @@ export function menuCommandEnabled(id: MenuCommand, editor: MenuEditorState): bo
     case 'connect-yuancon':
       return true;
     case 'toggle-recording':
-      return editor.source !== null && !editor.limited;
+      return canRecord(editor);
     case 'calibrate':
       return editor.source !== null;
     case 'open-audio':
     case 'import-wos':
-    case 'import-legacy':
     case 'export-wos':
-      return !editor.limited;
+    case 'select-paste':
+      return true;
     case 'relink-audio':
-      return editor.document.media.length > 0 && !editor.limited;
+      return currentTrack(editor.document).media !== null;
     case 'export-slice':
     case 'export-all':
       return editor.source !== null && editor.ticks.length > 0;
@@ -116,11 +117,9 @@ export function menuCommandEnabled(id: MenuCommand, editor: MenuEditorState): bo
     case 'select-copy':
       return editor.ticks.length > 0;
     case 'clear-markers':
-      return editor.ticks.length > 0 && !editor.limited;
+      return editor.ticks.length > 0;
     case 'select-cut':
-      return editor.selectedTicks.length > 0 && !editor.limited;
-    case 'select-paste':
-      return !editor.limited;
+      return editor.selectedTicks.length > 0;
     default: {
       const exhaustive: never = id;
       return exhaustive;

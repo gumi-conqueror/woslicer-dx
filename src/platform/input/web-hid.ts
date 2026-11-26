@@ -12,7 +12,9 @@ export function createWebHid(): HidBackend {
           item.vendorId === YUANCON_FILTER.vendorId &&
           item.productId === YUANCON_FILTER.productId &&
           item.collections.some(
-            (collection) => collection.usagePage === 1 && collection.usage === 4,
+            (collection) =>
+              collection.usagePage === YUANCON_FILTER.usagePage &&
+              collection.usage === YUANCON_FILTER.usage,
           ),
       );
       if (!device) return null;

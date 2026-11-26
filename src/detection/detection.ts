@@ -1,4 +1,5 @@
 import { BAND_NAMES } from '../core/bands';
+import { errorMessage } from '../core/messages';
 import { gridStepTicks } from '../core/gridlines';
 import { MAX_TICKS } from '../core/timebase';
 import type { AudioEngine } from '../audio/audio-jobs';
@@ -9,6 +10,11 @@ export function createDetection(
   engine: () => AudioEngine | null,
   generation: () => number,
 ) {
+  /** Band analysis and both detectors report a failure the same way; stale results stay silent. */
+  function reportFailure(error: unknown, version: number): void {
+    if (generation() === version)
+      editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
+  }
   let analysisTask: { generation: number; task: Promise<void> } | null = null;
   function ensureBands(): Promise<void> {
     const worker = engine(),
@@ -24,12 +30,7 @@ export function createDetection(
         if (generation() === version) editor.setBandAnalysis(analysis);
       })
       .catch((error) => {
-        if (generation() === version)
-          editor.setStatus(
-            'loadFailed',
-            { message: error instanceof Error ? error.message : String(error) },
-            true,
-          );
+        reportFailure(error, version);
       })
       .finally(() => {
         if (generation() === version) editor.bandBusy = false;
@@ -86,12 +87,7 @@ export function createDetection(
         threshold,
       });
     } catch (error) {
-      if (generation() === version)
-        editor.setStatus(
-          'loadFailed',
-          { message: error instanceof Error ? error.message : String(error) },
-          true,
-        );
+      reportFailure(error, version);
     } finally {
       if (generation() === version) editor.bandBusy = false;
     }
@@ -118,12 +114,7 @@ export function createDetection(
       editor.setTicks(legal, []);
       editor.setStatus('edgeDetectionCandidates', { count: legal.length });
     } catch (error) {
-      if (generation() === version)
-        editor.setStatus(
-          'loadFailed',
-          { message: error instanceof Error ? error.message : String(error) },
-          true,
-        );
+      reportFailure(error, version);
     } finally {
       if (generation() === version) editor.bandBusy = false;
     }

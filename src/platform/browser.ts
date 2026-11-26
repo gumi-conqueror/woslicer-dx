@@ -1,12 +1,12 @@
 import { Zip, ZipPassThrough } from 'fflate';
-import { PROJECT_FILE_MAX_BYTES, SESSION_FILE_MAX_BYTES } from '../project/schema';
+import { isPortableFileName } from './file-names';
+import { byteLimitText, MEDIA_FILE_MAX_BYTES, PROJECT_FILE_MAX_BYTES } from '../project/schema';
 import type { FileKind, OpenedFile, OutputFile, Platform } from './contracts';
 import { AUDIO_EXTENSIONS } from '../core/audio-formats';
 
 const SESSION_KEY = 'woslicer.vue.session.v2';
 const CHUNK_BYTES = 1024 * 1024;
 const DOWNLOAD_LIMIT = 256 * 1024 * 1024;
-const FILE_LIMIT = 2 * 1024 * 1024 * 1024;
 const extensions: Record<FileKind, string> = {
   audio: AUDIO_EXTENSIONS.map((extension) => `.${extension}`).join(','),
   wos: '.wos',
@@ -44,17 +44,7 @@ interface Destination {
 }
 
 function outputName(name: string): string {
-  if (
-    !name ||
-    name.length > 240 ||
-    // Control characters are intentionally matched: they must never survive into an output file name.
-    // eslint-disable-next-line no-control-regex -- portable output names must exclude control characters
-    /[<>:"/\\|?*\u0000-\u001f]/.test(name) ||
-    /[. ]$/.test(name) ||
-    /^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)/i.test(name)
-  ) {
-    throw new Error('Output must have a plain, portable file name');
-  }
+  if (!isPortableFileName(name)) throw new Error('Output must have a plain, portable file name');
   return name;
 }
 
@@ -188,7 +178,7 @@ async function exportZip(
       outputName(file.name);
       const name = file.name.toLowerCase();
       if (names.has(name)) throw new Error('Duplicate export file name');
-      if (names.size >= 65_534 || total + file.bytes.length > FILE_LIMIT)
+      if (names.size >= 65_534 || total + file.bytes.length > MEDIA_FILE_MAX_BYTES)
         throw new Error('ZIP export exceeds the supported size');
       names.add(name);
       total += file.bytes.length;
@@ -224,9 +214,10 @@ export function createBrowserPlatform(): Platform {
           .some((extension) => file.name.toLowerCase().endsWith(extension))
       )
         throw new Error('Unsupported file extension');
-      if (file.size > FILE_LIMIT) throw new Error('File exceeds 2 GiB');
+      if (file.size > MEDIA_FILE_MAX_BYTES)
+        throw new Error(`File exceeds ${byteLimitText(MEDIA_FILE_MAX_BYTES)}`);
       if (kind === 'wosdx' && file.size > PROJECT_FILE_MAX_BYTES)
-        throw new Error('Project exceeds 64 MiB');
+        throw new Error(`Project exceeds ${byteLimitText(PROJECT_FILE_MAX_BYTES)}`);
       return { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()), reference: null };
     },
     openProjectMedia() {
@@ -239,7 +230,7 @@ export function createBrowserPlatform(): Platform {
     },
     async saveFile(kind, name, bytes) {
       if (kind === 'wosdx' && bytes.byteLength > PROJECT_FILE_MAX_BYTES)
-        throw new Error('Project exceeds 64 MiB');
+        throw new Error(`Project exceeds ${byteLimitText(PROJECT_FILE_MAX_BYTES)}`);
       const destination = await chooseDestination(name, 'application/octet-stream');
       if (!destination) return false;
       try {
@@ -283,9 +274,6 @@ export function createBrowserPlatform(): Platform {
       localStorage.removeItem(SESSION_KEY);
       return Promise.resolve();
     },
-    async importLegacySession() {
-      return importBrowserLegacySession();
-    },
     setTheme(mode) {
       document.documentElement.style.colorScheme = mode;
       return Promise.resolve();
@@ -295,12 +283,4 @@ export function createBrowserPlatform(): Platform {
 
 export function getBrowserBuildIdentity(): unknown {
   return __BUILD_IDENTITY__;
-}
-
-export async function importBrowserLegacySession(): Promise<unknown> {
-  const file = await pickFile('.json');
-  if (file === null) return null;
-  if (file.size > SESSION_FILE_MAX_BYTES) throw new Error('Session exceeds 65 MiB');
-  const value: unknown = JSON.parse(await file.text());
-  return value;
 }

@@ -5,7 +5,7 @@ import { useI18n } from 'vue-i18n';
 import { MEASURE_TICKS } from '../../core/timebase';
 import type { BuildIdentity } from '../../platform/contracts';
 import { useEditorStore } from '../../slicing/editor-store';
-import { useInputState } from '../input-state';
+import { useInputState } from '../../input/state';
 import AppIcon from '../../ui/AppIcon.vue';
 import YuanconIcon from '../../ui/YuanconIcon.vue';
 const input = useInputState();

@@ -66,16 +66,6 @@ export function resolvePaste(
   return { ok: true, ticks: targets };
 }
 
-/** Returns the last marker tick at or before `tick`, or -1. */
-export function markerAtOrBefore(ticks: readonly number[], tick: number): number {
-  let result = -1;
-  for (const t of ticks) {
-    if (t <= tick) result = t;
-    else break;
-  }
-  return result;
-}
-
 /** Returns the index of the slice that starts at or before `tick`, or -1. */
 export function sliceIndexAtOrBefore(ticks: readonly number[], tick: number): number {
   let lo = 0;

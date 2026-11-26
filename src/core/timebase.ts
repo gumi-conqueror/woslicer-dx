@@ -1,49 +1,74 @@
-import { exportSample } from './time/conversion.js';
-
-export const MEASURE_TICKS = 192;
 import { MARKER_COUNT } from '@gumi-conqueror/wos-file';
-export const MAX_TICKS = MARKER_COUNT;
-/** Total bytes of the marker bitmap embedded in a .wos file (49152 bits). */
-export const BITMAP_BYTES = MAX_TICKS / 8;
 
+/** Ticks per quarter note. The BMSE clipboard and BMHelper cut positions use the same unit. */
+export const TICKS_PER_BEAT = 48;
+/** A measure has four beats. */
+export const MEASURE_TICKS = 4 * TICKS_PER_BEAT;
+/** Marker positions in a .wos bitmap are ticks 0 through MAX_TICKS - 1. */
+export const MAX_TICKS = MARKER_COUNT;
+
+/** Maps project ticks to source samples. `shift` is in ticks and moves tick 0 within the source. */
 export interface TimeBase {
-  bpm: number;
-  shift: number;
-  sampleRate: number;
+  readonly bpm: number;
+  readonly shift: number;
+  readonly sampleRate: number;
+}
+
+/** Source samples per tick; rejects a time base that cannot map ticks to samples. */
+export function samplesPerTick(base: TimeBase): number {
+  if (!(Number.isFinite(base.bpm) && base.bpm > 0))
+    throw new RangeError('Tempo must be a positive number');
+  if (!(Number.isFinite(base.sampleRate) && base.sampleRate > 0))
+    throw new RangeError('Sample rate must be a positive number');
+  if (!Number.isFinite(base.shift)) throw new RangeError('Shift must be finite');
+  return (base.sampleRate * 60) / (base.bpm * TICKS_PER_BEAT);
+}
+
+/** Fractional sample position, for drawing. */
+export function tickToSample(tick: number, base: TimeBase): number {
+  if (!Number.isFinite(tick)) throw new RangeError('Tick must be finite');
+  return (tick + base.shift) * samplesPerTick(base);
 }
 
 /** Integer sample position for preview and export. */
 export function tickToSampleExport(tick: number, base: TimeBase): number {
-  return exportSample(tick, { tempo: base.bpm, shift: base.shift, sampleRate: base.sampleRate });
+  return Math.trunc(tickToSample(tick, base));
 }
-/** Integer sample index for sample-indexed view operations. */
-export function tickToSampleView(tick: number, base: TimeBase): number {
-  return tickToSampleExport(tick, base);
+
+/** Fractional tick position, for drawing. */
+export function sampleToTick(sample: number, base: TimeBase): number {
+  if (!Number.isFinite(sample)) throw new RangeError('Sample must be finite');
+  return sample / samplesPerTick(base) - base.shift;
 }
 
 /**
- * Nearest tick to a playhead sample position (Math.round of the inverse
- * conversion, clamped to the 49152-tick map). This is the break-point
- * mapping: playing -> marker under the playhead. Extracted from the renderer
- * so the round-back math is unit-testable without a DOM.
+ * Nearest tick to a playhead sample position, clamped to the marker map.
+ * This maps the playhead to the marker under it.
  */
 export function sampleToTickNearest(sample: number, base: TimeBase): number {
-  const approx = (sample * base.bpm * 4) / (base.sampleRate * 5) - base.shift;
-  return Math.max(0, Math.min(MAX_TICKS - 1, Math.round(approx)));
+  return Math.max(0, Math.min(MAX_TICKS - 1, Math.round(sampleToTick(sample, base))));
 }
 
 /**
- * Break-point placement policy (frozen spec): with Snap on, a placed marker
- * aligns to the nearest multiple of `grid`; holding Alt (`bypass`) drops it
- * at the exact position regardless of Snap. Every result is a whole tick
- * clamped into [0, MAX_TICKS).
- *
- * Single source of truth for snapping: Store.snapTick delegates here (ruler
- * clicks, bypass=false) and the Enter break-point action resolves both its
- * playing and stopped branches through it.
- *
- * A non-integer or non-positive grid falls back to the unsnapped tick so a
- * bad grid value can never produce NaN.
+ * A marker must be a whole tick on the marker map. With audio, its export
+ * position must lie inside the source; a marker exactly at the source end is
+ * allowed and exports an empty slice.
+ */
+export function markerTickAllowed(
+  tick: number,
+  audio: { readonly base: TimeBase; readonly length: number } | null,
+): boolean {
+  if (!Number.isInteger(tick) || tick < 0 || tick >= MAX_TICKS) return false;
+  if (!audio) return true;
+  const sample = tickToSampleExport(tick, audio.base);
+  return sample >= 0 && sample <= audio.length;
+}
+
+/**
+ * Break-point placement: with Snap on, a placed marker aligns to the nearest
+ * multiple of `grid`; holding Alt (`bypass`) drops it at the exact position.
+ * Every result is a whole tick clamped into [0, MAX_TICKS). A non-integer or
+ * non-positive grid falls back to the unsnapped tick.
  */
 export function resolveBreakpointTick(
   tick: number,

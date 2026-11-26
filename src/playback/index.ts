@@ -1,8 +1,10 @@
 import { effectScope, inject, provide, watch, type InjectionKey } from 'vue';
 import type { EditorStore } from '../slicing/editor-store';
-import { renderSlice } from '../core/slicer';
+import { renderSlice } from '../core/audio/slice';
+import { sliceRanges } from '../core/slices';
+import { FULL_SCALE } from '../core/audio/pcm';
 import { sliceIndexAtOrBefore } from '../core/markers';
-import { tickToSampleExport } from '../core/timebase';
+import { sampleToTick } from '../core/timebase';
 import { DEFAULT_PLAYBACK_RATE, PLAYBACK_RATES, advanceSamples } from '../core/rate';
 import { findCueCrossing } from '../core/cuecursor';
 import { createCueSynth } from './cue';
@@ -40,9 +42,15 @@ export function createPlayback(editor: EditorStore): Playback {
   let activeRate = editor.playbackRate;
   let lastCueTick = 0;
 
-  function sampleToTick(sample: number): number {
+  function tickAtSample(sample: number): number {
     const source = editor.source;
-    return source ? (sample * 4 * editor.doc.bpm) / (source.sampleRate * 5) - editor.doc.shift : 0;
+    return source
+      ? sampleToTick(sample, {
+          bpm: editor.doc.bpm,
+          shift: editor.doc.shift,
+          sampleRate: source.sampleRate,
+        })
+      : 0;
   }
   function release(node: AudioBufferSourceNode | null): void {
     if (!node) return;
@@ -93,7 +101,7 @@ export function createPlayback(editor: EditorStore): Playback {
   function tick(): void {
     if (disposed || !track || !editor.source) return;
     const sample = currentSample();
-    const tickPosition = sampleToTick(sample);
+    const tickPosition = tickAtSample(sample);
     const index = findCueCrossing(editor.ticks, lastCueTick, tickPosition);
     lastCueTick = tickPosition;
     if (index >= 0) {
@@ -124,7 +132,7 @@ export function createPlayback(editor: EditorStore): Playback {
     node.connect(master);
     anchorSample = editor.playheadSample;
     anchorTime = context.currentTime;
-    lastCueTick = sampleToTick(anchorSample);
+    lastCueTick = tickAtSample(anchorSample);
     track = node;
     node.onended = () => {
       if (track !== node) return;
@@ -157,19 +165,24 @@ export function createPlayback(editor: EditorStore): Playback {
     const source = editor.source;
     if (disposed || !source) return;
     const base = { bpm: editor.doc.bpm, shift: editor.doc.shift, sampleRate: source.sampleRate };
-    const ticks = editor.ticks.filter((tick) => tickToSampleExport(tick, base) <= source.length);
-    if (!ticks.length) {
+    const { ranges } = sliceRanges(editor.ticks, base, source.length);
+    if (!ranges.length) {
       editor.setStatus('noMarkersToPreview');
       return;
     }
-    let index = Math.max(0, sliceIndexAtOrBefore(ticks, editor.cursorTick));
+    let index = Math.max(
+      0,
+      sliceIndexAtOrBefore(
+        ranges.map((range) => range.tick),
+        editor.cursorTick,
+      ),
+    );
     if (previous) index = Math.max(0, index - 1);
-    const first = ticks[index];
-    if (first === undefined) return;
-    const next = ticks[index + 1];
+    const range = ranges[index];
+    if (range === undefined) return;
     const rendered = renderSlice(source, {
-      start: tickToSampleExport(first, base),
-      end: next === undefined ? source.length : tickToSampleExport(next, base),
+      start: range.start,
+      end: range.end,
       fadeoutMs: editor.doc.fadeoutMs,
       noisegateDb: editor.noisegateEnabled ? editor.doc.noisegateDb : 0,
     });
@@ -179,14 +192,14 @@ export function createPlayback(editor: EditorStore): Playback {
     }
     stop();
     const previewBuffer = context.createBuffer(
-      rendered.channelsData.length,
+      rendered.channels.length,
       rendered.length,
       rendered.sampleRate,
     );
-    rendered.channelsData.forEach((channel, index) => {
+    rendered.channels.forEach((channel, index) => {
       const output = previewBuffer.getChannelData(index);
       channel.forEach((sample, frame) => {
-        output[frame] = sample / 32768;
+        output[frame] = sample / FULL_SCALE;
       });
     });
     const node = context.createBufferSource();
@@ -201,7 +214,10 @@ export function createPlayback(editor: EditorStore): Playback {
     };
     resume(node);
     node.start();
-    editor.setStatus('previewSlice', { slice: String(index).padStart(3, '0'), tick: first });
+    editor.setStatus('previewSlice', {
+      slice: String(range.index).padStart(3, '0'),
+      tick: range.tick,
+    });
   }
   scope.run(() => {
     watch(
@@ -250,7 +266,7 @@ export function createPlayback(editor: EditorStore): Playback {
     watch(
       () => `${editor.doc.bpm}|${editor.doc.shift}|${editor.ticks.join(',')}`,
       () => {
-        lastCueTick = sampleToTick(currentSample());
+        lastCueTick = tickAtSample(currentSample());
       },
     );
   });

@@ -2,7 +2,15 @@
 
 **English** · [中文](CHANGELOG.zh-CN.md)
 
-## 1.2.0 — 2026-11-25
+## 2.0.0-alpha.1 — 2026-11-26
+
+This is a prerelease for testing. It includes the unreleased 1.2.0 changes.
+
+### Before upgrading
+
+- Save open work in your current version first. Recovery data from versions before 2.0 is not restored.
+- Versions before 2.0 cannot open projects saved by this version. Keep copies of projects you still edit there.
+- The desktop app replaces an installed 1.x version and uses the same data folder.
 
 ### Added
 
@@ -10,6 +18,19 @@
 - Save marker key numbers 1–7 and chords in `.wosdx` projects.
 - Import FLAC, MP3, AAC-LC, ALAC and AIFF, including supported audio in MKV/MKA files.
 - Keep higher-precision source samples during editing. WAV export remains 16-bit PCM.
+
+### Changed
+
+- Projects are saved in a new file version that keeps markers and output settings with each track. Projects from earlier versions open as before and are upgraded when saved.
+- Projects with several tracks or clips, or with trimmed audio, no longer open. Earlier versions opened them read-only.
+- Recovery data from earlier versions is not restored. The status bar says where it came from. The app keeps the data and asks before it replaces it. The **Import legacy recovery data** menu item is removed.
+- Exported slice names drop trailing dots and spaces from the base name.
+- Moving selected markers with a shortcut past the end of the audio stops them at the end, as dragging does. Earlier, the shortcut did nothing.
+
+### Fixed
+
+- Markers that would start before the audio can no longer be placed. With a negative offset, such markers made the export fail.
+- The website serves its icon at `/favicon.ico` and provides SVG and touch icons.
 
 ## 1.1.1 — 2026-11-21
 

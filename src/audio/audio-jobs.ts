@@ -1,10 +1,12 @@
-import type { DecodedWav } from '../core/wav';
-import { detectEdges } from '../core/edge';
+import { FULL_SCALE, type SourceAudio } from '../core/audio/pcm';
+import { errorMessage } from '../core/messages';
+import { suggestOnsets } from '../core/audio/onsets';
 import type { TimeBase } from '../core/timebase';
 import { decodeAudio } from './decode';
 import { buildPeakCache, type PeakCache } from '../core/peaks';
 import { analyzeBands, type BandAnalysis } from '../core/bands';
-import { renderSliceToWav, type SliceParams } from '../core/slicer';
+import { renderSlice, type SliceParams } from '../core/audio/slice';
+import { encodePcm16 } from '../core/formats/wave';
 
 import { detectBandCuts, type DetectRequest, type DetectResult } from '../core/banddetect';
 export type DetectionParams = Omit<DetectRequest, 'analysis'>;
@@ -19,7 +21,7 @@ export type AudioReply =
   | {
       kind: 'decoded';
       id: number;
-      source: DecodedWav;
+      source: SourceAudio;
       floatData: Float32Array[];
       peaks: PeakCache;
     }
@@ -39,7 +41,7 @@ export interface AudioEngine {
 }
 /** Pure worker-side dispatcher, also exercised directly by DSP integration tests. */
 export function createAudioProcessor(): (request: AudioRequest) => Promise<AudioReply> {
-  let source: DecodedWav | null = null;
+  let source: SourceAudio | null = null;
   let analysis: BandAnalysis | null = null;
   return async (request) => {
     try {
@@ -52,7 +54,7 @@ export function createAudioProcessor(): (request: AudioRequest) => Promise<Audio
             id: request.id,
             source,
             floatData: source.data.map((channel) =>
-              Float32Array.from(channel, (sample) => sample / 32768),
+              Float32Array.from(channel, (sample) => sample / FULL_SCALE),
             ),
             peaks: buildPeakCache(source.data),
           };
@@ -64,7 +66,10 @@ export function createAudioProcessor(): (request: AudioRequest) => Promise<Audio
         }
         case 'edges': {
           if (!source) throw new Error('No source loaded');
-          return { kind: 'edges', id: request.id, ticks: detectEdges(source, request.base, 4) };
+          // The legacy edge detector compares adjacent 4-tick windows.
+          const channels = source.data.map((channel) => channel.subarray(0, source?.length));
+          const ticks = suggestOnsets({ channels, timebase: request.base, grid: 4 });
+          return { kind: 'edges', id: request.id, ticks };
         }
         case 'detect': {
           if (!source) throw new Error('No source loaded');
@@ -77,14 +82,19 @@ export function createAudioProcessor(): (request: AudioRequest) => Promise<Audio
         }
         case 'slice': {
           if (!source) throw new Error('No source loaded');
-          return { kind: 'slice', id: request.id, bytes: renderSliceToWav(source, request.params) };
+          const slice = renderSlice(source, request.params);
+          return {
+            kind: 'slice',
+            id: request.id,
+            bytes: encodePcm16(slice.channels, slice.sampleRate),
+          };
         }
       }
     } catch (error) {
       return {
         kind: 'error',
         id: request.id,
-        message: error instanceof Error ? error.message : String(error),
+        message: errorMessage(error),
       };
     }
   };

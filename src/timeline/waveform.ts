@@ -1,8 +1,8 @@
 import { peakRange, type PeakCache } from '../core/peaks';
 import { BAND_DRAW_MIN_ABS } from '../core/bands';
-import type { TimeBase } from '../core/timebase';
+import { tickToSample, type TimeBase } from '../core/timebase';
 import { drawWaveform } from './waveform/canvas';
-import type { PcmChannel } from '../core/wav';
+import { FULL_SCALE, type PcmChannel } from '../core/audio/pcm';
 
 export interface WaveViewport {
   width: number;
@@ -10,13 +10,6 @@ export interface WaveViewport {
   scrollTick: number;
   pxPerTick: number;
   timeBase: TimeBase;
-}
-export function sampleToTick(sample: number, base: TimeBase): number {
-  return (sample * base.bpm * 4) / (base.sampleRate * 5) - base.shift;
-}
-/** Continuous conversion is essential when one viewport spans less than a tick. */
-export function tickToFrame(tick: number, base: TimeBase): number {
-  return ((tick + base.shift) * base.sampleRate * 5) / (base.bpm * 4);
 }
 // Source buffers are immutable after decoding. Weak keys release converted data with the source.
 const drawingSamples = new WeakMap<PcmChannel, Float32Array>();
@@ -34,18 +27,14 @@ export function drawWaveLane(
   if (!data.length || view.width <= 0 || half <= 0) return;
   let samples = drawingSamples.get(data);
   if (!samples) {
-    samples = Float32Array.from(data, (value) => value / 32768);
+    samples = Float32Array.from(data, (value) => value / FULL_SCALE);
     drawingSamples.set(data, samples);
   }
   drawWaveform(
     context,
     [samples],
     {
-      timebase: {
-        tempo: view.timeBase.bpm,
-        shift: view.timeBase.shift,
-        sampleRate: view.timeBase.sampleRate,
-      },
+      timebase: view.timeBase,
       scroll: view.scrollTick,
       scale: view.pxPerTick,
       width: view.width,
@@ -79,8 +68,8 @@ export function drawBandEnvelope(
     let drawing = false;
     for (let column = 0; column <= Math.round(view.width * view.dpr); column++) {
       const x = (column + 0.5) / view.dpr;
-      const first = tickToFrame(view.scrollTick + x / view.pxPerTick, view.timeBase);
-      const last = tickToFrame(
+      const first = tickToSample(view.scrollTick + x / view.pxPerTick, view.timeBase);
+      const last = tickToSample(
         view.scrollTick + (x + 1 / view.dpr) / view.pxPerTick,
         view.timeBase,
       );
@@ -108,7 +97,7 @@ export function drawBandEnvelope(
         drawing = false;
         continue;
       }
-      const y = (Math.floor((mid - (value / 32768) * half) * view.dpr) + 0.5) / view.dpr;
+      const y = (Math.floor((mid - (value / FULL_SCALE) * half) * view.dpr) + 0.5) / view.dpr;
       if (drawing) context.lineTo(x, y);
       else {
         context.moveTo(x, y);

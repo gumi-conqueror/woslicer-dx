@@ -28,6 +28,7 @@ function fixture(t, files) {
 test('Web packaging preserves build bytes and credits while excluding development files', (t) => {
   const expected = {
     'index.html': '<html>tested build</html>',
+    'favicon.ico': Buffer.from([0, 0, 1, 0]),
     'build-info.json': '{"commit":"tested"}',
     LICENSE: 'MIT terms',
     NOTICE: 'Required credits',

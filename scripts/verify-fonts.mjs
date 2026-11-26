@@ -69,12 +69,12 @@ try {
   await session.send('DOM.enable');
   await session.send('CSS.enable');
   const report = [];
-  for (const [id, label, language] of [
-    ['zh', null, 'zh-CN'],
-    ['ja', '日本語', 'ja'],
-    ['ko', '한국어', 'ko'],
-    ['en', 'EN', 'en'],
-  ]) {
+  // The page starts in Chinese; every other language is chosen by its selector label.
+  const { languages } = JSON.parse(readFileSync('src/i18n/languages.json', 'utf8'));
+  const start = languages.find((entry) => entry.id === 'zh');
+  for (const [id, label, language] of [start, ...languages.filter((entry) => entry !== start)].map(
+    (entry) => [entry.id, entry === start ? null : entry.label, entry.docLang],
+  )) {
     const messages = JSON.parse(readFileSync(`src/i18n/${id}.json`, 'utf8'));
     if (label) {
       await page.locator('.preferences-controls .el-select').click();
