@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url';
+import languages from './src/i18n/languages.json' with { type: 'json' };
 import { resolve } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -42,9 +43,9 @@ export default defineConfig(async ({ command }) => {
     plugins: [
       vue(),
       VueI18n({
-        include: ['en', 'zh', 'ja', 'ko'].map((language) =>
-          resolve(root, `src/i18n/${language}.json`),
-        ),
+        include: languages.languages
+          .map((entry) => entry.id)
+          .map((language) => resolve(root, `src/i18n/${language}.json`)),
         runtimeOnly: true,
         compositionOnly: true,
         dropMessageCompiler: true,

@@ -1,4 +1,5 @@
 import { FULL_SCALE, type SourceAudio } from '../core/audio/pcm';
+import { errorMessage } from '../core/messages';
 import { suggestOnsets } from '../core/audio/onsets';
 import type { TimeBase } from '../core/timebase';
 import { decodeAudio } from './decode';
@@ -93,7 +94,7 @@ export function createAudioProcessor(): (request: AudioRequest) => Promise<Audio
       return {
         kind: 'error',
         id: request.id,
-        message: error instanceof Error ? error.message : String(error),
+        message: errorMessage(error),
       };
     }
   };

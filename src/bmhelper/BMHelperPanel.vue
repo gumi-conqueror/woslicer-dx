@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, shallowRef, watch } from 'vue';
+import { errorMessage } from '../core/messages';
 import { formatId } from '../core/formats/numbering';
 import { useI18n } from 'vue-i18n';
 import {
@@ -113,7 +114,7 @@ async function run(action: () => void | Promise<void>): Promise<void> {
     await action();
   } catch (cause: unknown) {
     error.value = t('status.bmhOpenFailed', {
-      message: cause instanceof Error ? cause.message : String(cause),
+      message: errorMessage(cause),
     });
   } finally {
     busy.value = false;

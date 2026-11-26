@@ -1,4 +1,5 @@
 import { inject, provide, readonly, shallowRef, type InjectionKey } from 'vue';
+import { errorMessage } from '../core/messages';
 import {
   decodeProject,
   encodeProject,
@@ -73,10 +74,8 @@ export function createWorkspace(options: WorkspaceOptions) {
   const loading = shallowRef<LoadingActivity | null>(null);
   let resetPending: Promise<void> | null = null;
   const actions = createEditorActions(editor);
-  const message = (error: unknown): string =>
-    error instanceof Error ? error.message : String(error);
   const persistence = createSessionPersistence(platform, editor, (error) => {
-    editor.setStatus('sessionSaveFailed', { message: message(error) }, true);
+    editor.setStatus('sessionSaveFailed', { message: errorMessage(error) }, true);
   });
   const exporter = createExporter(
     platform,
@@ -224,7 +223,7 @@ export function createWorkspace(options: WorkspaceOptions) {
     } catch (error) {
       if (disposed || request !== opening) return;
       editor.setPhase(previousPhase);
-      editor.setStatus('loadFailed', { message: message(error) }, true);
+      editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
     } finally {
       finishOpening(request);
       if (pendingEngine === worker) pendingEngine = null;
@@ -249,7 +248,7 @@ export function createWorkspace(options: WorkspaceOptions) {
         await loadAudio(file);
     } catch (error) {
       if (!disposed && request === opening)
-        editor.setStatus('loadFailed', { message: message(error) }, true);
+        editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
     } finally {
       finishOpening(request);
     }
@@ -270,7 +269,7 @@ export function createWorkspace(options: WorkspaceOptions) {
         await loadAudio(file, true);
     } catch (error) {
       if (!disposed && request === opening)
-        editor.setStatus('loadFailed', { message: message(error) }, true);
+        editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
     } finally {
       finishOpening(request);
     }
@@ -337,7 +336,7 @@ export function createWorkspace(options: WorkspaceOptions) {
         await acceptProject(file);
     } catch (error) {
       if (!disposed && request === opening)
-        editor.setStatus('loadFailed', { message: message(error) }, true);
+        editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
     } finally {
       finishOpening(request);
     }
@@ -356,7 +355,7 @@ export function createWorkspace(options: WorkspaceOptions) {
           editor.setStatus('projectSaved', { name });
       } catch (error) {
         if (!disposed && version === generation)
-          editor.setStatus('loadFailed', { message: message(error) }, true);
+          editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
       }
       return;
     }
@@ -376,7 +375,7 @@ export function createWorkspace(options: WorkspaceOptions) {
       }
     } catch (error) {
       if (!disposed && version === generation)
-        editor.setStatus('loadFailed', { message: message(error) }, true);
+        editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
     }
   }
   async function openDroppedFile(file: File): Promise<void> {
@@ -403,7 +402,7 @@ export function createWorkspace(options: WorkspaceOptions) {
       }
     } catch (error) {
       if (!disposed && request === opening)
-        editor.setStatus('dropFailed', { message: message(error) }, true);
+        editor.setStatus('dropFailed', { message: errorMessage(error) }, true);
     } finally {
       finishOpening(request);
     }
@@ -452,7 +451,7 @@ export function createWorkspace(options: WorkspaceOptions) {
         shift: wos.timing.shiftTicks,
       });
     } catch (error) {
-      if (!disposed) editor.setStatus('wosLoadFailed', { message: message(error) }, true);
+      if (!disposed) editor.setStatus('wosLoadFailed', { message: errorMessage(error) }, true);
     }
   }
   /** Explicit migration of a picked legacy recovery file; the stored path stays an unauthorized hint. */
@@ -488,7 +487,7 @@ export function createWorkspace(options: WorkspaceOptions) {
       editor.setStatus('legacyImported', { markers: summary.markers, bpm: summary.bpm });
     } catch (error) {
       if (!disposed && request === opening)
-        editor.setStatus('loadFailed', { message: message(error) }, true);
+        editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
     }
   }
   /** Replaces the whole workspace with a fresh project that only carries the WOS timing. */
@@ -516,7 +515,7 @@ export function createWorkspace(options: WorkspaceOptions) {
       editor.setStatus('loadedWos', { file: file.name, bpm: data.bpm, shift: data.shift });
     } catch (error) {
       if (!disposed && request === opening)
-        editor.setStatus('wosLoadFailed', { message: message(error) }, true);
+        editor.setStatus('wosLoadFailed', { message: errorMessage(error) }, true);
     }
   }
   async function saveWos(): Promise<void> {
@@ -529,7 +528,7 @@ export function createWorkspace(options: WorkspaceOptions) {
         editor.setStatus('savedWos', { file: name });
     } catch (error) {
       if (!disposed && version === generation)
-        editor.setStatus('wosSaveFailed', { message: message(error) }, true);
+        editor.setStatus('wosSaveFailed', { message: errorMessage(error) }, true);
     }
   }
   async function bmseOut(): Promise<void> {
@@ -549,7 +548,7 @@ export function createWorkspace(options: WorkspaceOptions) {
         start: editor.clipStartNumber,
       });
     } catch (error) {
-      editor.setStatus('bmseReadFailed', { message: message(error) }, true);
+      editor.setStatus('bmseReadFailed', { message: errorMessage(error) }, true);
     }
   }
   async function bmseIn(): Promise<void> {
@@ -563,7 +562,7 @@ export function createWorkspace(options: WorkspaceOptions) {
       editor.setStatus('bmseClipboardImported', { count: legal.length });
     } catch (error) {
       if (!disposed && version === generation)
-        editor.setStatus('bmseReadFailed', { message: message(error) }, true);
+        editor.setStatus('bmseReadFailed', { message: errorMessage(error) }, true);
     }
   }
   async function restoreSession(): Promise<void> {
@@ -608,7 +607,12 @@ export function createWorkspace(options: WorkspaceOptions) {
       if (outcome.kind === 'invalid') editor.setStatus('sessionRecoverInvalid', true);
       else if (outcome.kind === 'future')
         editor.setStatus('sessionRecoverFuture', { version: outcome.version }, true);
-      else editor.setStatus('sessionRecoverReadFailed', { message: message(outcome.error) }, true);
+      else
+        editor.setStatus(
+          'sessionRecoverReadFailed',
+          { message: errorMessage(outcome.error) },
+          true,
+        );
     } finally {
       finishOpening(request);
       if (!disposed && !sessionClosed && !recoveryBlock) persistence.resume();
@@ -626,7 +630,7 @@ export function createWorkspace(options: WorkspaceOptions) {
     resetPending = persistence
       .clear()
       .catch((error) => {
-        editor.setStatus('loadFailed', { message: message(error) }, true);
+        editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
       })
       .finally(() => {
         resetPending = null;

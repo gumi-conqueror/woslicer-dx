@@ -34,10 +34,12 @@ interface KeyBinding {
   shift?: boolean | 'either';
   alt?: boolean;
 }
+/** Help groups, in the order the help dialog shows them. */
+export const SHORTCUT_GROUPS = ['project', 'edit', 'playback', 'navigation', 'output'] as const;
 interface Shortcut {
   command: AppCommand;
   label: string;
-  group: 'project' | 'edit' | 'playback' | 'navigation' | 'output';
+  group: (typeof SHORTCUT_GROUPS)[number];
   bindings: readonly KeyBinding[];
 }
 const key = (...keys: string[]): KeyBinding => ({ keys });

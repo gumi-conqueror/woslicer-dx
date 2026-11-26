@@ -1,6 +1,7 @@
 // Native Windows WebView2 checks. Each isolated profile has a 30-second watchdog.
 // Both profiles target a 1000×640 CSS viewport; only device scale changes.
 import { createServer } from 'node:net';
+import { UI_PROFILES, UI_VIEWPORT } from './ui-profiles.mjs';
 import { connectNativePage } from './native-cdp.mjs';
 import { spawn, spawnSync } from 'node:child_process';
 import { platform } from 'node:os';
@@ -10,10 +11,12 @@ import { resolveBuildProfile } from './build-profile.mjs';
 import creditLinks from '../src/platform/about-links.json' with { type: 'json' };
 
 // Keep natural OS scaling for low and force DPR 2 for high.
-const PROFILES = [
-  { name: 'low', cssWidth: 1000, cssHeight: 640, dpr: null },
-  { name: 'high', cssWidth: 1000, cssHeight: 640, dpr: 2 },
-];
+const PROFILES = UI_PROFILES.map((profile) => ({
+  name: profile.name,
+  cssWidth: UI_VIEWPORT.width,
+  cssHeight: UI_VIEWPORT.height,
+  dpr: profile.nativeDpr,
+}));
 const HARD_TIMEOUT_MS = 30_000;
 const VIEWPORT_TOLERANCE = 3;
 

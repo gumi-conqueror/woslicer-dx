@@ -1,4 +1,5 @@
 import { sliceFileName, sliceRanges } from '../core/slices';
+import { errorMessage } from '../core/messages';
 import { portableStem } from '../platform/file-names';
 import type { Platform, OutputFile } from '../platform/contracts';
 import type { AudioEngine } from '../audio/audio-jobs';
@@ -77,11 +78,7 @@ export function createExporter(
       }
     } catch (error) {
       if (generation() === version)
-        editor.setStatus(
-          'exportFailed',
-          { message: error instanceof Error ? error.message : String(error) },
-          true,
-        );
+        editor.setStatus('exportFailed', { message: errorMessage(error) }, true);
     } finally {
       if (generation() === version) editor.exportLock = false;
     }

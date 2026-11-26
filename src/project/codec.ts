@@ -1,4 +1,5 @@
 import type { z } from 'zod';
+import { errorMessage } from '../core/messages';
 import { defaultBaseName } from '../core/slices';
 import { DEFAULT_CUE_DB, DEFAULT_PLAYBACK_DB } from '../core/volume';
 import { MAX_TICKS } from '../core/timebase';
@@ -187,9 +188,7 @@ export function decodeProject(bytes: Uint8Array): ProjectDecodeResult {
   try {
     value = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
   } catch (error) {
-    throw new ProjectFormatError(
-      `project JSON is invalid: ${error instanceof Error ? error.message : String(error)}`,
-    );
+    throw new ProjectFormatError(`project JSON is invalid: ${errorMessage(error)}`);
   }
   const parsed = parseProject(value);
   // Construct a Uint8Array explicitly: Buffer.slice() would alias the caller's input.

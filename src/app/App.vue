@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, shallowRef, useTemplateRef, watch } from 'vue';
+import { errorMessage } from '../core/messages';
 import { ElConfigProvider, ElMessageBox } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { pinia, localization } from './runtime';
@@ -106,12 +107,7 @@ watch(
 let disposed = false;
 let stopAppearance: (() => void) | undefined;
 function report(error: unknown): void {
-  if (!disposed)
-    editor.setStatus(
-      'loadFailed',
-      { message: error instanceof Error ? error.message : String(error) },
-      true,
-    );
+  if (!disposed) editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
 }
 async function execute(command: AppCommand, recordingInput?: RecordingInput): Promise<void> {
   try {

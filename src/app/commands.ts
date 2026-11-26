@@ -1,4 +1,5 @@
 import { GRID_DENSITIES, gridStepTicks } from '../core/gridlines';
+import { errorMessage } from '../core/messages';
 import { latencySamples } from '../core/calibration';
 import {
   MEASURE_TICKS,
@@ -315,11 +316,7 @@ export function createCommands({
     try {
       await execute(command, input);
     } catch (error: unknown) {
-      editor.setStatus(
-        'loadFailed',
-        { message: error instanceof Error ? error.message : String(error) },
-        true,
-      );
+      editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
     }
   }
   function onKeyDown(event: KeyboardEvent, recording = false): void {

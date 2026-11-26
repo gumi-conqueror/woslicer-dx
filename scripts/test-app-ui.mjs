@@ -1,10 +1,11 @@
 // Each browser profile gets a fresh Playwright process/server and a hard deadline.
 import { spawn, spawnSync } from 'node:child_process';
+import { UI_PROFILES } from './ui-profiles.mjs';
 import { fileURLToPath } from 'node:url';
 
 const cli = fileURLToPath(new URL('../node_modules/@playwright/test/cli.js', import.meta.url));
 
-for (const profile of ['low', 'high']) {
+for (const { name: profile } of UI_PROFILES) {
   console.log(`Running web UI profile: ${profile}`);
   const child = spawn(
     process.execPath,
