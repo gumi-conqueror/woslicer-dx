@@ -6,7 +6,7 @@ A project has one or more tracks, each with its own audio, markers and output se
 The editor works on one current track. `currentTrackId` and `track` in the editor store select it;
 `currentTrack` in `src/project/codec.ts` finds a track in a document.
 Decoded audio, peaks, band analysis and loading state are per-track `sessions` in the editor store.
-The workspace keeps one audio engine (Worker) per track. Playback, preview and export use the current track.
+The workspace keeps one audio engine (Worker) per track. Playback plays every track through a gain stage per track; the current track drives the playhead. Preview and single-track export use the current track.
 See [Project format](PROJECT_FORMAT.md) for that compatibility boundary.
 
 ## Source map

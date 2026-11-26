@@ -119,7 +119,7 @@ so tracks may use different sample rates.
 Gains use dB, with 0 dB as unity. Mute is independent of gain and takes precedence
 over solo. If any track is soloed, only unmuted solo tracks are audible.
 `masterMuted` controls the media bus. Cue audio uses a separate route.
-Playback and export currently use the current track only. The editor does not yet sum tracks or apply headroom or loudness policies.
+Playback sums every track that has audio through its gain, mute and solo; it does not apply headroom or loudness policies. Slice preview and single-track export use the current track; **Export slices of all tracks** writes each track with its own output names.
 
 Track `rms` and `bands` values override global defaults unless they are `null`.
 Spectrum is reserved: there is no enabled control or analysis task.
