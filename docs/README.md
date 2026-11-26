@@ -11,6 +11,7 @@ Then use [Architecture](ARCHITECTURE.md) to locate the behavior you want to chan
 | Read or change `.wosdx` project handling | [Project format](PROJECT_FORMAT.md) |
 | Maintain original BMHelper file compatibility | [BMH format](BMH_FORMAT.md) |
 | Change the application version or inspect build identity | [Versioning](VERSIONING.md) |
+| Publish a release or prerelease | [Releasing](RELEASING.md) |
 | Maintain builds, caches, release packages or deployment | [CI and releases](CI.md) |
 | Configure optional coding-agent instructions | [Project skills](SKILLS.md) |
 

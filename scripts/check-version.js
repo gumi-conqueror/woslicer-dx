@@ -27,7 +27,7 @@ function checkVersion({ pkg, lock, changelogs }) {
   }
 }
 
-module.exports = { checkVersion };
+module.exports = { checkVersion, VERSION };
 
 if (require.main === module) {
   const root = path.resolve(__dirname, '..');

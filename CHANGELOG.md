@@ -2,6 +2,8 @@
 
 **English** · [中文](CHANGELOG.zh-CN.md)
 
+## Unreleased
+
 ## 2.0.0-alpha.2 — 2026-11-26
 
 ### Added

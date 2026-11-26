@@ -14,9 +14,10 @@ concurrency:
 
 jobs:
   source:
-    name: Select the verified main build
+    name: Wait for and select the verified main build
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    # A tag may be pushed right after the merge; the main build then takes up to about an hour.
+    timeout-minutes: 100
     outputs:
       run-id: ${{ steps.source.outputs.run-id }}
       run-attempt: ${{ steps.source.outputs.run-attempt }}
