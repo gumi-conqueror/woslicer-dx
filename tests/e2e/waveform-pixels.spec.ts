@@ -62,9 +62,9 @@ test('keeps a constant waveform one device pixel thick across zoom and fractiona
                 for (let i = 0; i < data.length; i += 4) {
                   // GPU rasterizers can round an RGB component by one unit.
                   if (
-                    Math.abs(data[i] - 95) <= 1 &&
-                    Math.abs(data[i + 1] - 167) <= 1 &&
-                    Math.abs(data[i + 2] - 157) <= 1
+                    Math.abs(data[i] - 26) <= 1 &&
+                    Math.abs(data[i + 1] - 166) <= 1 &&
+                    Math.abs(data[i + 2] - 180) <= 1
                   )
                     exact++;
                   if (data[i + 1] - data[i] > 15 && data[i + 2] - data[i] > 15) {

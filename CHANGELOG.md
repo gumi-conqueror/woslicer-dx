@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+### Changed
+
+- The light and dark themes use new colors: neutral gray surfaces with an orange accent. The waveform is cyan.
+
 ## 2.0.0-alpha.2 — 2026-11-26
 
 ### Added
