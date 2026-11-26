@@ -7,7 +7,7 @@ import {
   readEditorSession,
 } from '../../src/workspace/session';
 import { renderSliceFiles } from '../../src/core/slices';
-import { detectEdges } from '../../src/core/edge';
+import { suggestOnsets } from '../../src/core/audio/onsets';
 import { encodeWav16 } from '../../src/core/wav';
 import { readWos, writeWos } from '@gumi-conqueror/wos-file';
 import type { DecodedAudio } from '../../src/audio/audio-jobs';
@@ -859,9 +859,11 @@ describe('workspace and editor business operations', () => {
     expect(f.editor.ticks).toEqual([]);
     const source = f.editor.source;
     if (!source) throw new Error('Expected source');
-    const expected = detectEdges(source, { bpm: 120, shift: 0, sampleRate: 48000 }, 4).filter(
-      f.editor.legalTick,
-    );
+    const expected = suggestOnsets({
+      channels: source.data,
+      timebase: { bpm: 120, shift: 0, sampleRate: 48000 },
+      grid: 4,
+    }).filter(f.editor.legalTick);
     await f.workspace.edgeDetect();
     expect(f.editor.ticks).toEqual(expected);
     f.workspace.actions.undo();

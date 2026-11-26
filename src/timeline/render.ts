@@ -1,9 +1,9 @@
 import type { EditorStore } from '../slicing/editor-store';
 import type { Palette } from '../ui/palette';
-import { MAX_TICKS, MEASURE_TICKS } from '../core/timebase';
+import { MAX_TICKS, MEASURE_TICKS, sampleToTick, tickToSample } from '../core/timebase';
 import { gridLineTicks, gridStepTicks, measureLabelStep } from '../core/gridlines';
 import { peakRange } from '../core/peaks';
-import { drawBandEnvelope, drawWaveLane, sampleToTick, tickToFrame } from './waveform';
+import { drawBandEnvelope, drawWaveLane } from './waveform';
 
 export const RULER_HEIGHT = 28;
 export const OVERVIEW_HEIGHT = 36;
@@ -304,8 +304,8 @@ export function drawOverview(
     context.fillStyle = palette.wave;
     for (let lane = 0; lane < source.channels; lane++) {
       for (let x = 0; x < width; x += 2) {
-        const first = tickToFrame((x / width) * MAX_TICKS, base),
-          last = tickToFrame(((x + 2) / width) * MAX_TICKS, base);
+        const first = tickToSample((x / width) * MAX_TICKS, base),
+          last = tickToSample(((x + 2) / width) * MAX_TICKS, base);
         if (last <= 0 || first >= source.length) continue;
         const range = peakRange(cache, source.length, first, last);
         const middle = laneHeight * (lane + 0.5),

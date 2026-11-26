@@ -1,9 +1,8 @@
-import type { Timebase } from '../time/conversion.js';
-import { exportSample } from '../time/conversion.js';
+import { MAX_TICKS, samplesPerTick, tickToSampleExport, type TimeBase } from '../timebase.js';
 import type { PcmChannel } from '../wav.js';
 export interface OnsetInput {
   readonly channels: readonly PcmChannel[];
-  readonly timebase: Timebase;
+  readonly timebase: TimeBase;
   readonly grid: number;
 }
 // RMS of adjacent grid-length windows; clip to the source,
@@ -19,17 +18,16 @@ function level(channel: PcmChannel, begin: number, end: number): number {
 export function suggestOnsets(input: OnsetInput): number[] {
   const { grid, timebase } = input;
   if (!Number.isFinite(grid) || grid <= 0) throw new RangeError('Grid must be positive');
-  const span = Math.trunc((grid * timebase.sampleRate * 60) / (timebase.tempo * 48));
-  // Validate the timebase even when the source is empty.
-  exportSample(0, timebase);
+  // Validates the time base even when the source is empty.
+  const span = Math.trunc(grid * samplesPerTick(timebase));
   if (!Number.isSafeInteger(span) || span <= 0)
     throw new RangeError('Grid must span a positive sample interval');
   const channel = input.channels[0];
   if (!channel) return [];
   const result: number[] = [];
-  for (let step = 1; step * grid < 49152; step++) {
+  for (let step = 1; step * grid < MAX_TICKS; step++) {
     const tick = step * grid;
-    const sample = exportSample(tick, timebase);
+    const sample = tickToSampleExport(tick, timebase);
     if (sample > channel.length) break;
     if (sample < 0) continue;
     if (level(channel, sample, sample + span) > 1.5 * level(channel, sample - span, sample))

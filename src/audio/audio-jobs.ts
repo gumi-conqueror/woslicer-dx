@@ -1,5 +1,5 @@
 import type { DecodedWav } from '../core/wav';
-import { detectEdges } from '../core/edge';
+import { suggestOnsets } from '../core/audio/onsets';
 import type { TimeBase } from '../core/timebase';
 import { decodeAudio } from './decode';
 import { buildPeakCache, type PeakCache } from '../core/peaks';
@@ -64,7 +64,10 @@ export function createAudioProcessor(): (request: AudioRequest) => Promise<Audio
         }
         case 'edges': {
           if (!source) throw new Error('No source loaded');
-          return { kind: 'edges', id: request.id, ticks: detectEdges(source, request.base, 4) };
+          // The legacy edge detector compares adjacent 4-tick windows.
+          const channels = source.data.map((channel) => channel.subarray(0, source?.length));
+          const ticks = suggestOnsets({ channels, timebase: request.base, grid: 4 });
+          return { kind: 'edges', id: request.id, ticks };
         }
         case 'detect': {
           if (!source) throw new Error('No source loaded');

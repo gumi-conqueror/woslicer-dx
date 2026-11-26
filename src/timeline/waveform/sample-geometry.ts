@@ -1,7 +1,6 @@
-import type { Timebase } from '../../core/time/conversion.js';
-import { sampleToTick, tickToSample } from '../../core/time/conversion.js';
+import { sampleToTick, tickToSample, type TimeBase } from '../../core/timebase.js';
 export interface WaveView {
-  readonly timebase: Timebase;
+  readonly timebase: TimeBase;
   readonly scroll: number;
   readonly scale: number;
   readonly width: number;

@@ -9,10 +9,9 @@ import { useEditorStore } from '../slicing/editor-store';
 import { usePlayback } from '../playback';
 import { useUiPreferencesStore } from '../ui/preferences';
 import { paletteFor } from '../ui/palette';
-import { MAX_TICKS, tickToSampleExport } from '../core/timebase';
+import { MAX_TICKS, sampleToTick, tickToSampleExport } from '../core/timebase';
 import { createTimelineGestures, type TimelinePointer } from './gestures';
 import { drawOverlay, drawRuler, drawTimeline, RULER_HEIGHT, setupCanvas } from './render';
-import { sampleToTick } from './waveform';
 import type { LoadingActivity } from '../workspace/workspace';
 
 defineProps<{ loading?: LoadingActivity | null }>();

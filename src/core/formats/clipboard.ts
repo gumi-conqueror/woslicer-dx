@@ -1,4 +1,5 @@
 import { validId, markerNextId } from './numbering.js';
+import { MAX_TICKS, TICKS_PER_BEAT } from '../timebase.js';
 export const CLIPBOARD_FORMAT = 'BMSE ClipBoard Object Data Format';
 function position(value: number): string {
   if (!Number.isSafeInteger(value) || value < 0) throw new RangeError('Invalid clipboard position');
@@ -7,7 +8,7 @@ function position(value: number): string {
 function converted(tick: number, resolution: number): number {
   if (!Number.isFinite(tick) || tick < 0 || !Number.isFinite(resolution) || resolution <= 0)
     throw new RangeError('Invalid note position/timebase');
-  return Math.trunc((tick * 48) / resolution);
+  return Math.trunc((tick * TICKS_PER_BEAT) / resolution);
 }
 export function markerClipboard(
   ticks: readonly number[],
@@ -17,7 +18,7 @@ export function markerClipboard(
   let id = validId(first);
   let result = CLIPBOARD_FORMAT + '\r\n';
   const ordered = ticks
-    .filter((t) => Number.isInteger(t) && t >= 0 && t < 49152)
+    .filter((t) => Number.isInteger(t) && t >= 0 && t < MAX_TICKS)
     .slice()
     .sort((a, b) => a - b);
   for (const tick of ordered) {

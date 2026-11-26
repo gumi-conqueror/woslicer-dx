@@ -8,7 +8,7 @@ import { drawWaveform } from '../../src/timeline/waveform/canvas.js';
 import type { DrawingContext } from '../../src/timeline/waveform/canvas.js';
 const colors = { outer: 'blue', rms: 'red', detail: 'black' };
 const base: WaveView = {
-  timebase: { tempo: 60, sampleRate: 480, shift: 0 },
+  timebase: { bpm: 60, sampleRate: 480, shift: 0 },
   scroll: 0,
   scale: 20,
   width: 100,

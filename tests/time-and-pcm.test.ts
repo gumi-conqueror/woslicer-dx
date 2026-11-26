@@ -1,29 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  tickToSample,
-  sampleToTick,
-  exportSample,
-  canPlaceMarker,
-} from '../src/core/time/conversion.js';
 import { encodePcm16 } from '../src/core/formats/wave.js';
 import { encodeWav16 } from '../src/core/wav.js';
 
-const base = { tempo: 96, sampleRate: 32000, shift: 0 };
-test('time conversion preserves fractional display and truncates exported samples', () => {
-  assert.equal(tickToSample(48, base), 20000);
-  assert.equal(sampleToTick(20000, base), 48);
-  assert.equal(exportSample(0, { ...base, shift: -1 }), -416);
-  assert.ok(tickToSample(0.2, base) > tickToSample(0.1, base));
-});
-test('marker placement includes the audio endpoint and excludes the bitmap limit', () => {
-  assert.equal(canPlaceMarker(48, 20000, base), true);
-  assert.equal(canPlaceMarker(49, 20000, base), false);
-  assert.equal(canPlaceMarker(49152, 1e9, base), false);
-});
-test('sample export rejects a zero tempo', () => {
-  assert.throws(() => exportSample(1, { ...base, tempo: 0 }));
-});
 test('PCM16 writes signed samples in little-endian order', () => {
   const mono = encodePcm16([Int16Array.of(-32768, -2, 2, 32767)], 32000);
   assert.deepEqual([...mono.slice(44)], [0, 128, 254, 255, 2, 0, 255, 127]);

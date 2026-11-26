@@ -1,4 +1,5 @@
 import { computed, ref, shallowRef, watch } from 'vue';
+import { TICKS_PER_BEAT } from '../core/timebase';
 import { defineStore } from 'pinia';
 import {
   createDivision,
@@ -167,7 +168,9 @@ export const useBmhelperStore = defineStore('bmhelper', () => {
   function cutTicks(): number[] {
     const division = selectedDivision.value;
     return division
-      ? division.recording.map((note) => Math.trunc((note.position * 48) / division.quantize))
+      ? division.recording.map((note) =>
+          Math.trunc((note.position * TICKS_PER_BEAT) / division.quantize),
+        )
       : [];
   }
   function reset(): void {

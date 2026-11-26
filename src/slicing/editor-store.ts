@@ -8,7 +8,13 @@ import { createEmptyProject, projectCapability } from '../project/codec';
 import type { ProjectDocument, ProjectFileV1, OutputRecipe } from '../project/schema';
 import { PROJECT_MAX_GAIN_DB, PROJECT_MIN_GAIN_DB } from '../project/schema';
 import { gridStepTicks } from '../core/gridlines';
-import { MAX_TICKS, resolveBreakpointTick, tickToSampleExport } from '../core/timebase';
+import {
+  MAX_TICKS,
+  markerTickAllowed,
+  resolveBreakpointTick,
+  samplesPerTick,
+  tickToSampleExport,
+} from '../core/timebase';
 import { zoomAt as zoomView } from '../timeline/waveform/zoom';
 import { ampToDb, dbToAmp } from '../core/volume';
 import type { PeakCache } from '../core/peaks';
@@ -306,7 +312,14 @@ export const useEditorStore = defineStore('editor', () => {
     );
   }
   function legalTick(tick: number): boolean {
-    return Number.isInteger(tick) && tick >= 0 && tick < MAX_TICKS && !tickBeyondEnd(tick);
+    const audio = source.value;
+    return markerTickAllowed(
+      tick,
+      audio && {
+        base: { bpm: doc.value.bpm, shift: doc.value.shift, sampleRate: audio.sampleRate },
+        length: audio.length,
+      },
+    );
   }
   function setCursorTick(tick: number): void {
     if (Number.isFinite(tick))
@@ -326,7 +339,9 @@ export const useEditorStore = defineStore('editor', () => {
     return resolveBreakpointTick(tick, snap.value, gridStepTicks(grid.value), false);
   }
   function zoomAt(anchor: number, factor: number): void {
-    const frames = source.value ? (source.value.sampleRate * 5) / (doc.value.bpm * 4) : 500;
+    const frames = source.value
+      ? samplesPerTick({ bpm: doc.value.bpm, shift: 0, sampleRate: source.value.sampleRate })
+      : 500;
     const next = zoomView({ scale: pxPerTick.value, scroll: scrollTick.value }, anchor, factor, {
       min: 0.02,
       max: Math.max(600, 4 * frames),

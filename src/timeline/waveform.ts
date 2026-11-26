@@ -1,6 +1,6 @@
 import { peakRange, type PeakCache } from '../core/peaks';
 import { BAND_DRAW_MIN_ABS } from '../core/bands';
-import type { TimeBase } from '../core/timebase';
+import { tickToSample, type TimeBase } from '../core/timebase';
 import { drawWaveform } from './waveform/canvas';
 import type { PcmChannel } from '../core/wav';
 
@@ -10,13 +10,6 @@ export interface WaveViewport {
   scrollTick: number;
   pxPerTick: number;
   timeBase: TimeBase;
-}
-export function sampleToTick(sample: number, base: TimeBase): number {
-  return (sample * base.bpm * 4) / (base.sampleRate * 5) - base.shift;
-}
-/** Continuous conversion is essential when one viewport spans less than a tick. */
-export function tickToFrame(tick: number, base: TimeBase): number {
-  return ((tick + base.shift) * base.sampleRate * 5) / (base.bpm * 4);
 }
 // Source buffers are immutable after decoding. Weak keys release converted data with the source.
 const drawingSamples = new WeakMap<PcmChannel, Float32Array>();
@@ -41,11 +34,7 @@ export function drawWaveLane(
     context,
     [samples],
     {
-      timebase: {
-        tempo: view.timeBase.bpm,
-        shift: view.timeBase.shift,
-        sampleRate: view.timeBase.sampleRate,
-      },
+      timebase: view.timeBase,
       scroll: view.scrollTick,
       scale: view.pxPerTick,
       width: view.width,
@@ -79,8 +68,8 @@ export function drawBandEnvelope(
     let drawing = false;
     for (let column = 0; column <= Math.round(view.width * view.dpr); column++) {
       const x = (column + 0.5) / view.dpr;
-      const first = tickToFrame(view.scrollTick + x / view.pxPerTick, view.timeBase);
-      const last = tickToFrame(
+      const first = tickToSample(view.scrollTick + x / view.pxPerTick, view.timeBase);
+      const last = tickToSample(
         view.scrollTick + (x + 1 / view.dpr) / view.pxPerTick,
         view.timeBase,
       );

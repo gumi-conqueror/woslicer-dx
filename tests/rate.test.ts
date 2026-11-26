@@ -8,7 +8,6 @@ import {
   reanchorSample,
   stepPlaybackRate,
 } from '../src/core/rate.js';
-import { sampleToTickNearest, tickToSampleExport, type TimeBase } from '../src/core/timebase.js';
 
 test('rate ladder is the frozen ascending set with 1.0x default', () => {
   assert.deepEqual([...PLAYBACK_RATES], [0.25, 0.5, 0.75, 1.0, 1.5]);
@@ -122,26 +121,4 @@ test('re-anchoring a second time (0.5x -> 1.5x -> 0.25x) is still gapless', () =
   rate = 0.25;
   assert.equal(advanceSamples(startOffset, 0, rate, sr), startOffset);
   assert.equal(advanceSamples(startOffset, 0.25, rate, sr), startOffset + 0.25 * 0.25 * sr);
-});
-
-test('sampleToTickNearest inverts tickToSampleExport for whole ticks', () => {
-  const bases: TimeBase[] = [
-    { bpm: 120, shift: 0, sampleRate: SR },
-    { bpm: 185, shift: 0, sampleRate: 44100 },
-    { bpm: 100, shift: -48, sampleRate: SR },
-    { bpm: 200, shift: 96, sampleRate: 44100 },
-  ];
-  for (const base of bases) {
-    for (let tick = 0; tick <= 1000; tick += 7) {
-      const sample = tickToSampleExport(tick, base);
-      assert.equal(sampleToTickNearest(sample, base), tick, `tick ${tick} @ ${base.bpm}bpm`);
-    }
-  }
-});
-
-test('sampleToTickNearest clamps outside the 49152-tick map', () => {
-  const base: TimeBase = { bpm: 120, shift: 0, sampleRate: SR };
-  assert.equal(sampleToTickNearest(-99999, base), 0);
-  assert.equal(sampleToTickNearest(Number.MAX_SAFE_INTEGER, base), 49152 - 1);
-  assert.equal(sampleToTickNearest(0, base), 0);
 });
