@@ -5,7 +5,12 @@ import { normalizeSelection } from '../core/markers';
 import { remapMarkerKeys, type MarkerKeys } from '../project/marker-keys';
 import { ProjectEditor } from '../project/editor';
 import { createEmptyProject, currentTrack } from '../project/codec';
-import type { ProjectDocument, ProjectFile, OutputRecipe } from '../project/schema';
+import type {
+  ProjectDocument,
+  ProjectFile,
+  OutputRecipe,
+  SlicingSettings,
+} from '../project/schema';
 import { clampGainDb, FIELD_RANGES, inRange, type CueMode } from '../project/schema';
 import { gridStepTicks } from '../core/gridlines';
 import {
@@ -18,7 +23,7 @@ import {
 import { zoomAt as zoomView } from '../timeline/waveform/zoom';
 import { ampToDb, dbToAmp } from '../core/volume';
 import type { PeakCache } from '../core/peaks';
-import type { BandAnalysis, BandName } from '../core/bands';
+import type { BandAnalysis } from '../core/bands';
 import type { FormatParams, StatusKey } from '../core/messages';
 
 export interface AudioSource extends SourceAudio {
@@ -166,15 +171,9 @@ export const useEditorStore = defineStore('editor', () => {
   const useFfNumbering = computed(() => track.value.output.useFfNumbering);
   const exportLock = shallowRef(false);
   const bandAnalysis = shallowRef<BandAnalysis | null>(null);
-  const bandDetectBands = shallowRef<Record<BandName, boolean>>({
-    low: true,
-    mid: true,
-    high: true,
-  });
-  const bandThresholdDb = shallowRef(6),
-    bandMinGapUnits = shallowRef(1),
-    bandSnap = shallowRef(true),
-    tapOffsetMs = shallowRef(0);
+  // Detection settings belong to the track and are saved with the project.
+  const bandDetection = computed(() => track.value.slicing.bandDetection);
+  const tapOffsetMs = shallowRef(0);
   const bandEstimate = shallowRef<number | null>(null),
     bandBusy = shallowRef(false);
   const ticks = computed(() => track.value.slicing.markers);
@@ -263,6 +262,11 @@ export const useEditorStore = defineStore('editor', () => {
   function setOutputOptions(value: Partial<OutputRecipe>): void {
     transact((draft) => {
       Object.assign(currentTrack(draft).output, value);
+    });
+  }
+  function setBandDetection(value: Partial<SlicingSettings['bandDetection']>): void {
+    transact((draft) => {
+      Object.assign(currentTrack(draft).slicing.bandDetection, value);
     });
   }
   function setNoisegateEnabled(value: boolean): void {
@@ -395,10 +399,6 @@ export const useEditorStore = defineStore('editor', () => {
     scrollTick.value = 0;
     followPlayhead.value = true;
     exportLock.value = false;
-    bandDetectBands.value = { low: true, mid: true, high: true };
-    bandThresholdDb.value = 6;
-    bandMinGapUnits.value = 1;
-    bandSnap.value = true;
     tapOffsetMs.value = 0;
     bandBusy.value = false;
   }
@@ -443,10 +443,7 @@ export const useEditorStore = defineStore('editor', () => {
     bandsVisible,
     rmsVisible,
     bandAnalysis,
-    bandDetectBands,
-    bandThresholdDb,
-    bandMinGapUnits,
-    bandSnap,
+    bandDetection,
     tapOffsetMs,
     bandEstimate,
     bandBusy,
@@ -463,6 +460,7 @@ export const useEditorStore = defineStore('editor', () => {
     addTicks,
     setOutputOptions,
     setNoisegateEnabled,
+    setBandDetection,
     cancelDraft,
     registerDraftCancellation,
     setPreviewTicks,

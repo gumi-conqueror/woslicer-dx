@@ -47,7 +47,8 @@ export function createDetection(
       return;
     }
     if (editor.bandBusy && !analysisTask) return;
-    const bands = BAND_NAMES.filter((name) => editor.bandDetectBands[name]);
+    const settings = editor.bandDetection;
+    const bands = BAND_NAMES.filter((name) => settings.bands[name]);
     if (!bands.length) {
       editor.setStatus('bandDetectSelectBand', true);
       return;
@@ -58,14 +59,14 @@ export function createDetection(
     const start = editor.selectionStartTick,
       end = editor.selectionEndTick;
     const cell = gridStepTicks(editor.grid),
-      threshold = editor.bandThresholdDb;
+      threshold = settings.thresholdDb;
     editor.bandBusy = true;
     try {
       const result = await worker.detect({
         bands,
         thresholdDb: threshold,
         grid: cell,
-        minGapTicks: cell * editor.bandMinGapUnits,
+        minGapTicks: cell * settings.minGapUnits,
         fromTick: start === null || end === null ? 0 : Math.min(start, end),
         toTick: start === null || end === null ? MAX_TICKS - 1 : Math.max(start, end),
         base: {
@@ -74,7 +75,7 @@ export function createDetection(
           sampleRate: editor.source.sampleRate,
         },
         existing: new Set(editor.ticks),
-        snap: editor.bandSnap,
+        snap: settings.snap,
       });
       // An edit or source replacement while detecting invalidates its captured time base.
       if (generation() !== version || editor.docRevision !== revision) return;
