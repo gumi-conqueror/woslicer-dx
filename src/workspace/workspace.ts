@@ -61,7 +61,9 @@ export function createWorkspace(options: WorkspaceOptions) {
     disposed = false,
     sessionClosed = false;
   let recoveryBlock: RecoveryBlock | null = null;
-  let engine: AudioEngine | null = null;
+  /** Decoded audio lives in one engine per track. */
+  const engines = new Map<string, AudioEngine>();
+  const currentEngine = () => engines.get(editor.track.trackId) ?? null;
   let pendingEngine: AudioEngine | null = null;
   let opening = 0;
   const loading = shallowRef<LoadingActivity | null>(null);
@@ -70,17 +72,8 @@ export function createWorkspace(options: WorkspaceOptions) {
   const persistence = createSessionPersistence(platform, editor, (error) => {
     editor.setStatus('sessionSaveFailed', { message: errorMessage(error) }, true);
   });
-  const exporter = createExporter(
-    platform,
-    editor,
-    () => engine,
-    () => generation,
-  );
-  const detection = createDetection(
-    editor,
-    () => engine,
-    () => generation,
-  );
+  const exporter = createExporter(platform, editor, currentEngine, () => generation);
+  const detection = createDetection(editor, currentEngine, () => generation);
   function beginOpening(activity: LoadingActivity | null = null): number {
     opening++;
     loading.value = activity;
@@ -93,11 +86,18 @@ export function createWorkspace(options: WorkspaceOptions) {
   function finishOpening(request: number): void {
     if (request === opening) loading.value = null;
   }
-  function invalidate(): number {
+  /**
+   * Ends pending work and releases decoded audio: of one track, or of every
+   * track when the whole workspace changes.
+   */
+  function invalidate(trackId?: string): number {
     beginOpening();
     generation++;
-    engine?.dispose();
-    engine = null;
+    for (const [id, item] of engines)
+      if (trackId === undefined || id === trackId) {
+        item.dispose();
+        engines.delete(id);
+      }
     editor.setPlaying(false);
     editor.exportLock = false;
     editor.bandBusy = false;
@@ -123,6 +123,7 @@ export function createWorkspace(options: WorkspaceOptions) {
     if (disposed) return;
     sessionClosed = false;
     persistence.resume();
+    const trackId = editor.track.trackId;
     const request = beginOpening({
         stage: 'verifying',
         name: file.name,
@@ -130,7 +131,7 @@ export function createWorkspace(options: WorkspaceOptions) {
       }),
       documentGeneration = editor.documentGeneration;
     const previousPhase = editor.source ? { kind: 'ready' as const } : { kind: 'empty' as const };
-    editor.setPhase({ kind: 'loading', name: file.name });
+    editor.setPhase({ kind: 'loading', name: file.name }, trackId);
     editor.setStatus('parsingSourceFile');
     let worker: AudioEngine | null = null;
     try {
@@ -165,12 +166,12 @@ export function createWorkspace(options: WorkspaceOptions) {
       }
       const next = expected
         ? null
-        : projectWithAudio(editor.document, file, identity, result, preserveBaseName);
+        : projectWithAudio(editor.document, file, identity, result, preserveBaseName, trackId);
       // Validate the replacement before releasing the current decoder or source.
       if (next) parseProject(next);
       pendingEngine = null;
-      invalidate();
-      engine = worker;
+      invalidate(trackId);
+      engines.set(trackId, worker);
       worker = null;
       if (next) {
         editor.replaceDocument(next, { saved: preserveBaseName });
@@ -180,10 +181,11 @@ export function createWorkspace(options: WorkspaceOptions) {
       editor.setSource(
         { ...result.source, floatData: result.floatData, name, reference: file.reference },
         result.peaks,
+        trackId,
       );
       // The binding survives failed reopens; only a real replacement writes or clears it.
-      editor.setLastFile(file.reference ? { reference: file.reference, name } : null);
-      editor.setPhase({ kind: 'ready' });
+      editor.setLastFile(file.reference ? { reference: file.reference, name } : null, trackId);
+      editor.setPhase({ kind: 'ready' }, trackId);
       editor.setStatus('readySource', {
         name,
         rate: result.source.sampleRate,
@@ -191,7 +193,7 @@ export function createWorkspace(options: WorkspaceOptions) {
       });
     } catch (error) {
       if (disposed || request !== opening) return;
-      editor.setPhase(previousPhase);
+      editor.setPhase(previousPhase, trackId);
       editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
     } finally {
       finishOpening(request);

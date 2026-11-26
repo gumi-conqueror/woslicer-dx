@@ -64,11 +64,12 @@ export function projectWithAudio(
   identity: Identity,
   decoded: DecodedAudio,
   preserveBaseName: boolean,
+  trackId: string | null = null,
 ): ProjectFile {
   const parsed = parseProject(document);
   if (parsed.kind !== 'supported') throw new ProjectFormatError('Unsupported project version');
   const { project } = parsed;
-  const track = currentTrack(project);
+  const track = currentTrack(project, trackId);
   track.media = mediaAsset(crypto.randomUUID(), file, identity, decoded);
   if (!preserveBaseName) {
     const name = file.name.replace(/\.[^.]+$/, '');

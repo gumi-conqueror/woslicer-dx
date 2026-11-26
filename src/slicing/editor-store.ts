@@ -292,8 +292,11 @@ export const useEditorStore = defineStore('editor', () => {
     if (changed) publish();
     return changed;
   }
-  function setLastFile(value: { reference: string; name: string } | null): void {
-    updateSession({ lastFile: value });
+  function setLastFile(
+    value: { reference: string; name: string } | null,
+    trackId = track.value.trackId,
+  ): void {
+    updateSession({ lastFile: value }, trackId);
   }
   function setTicks(value: readonly number[], keys: MarkerKeys = markerKeys.value): boolean {
     return transact((draft) => {
@@ -397,19 +400,26 @@ export const useEditorStore = defineStore('editor', () => {
     if (Number.isFinite(value))
       playheadSample.value = Math.max(0, Math.min(source.value?.length ?? 0, value));
   }
-  function setSource(value: AudioSource | null, cache: PeakCache | null = null): void {
+  function setSource(
+    value: AudioSource | null,
+    cache: PeakCache | null = null,
+    trackId = track.value.trackId,
+  ): void {
     cancelDraft();
-    updateSession({
-      source: value ? markRaw(value) : null,
-      peaks: cache ? markRaw(cache) : null,
-      bandAnalysis: null,
-      bandEstimate: null,
-    });
+    updateSession(
+      {
+        source: value ? markRaw(value) : null,
+        peaks: cache ? markRaw(cache) : null,
+        bandAnalysis: null,
+        bandEstimate: null,
+      },
+      trackId,
+    );
     playing.value = false;
     playheadSample.value = 0;
   }
-  function setPhase(value: EditorPhase): void {
-    updateSession({ phase: value });
+  function setPhase(value: EditorPhase, trackId = track.value.trackId): void {
+    updateSession({ phase: value }, trackId);
   }
   function setBandAnalysis(value: BandAnalysis | null): void {
     updateSession({ bandAnalysis: value ? markRaw(value) : null });
