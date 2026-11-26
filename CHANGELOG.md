@@ -10,6 +10,7 @@
 - Projects with several tracks or clips, or with trimmed audio, no longer open. Earlier versions opened them read-only.
 - Recovery data from version 1.2 and earlier is not restored. The app keeps it and asks before it replaces it. The **Import legacy recovery data** menu item is removed.
 - Exported slice names drop trailing dots and spaces from the base name.
+- Moving selected markers with a shortcut past the end of the audio stops them at the end, as dragging does. Earlier, the shortcut did nothing.
 
 ### Fixed
 
