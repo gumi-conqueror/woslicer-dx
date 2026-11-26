@@ -12,7 +12,10 @@ const editor = useEditorStore();
 const desktop = getDesktopWindow();
 const maximized = shallowRef(false);
 const ready = shallowRef(false);
-const title = computed(() => editor.source?.name ?? t('window.untitled'));
+// The project name; a project without any audio is still untitled.
+const title = computed(() =>
+  editor.document.tracks.some((track) => track.media) ? editor.document.name : t('window.untitled'),
+);
 const cleanups: (() => void)[] = [];
 let disposed = false;
 let closing = false;

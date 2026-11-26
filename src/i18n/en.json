@@ -390,7 +390,7 @@
     "workflow": "Getting started",
     "workflowBody": "Open or drop an audio file. Set BPM and grid, then add markers to split the waveform. Name and export slices in Output. Save your work as a .wosdx project. Use Relink audio after moving the audio file.",
     "workspace": "Tracks and panels",
-    "workspaceBody": "Click or drag the track’s waveform overview to move along the timeline. New panels open at the right edge and move older panels left. Click a panel’s switch again or its close button to hide it. Panels can fill the workspace. If space is insufficient, the oldest panel closes. There is no horizontal scrollbar, and closed panels keep your input.",
+    "workspaceBody": "Click or drag the track’s waveform overview to move along the timeline. New panels open at the right edge and move older panels left. Click a panel’s switch again or its close button to hide it. Panels can fill the workspace. If space is insufficient, the oldest panel closes. There is no horizontal scrollbar, and closed panels keep your input. Project → Add audio track adds a track with its own audio and markers. Click a track to edit it; double-click its name to rename it.",
     "mouse": "Mouse controls",
     "mouseBody": "Left-drag adds markers. Right-drag removes them. Drag a marker to move the selected markers. Shift-drag adds to the selection, and Ctrl/Cmd-drag toggles selection within a range. Middle-drag pans, Ctrl/Cmd+wheel zooms, and Alt temporarily disables snapping. Press {cancel} to cancel a drag.",
     "keyboard": "Keyboard shortcuts",

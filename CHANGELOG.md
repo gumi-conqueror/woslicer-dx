@@ -4,6 +4,16 @@
 
 ## Unreleased
 
+### Added
+
+- Several audio tracks per project. **Project → Add audio track** adds a track with its own audio, markers, detection and output settings. Click a track to edit it, or press Ctrl/Cmd+↑ and Ctrl/Cmd+↓. Double-click a track name to rename it. **Project → Remove current track** removes it; undo restores it with its audio.
+- Projects and recovery data keep every track. The desktop app reopens the audio of each track.
+
+### Changed
+
+- In a project with several tracks, opening audio replaces only the current track's audio, and undo reverts it.
+- Playback, slice preview, recording and export use the current track. Playing all tracks together and exporting all tracks follow in a later alpha.
+
 ## 2.0.0-alpha.4 — 2026-11-27
 
 ### Changed
