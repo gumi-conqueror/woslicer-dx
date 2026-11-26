@@ -17,37 +17,9 @@
  * strictly more robust and reads identical results for all well-formed files.
  */
 
-/** Original encoding, independent of the internal sample representation. */
-export type SourceFormat =
-  | { kind: 'pcm'; bits: number }
-  | { kind: 'float'; bits: number }
-  | { kind: 'encoded'; codec: string };
-
-/** Full-scale amplitude is 32768. Runtime decoders retain fractional samples in Float32. */
-export type PcmChannel = Float32Array | Int16Array;
-
-export interface DecodedWav {
-  sourceFormat: SourceFormat;
-  /** Sample rate in Hz. */
-  sampleRate: number;
-  /** Channel count (the original only reads its low byte; 1 or 2 expected). */
-  channels: number;
-  /** Frames per channel. */
-  length: number;
-  /** Per-channel samples on the 32768 amplitude scale, without an integer requirement. */
-  data: PcmChannel[];
-}
+import { toPcm16, type SourceAudio } from './audio/pcm.js';
 
 export class WavParseError extends Error {}
-
-/**
- * The internal int16 scale: round(x * 32768) clamped to [-32768, 32767].
- * Conversion at the PCM16 export boundary and in the legacy WAV test reader.
- */
-export function floatToInternal(x: number): number {
-  const v = Math.round(x * 32768);
-  return v < -32768 ? -32768 : v > 32767 ? 32767 : v;
-}
 
 function fourCC(view: DataView, offset: number): string {
   return String.fromCharCode(
@@ -166,7 +138,7 @@ function decodeWavSamples(view: DataView, layout: WavLayout, length: number): In
     for (let c = 0; c < layout.channels; c++) {
       const off = layout.dataOffset + (f * layout.channels + c) * bytesPerSample;
       if (wasFloat) {
-        data[c][f] = floatToInternal(view.getFloat32(off, true));
+        data[c][f] = toPcm16(view.getFloat32(off, true) * 32768);
       } else {
         let raw = 0;
         switch (layout.bits) {
@@ -192,7 +164,7 @@ function decodeWavSamples(view: DataView, layout: WavLayout, length: number): In
 }
 
 /** Parses a RIFF/WAVE byte buffer. Throws WavParseError on malformed input. */
-export function parseWav(buffer: ArrayBuffer): DecodedWav {
+export function parseWav(buffer: ArrayBuffer): SourceAudio {
   const view = new DataView(buffer);
   const layout = scanWavChunks(buffer, view);
 

@@ -14,7 +14,7 @@
  * RMS values as sqrt(mean(rms²)) — the exact RMS of the covered frames.
  */
 
-import type { PcmChannel } from './wav.js';
+import type { PcmChannel } from './audio/pcm.js';
 
 export interface PeakLevel {
   /** Frames per bucket at this level. */
@@ -30,7 +30,7 @@ export interface PeakCache {
   levels: PeakLevel[];
 }
 
-/** Builds a hierarchical peak cache on the shared 32768 amplitude scale. */
+/** Builds a hierarchical peak cache on the FULL_SCALE amplitude scale. */
 export function buildPeakCache(channelsData: PcmChannel[], baseBucket = 256): PeakCache {
   if (baseBucket < 1) throw new RangeError('baseBucket must be >= 1');
   const channels = channelsData.length;

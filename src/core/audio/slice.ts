@@ -1,6 +1,6 @@
 import { gateAudio } from './gate.js';
 import { encodePcm16 } from '../formats/wave.js';
-import { floatToInternal, type PcmChannel } from '../wav.js';
+import { toPcm16, type PcmChannel } from './pcm.js';
 export interface SliceInput {
   readonly channels: readonly PcmChannel[];
   readonly sampleRate: number;
@@ -47,11 +47,11 @@ export function renderSlice(input: SliceInput): SliceResult {
       // One-millisecond raised-cosine attack.
       const gain = i < attack ? 0.5 * (1 - Math.cos((Math.PI * i) / attack)) : 1;
       // Quantize only the exported frames, preserving the established PCM16 fade/gate rules.
-      output[i] = Math.trunc(floatToInternal((channel[start + i] ?? 0) / 32768) * gain);
+      output[i] = Math.trunc(toPcm16(channel[start + i] ?? 0) * gain);
     }
     for (let i = 0; i < sustain; i++) {
       const gain = 0.5 * (1 + Math.cos((Math.PI * (i + 1)) / sustain));
-      output[main + i] = Math.trunc(floatToInternal((channel[limit + i] ?? 0) / 32768) * gain);
+      output[main + i] = Math.trunc(toPcm16(channel[limit + i] ?? 0) * gain);
     }
     return output;
   });

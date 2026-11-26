@@ -2,7 +2,7 @@ import { peakRange, type PeakCache } from '../core/peaks';
 import { BAND_DRAW_MIN_ABS } from '../core/bands';
 import { tickToSample, type TimeBase } from '../core/timebase';
 import { drawWaveform } from './waveform/canvas';
-import type { PcmChannel } from '../core/wav';
+import { FULL_SCALE, type PcmChannel } from '../core/audio/pcm';
 
 export interface WaveViewport {
   width: number;
@@ -27,7 +27,7 @@ export function drawWaveLane(
   if (!data.length || view.width <= 0 || half <= 0) return;
   let samples = drawingSamples.get(data);
   if (!samples) {
-    samples = Float32Array.from(data, (value) => value / 32768);
+    samples = Float32Array.from(data, (value) => value / FULL_SCALE);
     drawingSamples.set(data, samples);
   }
   drawWaveform(
@@ -97,7 +97,7 @@ export function drawBandEnvelope(
         drawing = false;
         continue;
       }
-      const y = (Math.floor((mid - (value / 32768) * half) * view.dpr) + 0.5) / view.dpr;
+      const y = (Math.floor((mid - (value / FULL_SCALE) * half) * view.dpr) + 0.5) / view.dpr;
       if (drawing) context.lineTo(x, y);
       else {
         context.moveTo(x, y);

@@ -1,5 +1,5 @@
 import { MAX_TICKS, samplesPerTick, tickToSampleExport, type TimeBase } from '../timebase.js';
-import type { PcmChannel } from '../wav.js';
+import type { PcmChannel } from './pcm.js';
 export interface OnsetInput {
   readonly channels: readonly PcmChannel[];
   readonly timebase: TimeBase;

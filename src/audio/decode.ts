@@ -1,9 +1,9 @@
 import init, { AudioDecoder } from '@gumi-conqueror/audio-decode';
 import wasmUrl from '@gumi-conqueror/audio-decode/index_bg.wasm?url';
-import type { DecodedWav, SourceFormat } from '../core/wav';
+import { FULL_SCALE, type SourceAudio, type SourceFormat } from '../core/audio/pcm';
 
 /** Runs inside the audio Worker. Disposing that Worker cancels decoding. */
-export async function decodeAudio(bytes: Uint8Array): Promise<DecodedWav> {
+export async function decodeAudio(bytes: Uint8Array): Promise<SourceAudio> {
   await init({ module_or_path: wasmUrl });
   const decoder = new AudioDecoder(bytes);
   try {
@@ -25,7 +25,7 @@ export async function decodeAudio(bytes: Uint8Array): Promise<DecodedWav> {
           const sample = chunk[frame * channels + channel];
           if (!Number.isFinite(sample)) throw new Error('Audio contains a non-finite sample');
           // Keep the existing DSP amplitude scale without rounding or clipping samples.
-          data[channel][offset + frame] = sample * 32768;
+          data[channel][offset + frame] = sample * FULL_SCALE;
         }
       }
       offset += chunk.length / channels;

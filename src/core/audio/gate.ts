@@ -1,3 +1,5 @@
+import { FULL_SCALE } from './pcm.js';
+
 export interface GatedAudio {
   readonly channels: readonly Int16Array[];
   readonly length: number;
@@ -9,7 +11,7 @@ export function gateAudio(channels: readonly Int16Array[], gateDb: number): Gate
     throw new RangeError('Invalid audio channels');
   if (!available) return { channels: channels.map(() => new Int16Array()), length: 0 };
   // Six-decibel amplitude convention; -48 dB is exactly 128.
-  const threshold = gateDb === 0 ? 0 : 32768 * Math.pow(2, gateDb / 6);
+  const threshold = gateDb === 0 ? 0 : FULL_SCALE * Math.pow(2, gateDb / 6);
   let last = -1;
   for (let i = 0; i < available; i++)
     if (channels.some((c) => Math.abs(c[i] ?? 0) > threshold)) last = i;

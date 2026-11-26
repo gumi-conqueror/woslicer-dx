@@ -4,6 +4,7 @@ import { MAX_TICKS, MEASURE_TICKS, sampleToTick, tickToSample } from '../core/ti
 import { gridLineTicks, gridStepTicks, measureLabelStep } from '../core/gridlines';
 import { peakRange } from '../core/peaks';
 import { drawBandEnvelope, drawWaveLane } from './waveform';
+import { FULL_SCALE } from '../core/audio/pcm';
 
 export const RULER_HEIGHT = 28;
 export const OVERVIEW_HEIGHT = 36;
@@ -310,8 +311,8 @@ export function drawOverview(
         const range = peakRange(cache, source.length, first, last);
         const middle = laneHeight * (lane + 0.5),
           half = laneHeight / 2 - 2;
-        const top = middle - (range.max / 32768) * half,
-          bottom = middle - (range.min / 32768) * half;
+        const top = middle - (range.max / FULL_SCALE) * half,
+          bottom = middle - (range.min / FULL_SCALE) * half;
         context.fillRect(x, top, 2, Math.max(1, bottom - top));
       }
     }

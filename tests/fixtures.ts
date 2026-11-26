@@ -1,6 +1,6 @@
 /** Deterministic audio/fixture builders shared by the test suites. */
 
-import { DecodedWav } from '../src/core/wav.js';
+import type { SourceAudio } from '../src/core/audio/pcm.js';
 import { MAX_TICKS, MEASURE_TICKS, tickToSample } from '../src/core/timebase.js';
 
 /** Deterministic linear congruential generator (reproducible "noise"). */
@@ -149,7 +149,7 @@ export function wavWithExtraChunks(
  * - a loud decaying "note" in the first measure,
  * - near-silence (tiny deterministic noise) afterwards.
  */
-export function makeTestSource(sampleRate: number, bpm: number, measures = 2): DecodedWav {
+export function makeTestSource(sampleRate: number, bpm: number, measures = 2): SourceAudio {
   const length = Math.floor(tickToSample(MEASURE_TICKS * measures, { bpm, shift: 0, sampleRate }));
   const left = new Int16Array(length);
   const right = new Int16Array(length);

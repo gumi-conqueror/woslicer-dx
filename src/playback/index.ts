@@ -1,6 +1,7 @@
 import { effectScope, inject, provide, watch, type InjectionKey } from 'vue';
 import type { EditorStore } from '../slicing/editor-store';
 import { renderSlice } from '../core/slicer';
+import { FULL_SCALE } from '../core/audio/pcm';
 import { sliceIndexAtOrBefore } from '../core/markers';
 import { sampleToTick, tickToSampleExport } from '../core/timebase';
 import { DEFAULT_PLAYBACK_RATE, PLAYBACK_RATES, advanceSamples } from '../core/rate';
@@ -192,7 +193,7 @@ export function createPlayback(editor: EditorStore): Playback {
     rendered.channelsData.forEach((channel, index) => {
       const output = previewBuffer.getChannelData(index);
       channel.forEach((sample, frame) => {
-        output[frame] = sample / 32768;
+        output[frame] = sample / FULL_SCALE;
       });
     });
     const node = context.createBufferSource();

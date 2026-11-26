@@ -1,4 +1,4 @@
-import type { DecodedWav } from '../core/wav';
+import { FULL_SCALE, type SourceAudio } from '../core/audio/pcm';
 import { suggestOnsets } from '../core/audio/onsets';
 import type { TimeBase } from '../core/timebase';
 import { decodeAudio } from './decode';
@@ -19,7 +19,7 @@ export type AudioReply =
   | {
       kind: 'decoded';
       id: number;
-      source: DecodedWav;
+      source: SourceAudio;
       floatData: Float32Array[];
       peaks: PeakCache;
     }
@@ -39,7 +39,7 @@ export interface AudioEngine {
 }
 /** Pure worker-side dispatcher, also exercised directly by DSP integration tests. */
 export function createAudioProcessor(): (request: AudioRequest) => Promise<AudioReply> {
-  let source: DecodedWav | null = null;
+  let source: SourceAudio | null = null;
   let analysis: BandAnalysis | null = null;
   return async (request) => {
     try {
@@ -52,7 +52,7 @@ export function createAudioProcessor(): (request: AudioRequest) => Promise<Audio
             id: request.id,
             source,
             floatData: source.data.map((channel) =>
-              Float32Array.from(channel, (sample) => sample / 32768),
+              Float32Array.from(channel, (sample) => sample / FULL_SCALE),
             ),
             peaks: buildPeakCache(source.data),
           };
