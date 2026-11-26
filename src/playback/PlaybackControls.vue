@@ -8,9 +8,9 @@ import { PLAYBACK_RATES, formatRate } from '../core/rate';
 import { ampToDb, dbToAmp, dbToSlider, sliderToDb } from '../core/volume';
 import { usePlayback } from './index';
 import { useSliderDraft } from './use-slider-draft';
-import { shortcutLabel } from '../app/shortcuts';
+import { shortcutLabel } from '../input/bindings';
 import AppIcon from '../ui/AppIcon.vue';
-import { useInputState } from '../app/input-state';
+import { useInputState } from '../input/state';
 const input = useInputState();
 const emit = defineEmits<{ command: [command: 'toggle-recording'] }>();
 function toggleRecording(event: MouseEvent): void {

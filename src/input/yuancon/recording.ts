@@ -1,4 +1,4 @@
-import { YUANCON_KEYS, type YuanconControl, type YuanconState } from '../input/yuancon/protocol';
+import { YUANCON_KEYS, type YuanconControl, type YuanconState } from './protocol';
 
 /**
  * Recording policy for held directions. The capture includes sustained direct

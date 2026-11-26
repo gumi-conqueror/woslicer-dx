@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CANCEL, matchesBindings } from '../app/shortcuts';
+import { CANCEL, matchesBindings } from '../input/bindings';
 import TrackHeader from '../app/components/TrackHeader.vue';
 import { computed, onBeforeUnmount, onMounted, shallowRef, useTemplateRef, watch } from 'vue';
 import { useDevicePixelRatio, useResizeObserver } from '@vueuse/core';

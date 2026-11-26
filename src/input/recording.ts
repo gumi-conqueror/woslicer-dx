@@ -1,6 +1,6 @@
-import type { AppCommand } from './command-types';
-import type { GamepadControl } from './gamepad-controls';
-import type { YuanconControl, YuanconGuideControl } from '../input/yuancon/protocol';
+import type { AppCommand } from '../app/command-types';
+import type { GamepadControl } from './gamepad';
+import type { YuanconControl, YuanconGuideControl } from './yuancon/protocol';
 import type { MarkerKey } from '../project/schema';
 
 export interface RecordingInput {

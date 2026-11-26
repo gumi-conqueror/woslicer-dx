@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { commandForKey, shortcutLabel, SHORTCUTS } from '../../src/app/shortcuts';
+import { commandForKey, shortcutLabel, SHORTCUTS } from '../../src/input/bindings';
 import en from '../../src/i18n/en.json';
 import zh from '../../src/i18n/zh.json';
 import ja from '../../src/i18n/ja.json';

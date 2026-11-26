@@ -1,6 +1,6 @@
-import type { AppCommand } from './command-types';
-import type { GamepadControl } from './gamepad-controls';
-import { codeForKey, codeLabel, RECORDING_BINDINGS } from './recording-bindings';
+import type { AppCommand } from '../app/command-types';
+import type { GamepadControl } from './gamepad';
+import { codeForKey, codeLabel, RECORDING_BINDINGS } from './recording';
 
 // Direct controller bindings cover frequent editing operations. Other commands
 // remain available through menu mode; the dispatcher and help read this table.

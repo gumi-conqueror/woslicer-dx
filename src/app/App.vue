@@ -22,16 +22,16 @@ import StatusBar from './components/StatusBar.vue';
 import HelpDialog from './components/HelpDialog.vue';
 import AboutDialog from './components/AboutDialog.vue';
 import TroubleshootDialog from './components/TroubleshootDialog.vue';
-import { useInputControls, navigateDialog } from './use-input-controls';
-import { editingControl, visibleDialog } from './input-context';
+import { useInputControls, navigateDialog } from '../input/use-gamepad';
+import { editingControl, visibleDialog } from '../input/context';
 import { canRecord } from './menu';
-import { gamepadNavigation } from './gamepad-controls';
-import { GAMEPAD_SHORTCUTS } from './shortcuts';
+import { gamepadNavigation } from '../input/gamepad';
+import { GAMEPAD_SHORTCUTS } from '../input/bindings';
 import { openDataFolder } from '../platform/app-data';
-import { useInputState } from './input-state';
-import { recordingCommandForGamepad } from './recording-bindings';
+import { useInputState } from '../input/state';
+import { recordingCommandForGamepad } from '../input/recording';
 import YuanconDialog from './components/YuanconDialog.vue';
-import { useYuanconRecording } from './use-yuancon-recording';
+import { useYuanconRecording } from '../input/yuancon/use-recording';
 import { audioFileFormat } from '../core/audio-formats';
 
 // Assembly: platform, stores, workspace and playback providers.

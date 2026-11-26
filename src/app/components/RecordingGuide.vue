@@ -5,7 +5,7 @@ import {
   RECORDING_KEYS,
   RECORDING_SEEK_SECONDS,
   codeLabel,
-} from '../recording-bindings';
+} from '../../input/recording';
 import GamepadIcon from '../../ui/GamepadIcon.vue';
 import YuanconIcon from '../../ui/YuanconIcon.vue';
 defineProps<{ device: 'keyboard' | 'gamepad' | 'yuancon' }>();

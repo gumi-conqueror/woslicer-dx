@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { shortcutLabel } from '../app/shortcuts';
+import { shortcutLabel } from '../input/bindings';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useWorkspace } from '../workspace/workspace';

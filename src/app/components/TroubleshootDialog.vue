@@ -6,7 +6,7 @@ import { useI18n } from 'vue-i18n';
 import { getPlatform } from '../../platform';
 import type { BuildIdentity } from '../../platform/contracts';
 import { appDataFolders, openDataFolder, type AppDataFolder } from '../../platform/app-data';
-import { useInputState } from '../input-state';
+import { useInputState } from '../../input/state';
 import UninstallGuide from './UninstallGuide.vue';
 const open = defineModel<boolean>({ required: true });
 const props = defineProps<{ identity: BuildIdentity | null }>();

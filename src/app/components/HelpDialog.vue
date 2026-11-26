@@ -9,8 +9,8 @@ import {
   formatBindings,
   gamepadShortcut,
   SHORTCUT_GROUPS,
-} from '../shortcuts';
-import { GAMEPAD_MENU_SHORTCUTS } from '../gamepad-controls';
+} from '../../input/bindings';
+import { GAMEPAD_MENU_SHORTCUTS } from '../../input/gamepad';
 import { APPLICATION_MENU } from '../menu';
 import GamepadIcon from '../../ui/GamepadIcon.vue';
 import UninstallGuide from './UninstallGuide.vue';

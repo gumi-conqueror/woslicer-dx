@@ -1,14 +1,10 @@
 import { onMounted, onUnmounted, watch } from 'vue';
-import { useYuancon } from '../input/yuancon/use-yuancon';
-import type { YuanconState } from '../input/yuancon/protocol';
-import { createYuanconReader } from './recording-yuancon';
-import {
-  recordingCommandForYuancon,
-  RECORDING_KEYS,
-  type RecordingInput,
-} from './recording-bindings';
-import { useInputState } from './input-state';
-import type { AppCommand } from './command-types';
+import { useYuancon } from './use-yuancon';
+import type { YuanconState } from './protocol';
+import { createYuanconReader } from './recording';
+import { recordingCommandForYuancon, RECORDING_KEYS, type RecordingInput } from '../recording';
+import { useInputState } from '../state';
+import type { AppCommand } from '../../app/command-types';
 
 export function useYuanconRecording(options: {
   active: () => boolean;

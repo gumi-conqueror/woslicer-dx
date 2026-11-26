@@ -1,8 +1,8 @@
 import { onMounted, onUnmounted } from 'vue';
-import { createGamepadReader, GAMEPAD_DEAD_ZONE, type GamepadControl } from './gamepad-controls';
-import { useInputState } from './input-state';
-import { visibleDialog } from './input-context';
-import { RECORDING_KEYS, type RecordingInput } from './recording-bindings';
+import { createGamepadReader, GAMEPAD_DEAD_ZONE, type GamepadControl } from './gamepad';
+import { useInputState } from './state';
+import { visibleDialog } from './context';
+import { RECORDING_KEYS, type RecordingInput } from './recording';
 
 export function useInputControls(
   onControl: (control: GamepadControl, input?: RecordingInput) => void,

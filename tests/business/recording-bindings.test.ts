@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import capture from '../fixtures/input/yuancon-capture.json';
-import { createGamepadReader } from '../../src/app/gamepad-controls';
-import { createYuanconReader } from '../../src/app/recording-yuancon';
+import { createGamepadReader } from '../../src/input/gamepad';
+import { createYuanconReader } from '../../src/input/yuancon/recording';
 import { decodeYuanconReport } from '../../src/input/yuancon/protocol';
 import {
   recordingCommandForKey,
   recordingCommandForGamepad,
   RECORDING_BINDINGS,
-} from '../../src/app/recording-bindings';
-import { shortcutLabel } from '../../src/app/shortcuts';
+} from '../../src/input/recording';
+import { shortcutLabel } from '../../src/input/bindings';
 
 function pad(buttons: number[] = [], axes = [0, 0]) {
   return {

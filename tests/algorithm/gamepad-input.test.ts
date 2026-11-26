@@ -3,8 +3,8 @@ import {
   createGamepadReader,
   GAMEPAD_CONTROLS,
   GAMEPAD_MENU_SHORTCUTS,
-} from '../../src/app/gamepad-controls';
-import { GAMEPAD_SHORTCUTS, SHORTCUTS } from '../../src/app/shortcuts';
+} from '../../src/input/gamepad';
+import { GAMEPAD_SHORTCUTS, SHORTCUTS } from '../../src/input/bindings';
 import { APPLICATION_MENU } from '../../src/app/menu';
 
 function pad(buttons: number[] = [], axes = [0, 0]): Pick<Gamepad, 'index' | 'buttons' | 'axes'> {

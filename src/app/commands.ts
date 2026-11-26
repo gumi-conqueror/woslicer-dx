@@ -8,20 +8,20 @@ import {
 } from '../core/timebase';
 import { formatRate, stepPlaybackRate } from '../core/rate';
 import type { AppCommand } from './command-types';
-import { commandForKey } from './shortcuts';
+import { commandForKey } from '../input/bindings';
 import {
   recordingCommandForKey,
   RECORDING_KEYS,
   RECORDING_SEEK_SECONDS,
   eventCode,
   type RecordingInput,
-} from './recording-bindings';
+} from '../input/recording';
 import type { EditorStore } from '../slicing/editor-store';
 import { FIELD_RANGES } from '../project/schema';
 import type { Workspace } from '../workspace/workspace';
 import type { Playback } from '../playback';
 import { canRecord } from './menu';
-import { keyOwnedByControl, visibleDialog } from './input-context';
+import { keyOwnedByControl, visibleDialog } from '../input/context';
 
 interface CommandOptions {
   editor: EditorStore;
