@@ -1,9 +1,9 @@
 import { inject, provide, readonly, shallowRef, type InjectionKey } from 'vue';
 import { errorMessage } from '../core/messages';
 import {
+  createEmptyTrack,
   currentTrack,
   decodeProject,
-  requireEditableTracks,
   encodeProject,
   parseProject,
   projectFromWos,
@@ -13,6 +13,7 @@ import {
   byteLimitText,
   MEDIA_FILE_MAX_BYTES,
   PROJECT_FILE_MAX_BYTES,
+  PROJECT_MAX_TRACKS,
   type ProjectDocument,
 } from '../project/schema';
 import {
@@ -21,6 +22,7 @@ import {
   projectWithAudio,
   matchesProjectAudio,
   relinkMedia,
+  setTrackAudio,
 } from './project-media';
 import { readWos, writeWos } from '@gumi-conqueror/wos-file';
 import { buildBmseClipboard, parseBmseClipboard } from '../core/formats/bmse';
@@ -54,6 +56,8 @@ export interface LoadingActivity {
   stage: 'restoring' | 'opening' | 'reading' | 'verifying' | 'decoding';
   name?: string;
   mediaId?: string;
+  /** The track that receives the audio; absent before a target is known. */
+  trackId?: string;
 }
 export function createWorkspace(options: WorkspaceOptions) {
   const { platform, editor, createEngine = createAudioEngine } = options;
@@ -118,19 +122,33 @@ export function createWorkspace(options: WorkspaceOptions) {
     return true;
   }
 
-  async function loadAudio(file: OpenedFile, preserveBaseName = false): Promise<void> {
+  /**
+   * Decodes audio for a track: the current track by default, a given track, or
+   * a new track appended in one undoable edit once the audio is ready.
+   */
+  async function loadAudio(
+    file: OpenedFile,
+    preserveBaseName = false,
+    target: { trackId: string } | { newTrack: true } = { trackId: editor.track.trackId },
+  ): Promise<void> {
     if (resetPending) await resetPending;
     if (disposed) return;
     sessionClosed = false;
     persistence.resume();
-    const trackId = editor.track.trackId;
+    const newTrack = 'newTrack' in target;
+    const trackId = newTrack
+      ? `${editor.document.projectId}:track:${crypto.randomUUID()}`
+      : target.trackId;
     const request = beginOpening({
+        trackId: newTrack ? undefined : trackId,
         stage: 'verifying',
         name: file.name,
         mediaId: preserveBaseName ? editor.track.media?.mediaId : undefined,
       }),
       documentGeneration = editor.documentGeneration;
-    const previousPhase = editor.source ? { kind: 'ready' as const } : { kind: 'empty' as const };
+    const previousPhase = editor.sessions.get(trackId)?.source
+      ? { kind: 'ready' as const }
+      : { kind: 'empty' as const };
     editor.setPhase({ kind: 'loading', name: file.name }, trackId);
     editor.setStatus('parsingSourceFile');
     let worker: AudioEngine | null = null;
@@ -146,7 +164,8 @@ export function createWorkspace(options: WorkspaceOptions) {
       // the document invalidates this result; merge audio into the latest state.
       if (documentGeneration !== editor.documentGeneration)
         throw new Error('Project changed during audio loading; select the audio again');
-      const expected = preserveBaseName ? editor.track.media : null;
+      const expected =
+        preserveBaseName && !newTrack ? currentTrack(editor.document, trackId).media : null;
       if (expected) {
         const different = !matchesProjectAudio(expected, identity, result);
         if (different) {
@@ -162,11 +181,18 @@ export function createWorkspace(options: WorkspaceOptions) {
           (expected.originHint?.kind !== 'desktop' ||
             expected.originHint.pathHint !== file.absolutePath);
         if (different || pathChanged)
-          editor.editTrack((track) => relinkMedia(track, file, identity, result, different));
+          editor.editTrack(
+            (track) => relinkMedia(track, file, identity, result, different),
+            trackId,
+          );
       }
-      const next = expected
-        ? null
-        : projectWithAudio(editor.document, file, identity, result, preserveBaseName, trackId);
+      // With one track, new audio starts a new project from it. With several
+      // tracks, it is an undoable edit of its track that keeps the project.
+      const single = !newTrack && editor.document.tracks.length === 1;
+      const next =
+        expected || !single
+          ? null
+          : projectWithAudio(editor.document, file, identity, result, preserveBaseName, trackId);
       // Validate the replacement before releasing the current decoder or source.
       if (next) parseProject(next);
       pendingEngine = null;
@@ -176,7 +202,15 @@ export function createWorkspace(options: WorkspaceOptions) {
       if (next) {
         editor.replaceDocument(next, { saved: preserveBaseName });
         actions.reset();
-      }
+      } else if (newTrack) {
+        const track = createEmptyTrack(trackId, file.name);
+        setTrackAudio(track, file, identity, result);
+        editor.transact((draft) => {
+          draft.tracks.push(track);
+        });
+        editor.selectTrack(trackId);
+      } else if (!expected)
+        editor.editTrack((track) => setTrackAudio(track, file, identity, result), trackId);
       const name = file.name.replace(/\.[^.]+$/, '');
       editor.setSource(
         { ...result.source, floatData: result.floatData, name, reference: file.reference },
@@ -200,6 +234,56 @@ export function createWorkspace(options: WorkspaceOptions) {
       if (pendingEngine === worker) pendingEngine = null;
       worker?.dispose();
     }
+  }
+  /** Adds a track with audio that the user chooses. */
+  async function addTrack(): Promise<void> {
+    if (recoveryBlock && !(await releaseRecoveryBlock())) return;
+    if (editor.document.tracks.length >= PROJECT_MAX_TRACKS) {
+      editor.setStatus('trackLimit', { count: PROJECT_MAX_TRACKS }, true);
+      return;
+    }
+    const documentGeneration = editor.documentGeneration,
+      request = beginOpening({ stage: 'opening' });
+    try {
+      const file = await platform.openFile('audio');
+      if (
+        file &&
+        !disposed &&
+        documentGeneration === editor.documentGeneration &&
+        request === opening
+      )
+        await loadAudio(file, false, { newTrack: true });
+    } catch (error) {
+      if (!disposed && request === opening)
+        editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
+    } finally {
+      finishOpening(request);
+    }
+  }
+  /** Removes the current track in one undoable edit; the last track stays. */
+  function removeTrack(): void {
+    const tracks = editor.document.tracks;
+    if (tracks.length <= 1) {
+      editor.setStatus('lastTrackKept', true);
+      return;
+    }
+    const index = tracks.findIndex((item) => item.trackId === editor.track.trackId);
+    const removed = editor.track;
+    const neighbor = tracks[index + 1] ?? tracks[index - 1];
+    if (!neighbor) return;
+    editor.selectTrack(neighbor.trackId);
+    // Decoded audio stays in its session, so undo restores the track with its audio.
+    editor.transact((draft) => {
+      draft.tracks = draft.tracks.filter((item) => item.trackId !== removed.trackId);
+    });
+    editor.setStatus('trackRemoved', { name: removed.name });
+  }
+  /** Selects the previous or next track. */
+  function stepTrack(direction: -1 | 1): void {
+    const tracks = editor.document.tracks;
+    const index = tracks.findIndex((item) => item.trackId === editor.track.trackId);
+    const next = tracks[index + direction];
+    if (next) editor.selectTrack(next.trackId);
   }
   async function openAudio(): Promise<void> {
     if (recoveryBlock && !(await releaseRecoveryBlock())) return;
@@ -261,7 +345,6 @@ export function createWorkspace(options: WorkspaceOptions) {
     const parsed = decodeProject(file.bytes);
     if (parsed.kind === 'unsupported-version')
       throw new Error(`Unsupported project version: ${parsed.version}`);
-    requireEditableTracks(parsed.project);
     replaceWorkspace(parsed.project);
     const media = editor.track.media;
     if (parsed.unknownFields.length)
@@ -548,6 +631,9 @@ export function createWorkspace(options: WorkspaceOptions) {
     platform,
     actions,
     openAudio,
+    addTrack,
+    removeTrack,
+    stepTrack,
     openProject,
     saveProject,
     relinkAudio,

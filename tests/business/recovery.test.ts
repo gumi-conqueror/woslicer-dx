@@ -329,7 +329,7 @@ it('classifies recovery reads as absent, restored, damaged or future without rei
     ...valid,
     project: { ...valid.project, tracks: [track, { ...track, trackId: 'b' }] },
   };
-  expect(readEditorSession(JSON.parse(JSON.stringify(multiTrack))).kind).toBe('invalid');
+  expect(readEditorSession(JSON.parse(JSON.stringify(multiTrack))).kind).toBe('restored');
   const damaged = { version: 3, project: { timing: { bpm: 0, shiftTicks: 0 } } };
   const read = readEditorSession(damaged);
   expect(read.kind).toBe('invalid');

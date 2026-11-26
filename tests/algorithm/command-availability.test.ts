@@ -9,8 +9,11 @@ import {
 import { APPLICATION_MENU } from '../../src/app/menu';
 
 const track = (media: unknown) => ({ media }) as unknown as MenuEditorState['track'];
+const tracks = (count: number) =>
+  ({ tracks: Array.from({ length: count }, () => ({})) }) as unknown as MenuEditorState['document'];
 const state = (overrides: Partial<MenuEditorState> = {}): MenuEditorState => ({
   track: track(null),
+  document: tracks(1),
   source: null,
   ticks: [],
   selectedTicks: [],
@@ -82,6 +85,10 @@ const table: ReadonlyArray<readonly [AppCommand, MenuEditorState, boolean]> = [
   ['paste-bmse', state(), true],
   ['measure-paste', state(), true],
   ['open-wheel', state(), true],
+  // A project keeps at least one track.
+  ['add-track', state(), true],
+  ['remove-track', state(), false],
+  ['remove-track', state({ document: tracks(2) }), true],
 ];
 
 describe('command availability rules', () => {

@@ -188,7 +188,10 @@
     "aboutExternalLinks": "リンクは外部ブラウザーまたは新しいタブで開く。自動接続なし。",
     "aboutLinkFailed": "リンクを開けない。",
     "aboutAudioDecodeCredit": "音声デコード（ラッパーは MIT、Symphonia は MPL-2.0）。",
-    "decoderLicenses": "音声デコーダーのライセンス"
+    "decoderLicenses": "音声デコーダーのライセンス",
+    "tracks": "トラック",
+    "renameTrack": "トラック名を変更",
+    "trackName": "トラック名"
   },
   "status": {
     "projectOpened": "プロジェクトを開いた：{name}",
@@ -322,7 +325,10 @@
     "sessionRecoverFuture": "復元データは新しいバージョン（{version}）用。元のデータを保持し、復元データの更新を停止。",
     "sessionRecoverReadFailed": "復元データの読み込み失敗：{message}",
     "importedWosSettings": ".wos 設定を読み込み：{file}（BPM {bpm}、位置補正 {shift}）。1 回の操作で元に戻せる。",
-    "projectUnknownFields": "未対応の項目 {count} 個あり。保存時は対応するデータのみ保持。"
+    "projectUnknownFields": "未対応の項目 {count} 個あり。保存時は対応するデータのみ保持。",
+    "trackLimit": "1 プロジェクトのトラックは最大 {count}。",
+    "lastTrackKept": "プロジェクトには 1 トラック以上が必要。",
+    "trackRemoved": "トラック {name} を削除。元に戻すで復元可能。"
   },
   "menu": {
     "file": "ファイル",
@@ -360,7 +366,9 @@
     "tools": "ツール",
     "guide": "使い方とショートカット",
     "troubleshoot": "問題の解決",
-    "openDataFolder": "データフォルダーを開く"
+    "openDataFolder": "データフォルダーを開く",
+    "addTrack": "オーディオトラックを追加…",
+    "removeTrack": "現在のトラックを削除"
   },
   "dialogs": {
     "loadAudio": "音声を開く",
@@ -420,7 +428,9 @@
       "navigation": "移動",
       "output": "出力"
     },
-    "audioFormats": "WAV、AIFF、FLAC、Ogg Vorbis、MP3、AAC-LC、ALAC のモノラル・ステレオに対応。内部処理は Float32、WAV 出力は 16-bit PCM。AAC は先頭・末尾にエンコーダー由来の余白を含む場合がある。 MKV/MKA は上記コーデックに対応。Opus は非対応。 MKV/MKA は1音声トラックのみ読み込み。既定の指定が省略されていると先頭トラックを選ぶ場合あり。必要に応じて目的の音声を先に抽出。"
+    "audioFormats": "WAV、AIFF、FLAC、Ogg Vorbis、MP3、AAC-LC、ALAC のモノラル・ステレオに対応。内部処理は Float32、WAV 出力は 16-bit PCM。AAC は先頭・末尾にエンコーダー由来の余白を含む場合がある。 MKV/MKA は上記コーデックに対応。Opus は非対応。 MKV/MKA は1音声トラックのみ読み込み。既定の指定が省略されていると先頭トラックを選ぶ場合あり。必要に応じて目的の音声を先に抽出。",
+    "previousTrack": "前のトラックを選択",
+    "nextTrack": "次のトラックを選択"
   },
   "input": {
     "keyboard": "キーボード／マウス",

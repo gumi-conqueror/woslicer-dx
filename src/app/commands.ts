@@ -17,7 +17,7 @@ import { visibleDialog } from '../input/context';
 /** The editor state that command availability reads. */
 export type CommandState = Pick<
   EditorStore,
-  'track' | 'source' | 'ticks' | 'selectedTicks' | 'canUndo' | 'canRedo'
+  'document' | 'track' | 'source' | 'ticks' | 'selectedTicks' | 'canUndo' | 'canRedo'
 >;
 /** Help groups, in the order the help dialog shows them. */
 export const COMMAND_GROUPS = ['project', 'edit', 'playback', 'navigation', 'output'] as const;
@@ -90,6 +90,27 @@ export const COMMANDS = {
     label: 'menu.openAudio',
     group: 'project',
     run: ({ workspace }) => workspace.openAudio(),
+  },
+  'add-track': {
+    label: 'menu.addTrack',
+    group: 'project',
+    run: ({ workspace }) => workspace.addTrack(),
+  },
+  'remove-track': {
+    label: 'menu.removeTrack',
+    group: 'project',
+    enabled: (state) => state.document.tracks.length > 1,
+    run: ({ workspace }) => workspace.removeTrack(),
+  },
+  'previous-track': {
+    label: 'help.previousTrack',
+    group: 'navigation',
+    run: ({ workspace }) => workspace.stepTrack(-1),
+  },
+  'next-track': {
+    label: 'help.nextTrack',
+    group: 'navigation',
+    run: ({ workspace }) => workspace.stepTrack(1),
   },
   'new-project-wos': {
     label: 'menu.newProjectWos',

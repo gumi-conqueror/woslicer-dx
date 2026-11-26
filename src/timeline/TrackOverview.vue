@@ -10,7 +10,11 @@ import { drawOverview, OVERVIEW_HEIGHT, setupCanvas } from './render';
 const overviewHeightCss = `${OVERVIEW_HEIGHT}px`;
 import type { LoadingActivity } from '../workspace/workspace';
 
-const props = defineProps<{ viewportWidth: number; loading?: LoadingActivity | null }>();
+const props = defineProps<{
+  trackId: string;
+  viewportWidth: number;
+  loading?: LoadingActivity | null;
+}>();
 const { t } = useI18n();
 const editor = useEditorStore();
 const preferences = useUiPreferencesStore();
@@ -21,6 +25,18 @@ const width = ref(0);
 const { pixelRatio } = useDevicePixelRatio();
 let frame = 0;
 let pointer: number | null = null;
+const current = computed(() => editor.track.trackId === props.trackId);
+// Other tracks draw their own audio without the viewport box and do not scroll the view.
+const snapshot = computed(() => {
+  const session = editor.sessions.get(props.trackId);
+  return {
+    source: session?.source ?? null,
+    peaks: session?.peaks ?? null,
+    timeBase: editor.timeBaseOf(props.trackId),
+    scrollTick: editor.scrollTick,
+    pxPerTick: editor.pxPerTick,
+  };
+});
 
 function measure(): void {
   width.value = surface.value?.clientWidth ?? 0;
@@ -35,7 +51,14 @@ function invalidate(): void {
       height: OVERVIEW_HEIGHT,
       dpr: pixelRatio.value || 1,
     });
-    if (context) drawOverview(context, editor, width.value, props.viewportWidth, palette.value);
+    if (context)
+      drawOverview(
+        context,
+        snapshot.value,
+        width.value,
+        current.value ? props.viewportWidth : null,
+        palette.value,
+      );
   });
 }
 // setupCanvas assigns a pixel CSS width. Observe the fluid wrapper so opening
@@ -48,8 +71,8 @@ watch(
     pixelRatio,
     palette,
     () => props.viewportWidth,
-    () => editor.source,
-    () => editor.peaks,
+    snapshot,
+    current,
     () => editor.docRevision,
     () => editor.scrollTick,
     () => editor.pxPerTick,
@@ -63,7 +86,7 @@ function seek(event: PointerEvent): void {
   editor.setScrollTick(Math.max(0, Math.min(MAX_TICKS - span, ratio * MAX_TICKS - span / 2)));
 }
 function down(event: PointerEvent): void {
-  if (props.loading || event.button !== 0 || pointer !== null) return;
+  if (props.loading || event.button !== 0 || pointer !== null || !current.value) return;
   event.preventDefault();
   pointer = event.pointerId;
   canvas.value?.setPointerCapture(event.pointerId);

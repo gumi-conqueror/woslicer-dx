@@ -152,7 +152,7 @@ describe('portable project workflow', () => {
     expect(f.editor.document).toBe(document);
     expect(f.editor.canUndo).toBe(false);
   });
-  it('opens an empty project and rejects future versions and multi-track projects', async () => {
+  it('opens empty and multi-track projects and rejects future versions', async () => {
     const f = setup();
     const project = createEmptyProject('portable', 'Empty');
     f.opened = { name: 'empty.wosdx', reference: null, bytes: encodeProject(project) };
@@ -178,8 +178,8 @@ describe('portable project workflow', () => {
       ),
     };
     await f.workspace.openProject();
-    expect(f.editor.document).toBe(original);
-    expect(f.editor.status.segments[0]?.params?.message).toMatch(/2 tracks/);
+    expect(f.editor.document.tracks.map((item) => item.trackId)).toEqual([track.trackId, 'second']);
+    expect(f.editor.track.trackId).toBe(track.trackId);
   });
 
   it('persists playback properties in the saved project and restores them', async () => {

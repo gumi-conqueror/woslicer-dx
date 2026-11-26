@@ -106,16 +106,19 @@ export const useEditorStore = defineStore('editor', () => {
     }),
   );
   const previewTicks = shallowRef<readonly number[] | null>(null);
-  /** The current track's tick-to-sample time base; `null` until its audio is loaded. */
-  const timeBase = computed<Readonly<TimeBase> | null>(() =>
-    source.value
+  /** A track's tick-to-sample time base; `null` until its audio is loaded. */
+  function timeBaseOf(trackId: string): Readonly<TimeBase> | null {
+    const audio = sessions.value.get(trackId)?.source;
+    return audio
       ? Object.freeze({
           bpm: document.value.timing.bpm,
           shift: document.value.timing.shiftTicks,
-          sampleRate: source.value.sampleRate,
+          sampleRate: audio.sampleRate,
         })
-      : null,
-  );
+      : null;
+  }
+  /** The current track's time base. */
+  const timeBase = computed(() => timeBaseOf(track.value.trackId));
   let cancelActiveDraft: (() => void) | null = null;
   const status = shallowRef<{ segments: StatusSegment[] }>({ segments: [{ key: 'statusEmpty' }] });
   const isError = shallowRef(false);
@@ -258,9 +261,23 @@ export const useEditorStore = defineStore('editor', () => {
     if (result.changed) publish();
     return result;
   }
-  /** One undoable edit of the current track. */
-  function editTrack<T>(edit: (draft: ProjectTrack) => T) {
-    return transact((draft) => edit(currentTrack(draft, currentTrackId.value)));
+  /** One undoable edit of a track; the current track by default. */
+  function editTrack<T>(edit: (draft: ProjectTrack) => T, trackId = track.value.trackId) {
+    return transact((draft) => edit(currentTrack(draft, trackId)));
+  }
+  /** Renames a track in one undoable edit; a blank name is ignored. */
+  function renameTrack(trackId: string, name: string): void {
+    const value = name.trim();
+    if (value) editTrack((draft) => void (draft.name = value), trackId);
+  }
+  /** Makes another track current. Selection and drafts belong to the previous track. */
+  function selectTrack(trackId: string): void {
+    if (trackId === track.value.trackId) return;
+    if (!document.value.tracks.some((item) => item.trackId === trackId)) return;
+    cancelDraft();
+    currentTrackId.value = trackId;
+    selectedTicks.value = [];
+    setSelection(null, null);
   }
   function replaceDocument(value: ProjectDocument, options: { saved?: boolean } = {}): void {
     cancelDraft();
@@ -464,6 +481,7 @@ export const useEditorStore = defineStore('editor', () => {
     currentTrackId,
     sessions,
     timeBase,
+    timeBaseOf,
     docRevision,
     documentGeneration,
     isDirty,
@@ -513,6 +531,8 @@ export const useEditorStore = defineStore('editor', () => {
     canRedo,
     transact,
     editTrack,
+    selectTrack,
+    renameTrack,
     replaceDocument,
     undo,
     redo,

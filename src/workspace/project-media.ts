@@ -70,13 +70,25 @@ export function projectWithAudio(
   if (parsed.kind !== 'supported') throw new ProjectFormatError('Unsupported project version');
   const { project } = parsed;
   const track = currentTrack(project, trackId);
-  track.media = mediaAsset(crypto.randomUUID(), file, identity, decoded);
-  if (!preserveBaseName) {
-    const name = file.name.replace(/\.[^.]+$/, '');
-    project.name = name;
-    track.output.baseName = defaultBaseName(name);
+  if (preserveBaseName) track.media = mediaAsset(crypto.randomUUID(), file, identity, decoded);
+  else {
+    setTrackAudio(track, file, identity, decoded);
+    project.name = track.name;
   }
   return project;
+}
+
+/** New audio on a track: the track and its slices take the file's name. */
+export function setTrackAudio(
+  track: ProjectTrack,
+  file: OpenedFile,
+  identity: Identity,
+  decoded: DecodedAudio,
+): void {
+  const name = file.name.replace(/\.[^.]+$/, '');
+  track.media = mediaAsset(crypto.randomUUID(), file, identity, decoded);
+  track.name = name;
+  track.output.baseName = defaultBaseName(name);
 }
 
 /**

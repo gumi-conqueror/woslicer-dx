@@ -68,10 +68,6 @@ function unknownFields(input: unknown, project: ProjectFile): string[] {
   return fields;
 }
 
-/**
- * The track that the editor edits. Until the multi-track editor lands it is
- * the only track; `requireEditableTracks` keeps other projects out of the editor.
- */
 /** The track with this id; the first track when the id is absent or unknown. */
 export function currentTrack<T extends ProjectDocument | ProjectFile>(
   project: T,
@@ -80,17 +76,6 @@ export function currentTrack<T extends ProjectDocument | ProjectFile>(
   const track = project.tracks.find((item) => item.trackId === trackId) ?? project.tracks[0];
   if (!track) throw new ProjectFormatError('Project has no track');
   return track;
-}
-
-/**
- * The editor edits projects with one track. The codec reads and writes any
- * number; the workspace calls this where a document enters the editor.
- */
-export function requireEditableTracks(project: ProjectDocument | ProjectFile): void {
-  if (project.tracks.length !== 1)
-    throw new ProjectFormatError(
-      `This project has ${project.tracks.length} tracks; this version edits projects with one track`,
-    );
 }
 
 /**
@@ -221,31 +206,34 @@ export function createEmptyProject(
       playbackRate: 1,
       views: { rms: false, bands: false, spectrum: 'reserved' },
     },
-    tracks: [
-      {
-        trackId: `${projectId}:track:1`,
-        name,
-        gainDb: 0,
-        muted: false,
-        solo: false,
-        views: { rms: null, bands: null, spectrum: 'reserved' },
-        media: null,
-        slicing: {
-          fadeoutMs: 0,
-          noisegateDb: -48,
-          noisegateEnabled: true,
-          markers: [],
-          bandDetection: {
-            bands: { low: true, mid: true, high: true },
-            thresholdDb: 6,
-            minGapUnits: 1,
-            snap: true,
-          },
-        },
-        output: { baseName: defaultBaseName(''), clipStartNumber: 1, useFfNumbering: false },
-      },
-    ],
+    tracks: [createEmptyTrack(`${projectId}:track:1`, name)],
     bmhelper: null,
+  };
+}
+
+/** A track without audio, with default markers, processing and output settings. */
+export function createEmptyTrack(trackId: string, name: string): ProjectTrack {
+  return {
+    trackId,
+    name,
+    gainDb: 0,
+    muted: false,
+    solo: false,
+    views: { rms: null, bands: null, spectrum: 'reserved' },
+    media: null,
+    slicing: {
+      fadeoutMs: 0,
+      noisegateDb: -48,
+      noisegateEnabled: true,
+      markers: [],
+      bandDetection: {
+        bands: { low: true, mid: true, high: true },
+        thresholdDb: 6,
+        minGapUnits: 1,
+        snap: true,
+      },
+    },
+    output: { baseName: defaultBaseName(''), clipStartNumber: 1, useFfNumbering: false },
   };
 }
 

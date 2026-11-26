@@ -1,4 +1,4 @@
-import { currentTrack, parseProject, requireEditableTracks } from '../project/codec';
+import { currentTrack, parseProject } from '../project/codec';
 import type { ProjectDocument } from '../project/schema';
 import { MAX_TICKS, MEASURE_TICKS } from '../core/timebase';
 import type { EditorStore } from '../slicing/editor-store';
@@ -81,7 +81,6 @@ function parseEditorSession(input: Record<string, unknown>): EditorSession | nul
   try {
     const parsed = parseProject(input.project);
     if (parsed.kind !== 'supported') return null;
-    requireEditableTracks(parsed.project);
     project = parsed.project;
   } catch {
     return null;
