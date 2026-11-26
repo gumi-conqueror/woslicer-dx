@@ -400,6 +400,3 @@ test('.bmh projects round-trip through the chunk tree', () => {
 test('readBmh rejects foreign data with a clear error', () => {
   assert.throws(() => readBmh(Uint8Array.from([0, 1, 2, 3])), /BMHP/);
 });
-
-// Division type is imported for the assertion casts above.
-void (undefined as unknown as DivisionSetting | undefined);

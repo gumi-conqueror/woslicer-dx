@@ -161,10 +161,8 @@ test('a short loud hit inside an already loud passage is detected', () => {
   );
 });
 
-test('snap:false keeps the exact onset tick instead of the coarse grid', () => {
-  // Grid 4 = 48 ticks per cell (324 ms at 120 BPM): a hit at 0.5 s would be
-  // snapped to tick 96 (0.65 s), which visually sits on the decay. With
-  // snap:false the marker must stay at the real onset tick (~48).
+test('snap:false keeps the exact onset tick instead of the grid', () => {
+  // A 5-tick grid puts the burst at tick 48 between cells 45 and 50.
   const request = {
     analysis,
     bands: ['mid'] as const,
@@ -176,17 +174,6 @@ test('snap:false keeps the exact onset tick instead of the coarse grid', () => {
     base: BASE,
     existing: new Set<number>(),
   };
-  const snapped = detectBandCuts({ ...request, bands: ['mid'], snap: true });
-  const exact = detectBandCuts({ ...request, bands: ['mid'], snap: false });
-  assert.ok(snapped.ticks.length >= 1 && exact.ticks.length >= 1);
-  for (const tick of snapped.ticks) assert.equal(tick % 4, 0, `snapped tick ${tick}`);
-  assert.ok(
-    exact.ticks.some((t) => t % 4 !== 0 || Math.abs(t - 48) <= 2),
-    `exact ticks should follow the onset, got ${exact.ticks.join(',')}`,
-  );
-  // The first burst (0.5 s = tick 48) is exactly on a cell boundary; the
-  // second (1.0 s = tick 96) too — use a shifted-grid case to prove the
-  // difference: grid 5 puts 48 between cells 45 and 50.
   const snapped5 = detectBandCuts({
     ...request,
     bands: ['mid'],

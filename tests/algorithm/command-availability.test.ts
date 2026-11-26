@@ -82,7 +82,7 @@ const table: ReadonlyArray<readonly [MenuCommand, MenuEditorState, boolean]> = [
 ];
 
 describe('menu availability rules', () => {
-  it('covers every menu command exactly once in the rule table', () => {
+  it('covers every menu command and nothing else in the rule table', () => {
     const ids = new Set(table.map(([id]) => id));
     for (const id of MENU_COMMANDS) expect(ids.has(id)).toBe(true);
     for (const id of table.map(([id]) => id)) expect(MENU_COMMANDS).toContain(id);

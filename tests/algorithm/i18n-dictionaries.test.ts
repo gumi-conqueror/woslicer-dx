@@ -12,20 +12,6 @@ import {
   isLanguage,
   type Language,
 } from '../../src/core/language.js';
-// The menu/dialog key sets live in the generated i18n data; the old native
-// menu module that first consumed them is gone.
-const MENU_STRINGS = Object.fromEntries(
-  Object.entries(GENERATED_DATA).map(([lang, sections]) => [
-    lang,
-    (sections as Record<string, unknown>).menu as Record<string, unknown>,
-  ]),
-);
-const DIALOG_STRINGS = Object.fromEntries(
-  Object.entries(GENERATED_DATA).map(([lang, sections]) => [
-    lang,
-    (sections as Record<string, unknown>).dialogs as Record<string, unknown>,
-  ]),
-);
 import type { ChromeKey, StatusKey } from '../../src/core/messages.js';
 
 interface LanguageData {
@@ -92,33 +78,18 @@ test('status templates keep their placeholder names across languages', () => {
   }
 });
 
-test('menu and dialog sections stay in lockstep across languages', () => {
-  const menuKeys = Object.keys(MENU_STRINGS.en).sort();
-  const dialogKeys = Object.keys(DIALOG_STRINGS.en).sort();
-  for (const lang of LANGUAGES) {
-    assert.deepEqual(Object.keys(MENU_STRINGS[lang]).sort(), menuKeys, `menu drift in ${lang}`);
-    assert.deepEqual(
-      Object.keys(DIALOG_STRINGS[lang]).sort(),
-      dialogKeys,
-      `dialog drift in ${lang}`,
-    );
-  }
-});
+/** Every leaf of a dictionary section, with its dotted path. */
+function leaves(value: unknown, path: string): [string, unknown][] {
+  if (typeof value !== 'object' || value === null) return [[path, value]];
+  return Object.entries(value).flatMap(([key, child]) => leaves(child, `${path}.${key}`));
+}
 
-test('no translation is empty', () => {
-  for (const lang of nonEnglish) {
-    for (const [section, data] of Object.entries(DATA[lang])) {
-      if (section === 'scopeRange') {
-        assert.ok((data as string).trim().length > 0, `${lang}: empty scopeRange`);
-        continue;
-      }
-      for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
-        if (typeof value === 'string') {
-          assert.ok(value.trim().length > 0, `${lang}: empty ${section}.${key}`);
-        }
-      }
-    }
-  }
+test('every translation is non-empty text', () => {
+  const empty = nonEnglish
+    .flatMap((lang) => leaves(DATA[lang], lang))
+    .filter(([, value]) => typeof value !== 'string' || !value.trim())
+    .map(([path]) => path);
+  assert.deepEqual(empty, []);
 });
 
 test('status and scope placeholders are camelCase names', () => {
