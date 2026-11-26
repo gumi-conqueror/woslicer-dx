@@ -8,10 +8,12 @@ import {
 } from '../../src/app/commands';
 import { APPLICATION_MENU } from '../../src/app/menu';
 
-const document = (media: unknown) =>
-  ({ tracks: [{ media }] }) as unknown as MenuEditorState['document'];
+const track = (media: unknown) => ({ media }) as unknown as MenuEditorState['track'];
+const tracks = (count: number) =>
+  ({ tracks: Array.from({ length: count }, () => ({})) }) as unknown as MenuEditorState['document'];
 const state = (overrides: Partial<MenuEditorState> = {}): MenuEditorState => ({
-  document: document(null),
+  track: track(null),
+  document: tracks(1),
   source: null,
   ticks: [],
   selectedTicks: [],
@@ -23,7 +25,7 @@ const withSource = state({
   source: { name: 'a' } as unknown as MenuEditorState['source'],
   ticks: [12],
 });
-const busy = state({ ticks: [12], selectedTicks: [12], document: document({}) });
+const busy = state({ ticks: [12], selectedTicks: [12], track: track({}) });
 
 const table: ReadonlyArray<readonly [AppCommand, MenuEditorState, boolean]> = [
   // Always available: project replacement, explicit save, close, view helpers.
@@ -83,6 +85,10 @@ const table: ReadonlyArray<readonly [AppCommand, MenuEditorState, boolean]> = [
   ['paste-bmse', state(), true],
   ['measure-paste', state(), true],
   ['open-wheel', state(), true],
+  // A project keeps at least one track.
+  ['add-track', state(), true],
+  ['remove-track', state(), false],
+  ['remove-track', state({ document: tracks(2) }), true],
 ];
 
 describe('command availability rules', () => {

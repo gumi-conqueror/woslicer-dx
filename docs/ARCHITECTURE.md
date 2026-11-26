@@ -2,8 +2,11 @@
 
 woslicer-dx edits audio markers and exports WAV slices for BMS charts.
 The browser and Tauri desktop application share the Vue interface, project model and audio Worker.
-The editor edits projects with one track; the project format already stores markers and output settings per track.
-`currentTrack` in `src/project/codec.ts` is the one place that picks the edited track.
+A project has one or more tracks, each with its own audio, markers and output settings.
+The editor works on one current track. `currentTrackId` and `track` in the editor store select it;
+`currentTrack` in `src/project/codec.ts` finds a track in a document.
+Decoded audio, peaks, band analysis and loading state are per-track `sessions` in the editor store.
+The workspace keeps one audio engine (Worker) per track. Playback, preview and export use the current track.
 See [Project format](PROJECT_FORMAT.md) for that compatibility boundary.
 
 ## Source map

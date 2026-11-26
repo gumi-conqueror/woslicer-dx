@@ -9,7 +9,6 @@ import {
 import { formatRate, stepPlaybackRate } from '../core/rate';
 import { RECORDING_SEEK_SECONDS, type RecordingInput } from '../input/recording';
 import type { EditorStore } from '../slicing/editor-store';
-import { currentTrack } from '../project/codec';
 import { FIELD_RANGES } from '../project/schema';
 import type { Workspace } from '../workspace/workspace';
 import type { Playback } from '../playback';
@@ -18,7 +17,7 @@ import { visibleDialog } from '../input/context';
 /** The editor state that command availability reads. */
 export type CommandState = Pick<
   EditorStore,
-  'document' | 'source' | 'ticks' | 'selectedTicks' | 'canUndo' | 'canRedo'
+  'document' | 'track' | 'source' | 'ticks' | 'selectedTicks' | 'canUndo' | 'canRedo'
 >;
 /** Help groups, in the order the help dialog shows them. */
 export const COMMAND_GROUPS = ['project', 'edit', 'playback', 'navigation', 'output'] as const;
@@ -84,13 +83,34 @@ export const COMMANDS = {
   'relink-audio': {
     label: 'menu.relinkAudio',
     group: 'project',
-    enabled: (state) => currentTrack(state.document).media !== null,
+    enabled: (state) => state.track.media !== null,
     run: ({ workspace }) => workspace.relinkAudio(),
   },
   'open-audio': {
     label: 'menu.openAudio',
     group: 'project',
     run: ({ workspace }) => workspace.openAudio(),
+  },
+  'add-track': {
+    label: 'menu.addTrack',
+    group: 'project',
+    run: ({ workspace }) => workspace.addTrack(),
+  },
+  'remove-track': {
+    label: 'menu.removeTrack',
+    group: 'project',
+    enabled: (state) => state.document.tracks.length > 1,
+    run: ({ workspace }) => workspace.removeTrack(),
+  },
+  'previous-track': {
+    label: 'help.previousTrack',
+    group: 'navigation',
+    run: ({ workspace }) => workspace.stepTrack(-1),
+  },
+  'next-track': {
+    label: 'help.nextTrack',
+    group: 'navigation',
+    run: ({ workspace }) => workspace.stepTrack(1),
   },
   'new-project-wos': {
     label: 'menu.newProjectWos',

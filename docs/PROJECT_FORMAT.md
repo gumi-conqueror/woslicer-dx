@@ -25,8 +25,8 @@ The parser rejects invalid UTF-8, JSON, format identifiers or invalid data.
 
 A project has tracks. Each track is one complete source file with its own
 markers and output settings. All tracks share the time base, the global
-playback settings and the BMHelper data. The codec reads and writes any number of tracks. The editor edits projects
-with exactly one track; the workspace rejects others with an explanation.
+playback settings and the BMHelper data. The codec, the editor and recovery data
+handle 1 to 256 tracks. The editor edits one current track at a time.
 
 | Path | Meaning |
 | --- | --- |
@@ -119,7 +119,7 @@ so tracks may use different sample rates.
 Gains use dB, with 0 dB as unity. Mute is independent of gain and takes precedence
 over solo. If any track is soloed, only unmuted solo tracks are audible.
 `masterMuted` controls the media bus. Cue audio uses a separate route.
-The current editor applies only the supported single-track values. It does not implement multi-track summing, headroom or loudness policies.
+Playback and export currently use the current track only. The editor does not yet sum tracks or apply headroom or loudness policies.
 
 Track `rms` and `bands` values override global defaults unless they are `null`.
 Spectrum is reserved: there is no enabled control or analysis task.
@@ -160,8 +160,7 @@ views. These are constructor defaults, not user-configurable defaults.
 
 | Input | Behavior |
 | --- | --- |
-| Version 2 with one track | Editable and saveable. Missing media can be relinked manually. |
-| Version 2 with several tracks | Rejected with an explanation; the current workspace stays. |
+| Version 2 | Editable and saveable with any number of tracks. Missing media can be relinked per track. The desktop app reopens each track's audio. |
 | Version 1 | Upgraded as described above, or rejected. |
 | Future version or invalid file | Rejected; the current workspace and source file stay. |
 
@@ -208,7 +207,7 @@ and history unchanged.
 loaded audio preserves the actual media. Starting a project from WOS creates
 an empty project. `.wos` export is a partial projection and does not mark the
 whole project as saved. It rejects unrepresentable values such as fractional
-noise-gate thresholds and does not flatten multiple tracks.
+noise-gate thresholds. It writes the current track only.
 
 ## Validation coverage
 
