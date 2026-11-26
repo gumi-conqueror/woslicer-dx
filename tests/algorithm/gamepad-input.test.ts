@@ -36,6 +36,21 @@ describe('controller reader', () => {
     expect(read(pad([15]), 1000, true)).toEqual([]);
     expect(read(pad([15]), 1090, true)).toEqual([{ control: 'dpad-right', phase: 'repeat' }]);
   });
+  it('presses a trigger on a light touch and releases it below a lower travel', () => {
+    const read = createGamepadReader();
+    const trigger = (value: number) => {
+      const state = pad();
+      const button = state.buttons[7];
+      if (button) Object.assign(button, { value, pressed: value > 0.5 });
+      return state;
+    };
+    // A trigger stop can end travel near 0.2; 0.12 already counts.
+    expect(read(trigger(0.1), 0, true)).toEqual([]);
+    expect(read(trigger(0.13), 10, true)).toEqual([{ control: 'rt', phase: 'press' }]);
+    // Resting just under the press threshold keeps it held.
+    expect(read(trigger(0.08), 20, true)).toEqual([]);
+    expect(read(trigger(0.05), 30, true)).toEqual([{ control: 'rt', phase: 'release' }]);
+  });
   it('keeps the triggers and face buttons from repeating', () => {
     const read = createGamepadReader();
     expect(pressed(read(pad([6, 7, 0]), 0, true))).toEqual(['a', 'lt', 'rt']);
@@ -117,9 +132,13 @@ describe('controller navigation', () => {
     expect(uiNavigation('x')).toBeUndefined();
   });
   it('points the wheel with the right stick, then the left stick, then the D-pad', () => {
-    expect(pointingVector(pad([12, 15], [0.9, 0, 0, -0.8]))).toEqual({ x: 0, y: -0.8 });
-    expect(pointingVector(pad([12, 15], [0.9, 0, 0, 0]))).toEqual({ x: 0.9, y: 0 });
-    expect(pointingVector(pad([12, 15]))).toEqual({ x: 1, y: -1 });
-    expect(pointingVector(undefined)).toEqual({ x: 0, y: 0 });
+    expect(pointingVector(pad([12, 15], [0.9, 0, 0, -0.8]))).toEqual({
+      x: 0,
+      y: -0.8,
+      from: 'stick',
+    });
+    expect(pointingVector(pad([12, 15], [0.9, 0, 0, 0]))).toEqual({ x: 0.9, y: 0, from: 'stick' });
+    expect(pointingVector(pad([12, 15]))).toEqual({ x: 1, y: -1, from: 'dpad' });
+    expect(pointingVector(undefined)).toEqual({ x: 0, y: 0, from: null });
   });
 });
