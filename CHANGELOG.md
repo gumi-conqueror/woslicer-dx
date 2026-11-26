@@ -8,6 +8,12 @@
 
 - Ctrl/Cmd+Shift+↑ and Ctrl/Cmd+Shift+↓ move the current track up or down the track list.
 
+## 2.0.0-alpha.7 — 2026-11-27
+
+### Added
+
+- **Tools → Input settings** changes keyboard and controller bindings for editing and recording, and the commands of the wheel (up to four wheels). Settings stay on this device. A new binding takes the key away from its previous command.
+
 ## 2.0.0-alpha.6 — 2026-11-27
 
 ### Added

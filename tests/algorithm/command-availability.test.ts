@@ -92,6 +92,7 @@ const table: ReadonlyArray<readonly [AppCommand, MenuEditorState, boolean]> = [
   // One track cannot move.
   ['move-track-up', state(), false],
   ['move-track-down', state(), false],
+  ['input-settings', state(), true],
   ['export-all-tracks', state(), false],
   ['remove-track', state(), false],
   ['remove-track', state({ document: tracks(2) }), true],
