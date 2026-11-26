@@ -31,14 +31,7 @@ export default defineConfig({
           name: 'business',
           environment: 'happy-dom',
           setupFiles: ['tests/support/setup-audio.ts'],
-          include: [
-            'tests/business/**/*.test.ts',
-            'tests/refactor-guard/**/*.test.ts',
-            // Not yet migrated.
-            'tests/components/**/*.test.ts',
-            'tests/app/**/*.test.ts',
-            'tests/project/**/*.test.ts',
-          ],
+          include: ['tests/business/**/*.test.ts', 'tests/refactor-guard/**/*.test.ts'],
         },
       },
     ],
