@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import { useEditorStore, type CueMode } from '../../src/slicing/editor-store';
+import { useEditorStore } from '../../src/slicing/editor-store';
+import type { CueMode } from '../../src/project/schema';
 import { createPlayback, type Playback } from '../../src/playback';
 import { renderSlice } from '../../src/core/audio/slice';
 import { createCommands } from '../../src/app/commands';
