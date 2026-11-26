@@ -67,6 +67,6 @@
 
 - Use the relevant skills in [`.agents/skills/`](.agents/skills/README.md). Load only the skills needed for the task.
 - Repository constraints and explicit user instructions take precedence over generic skill advice. Prioritize human maintenance when choosing between valid implementations.
-- For maintainability refactors, preserve platform and audio-processing boundaries and audio output. Do not add structure for multi-track support.
+- For maintainability refactors, preserve platform and audio-processing boundaries and audio output.
 - Keep upstream skills at their recorded submodule commits. Do not edit upstream files for project-specific rules.
 - Initialize missing submodules with the [setup guide](docs/SKILLS.md). Read the skill catalog for companion-skill references.
