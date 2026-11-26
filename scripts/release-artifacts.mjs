@@ -89,6 +89,30 @@ export function selectSourceRun(runs, commit) {
   return run;
 }
 
+/**
+ * Waits until the newest main build of `commit` has finished, so a tag can be pushed right
+ * after the merge. `load` returns the workflow runs for the commit. With no run yet, the wait
+ * ends after `appearMs`; with a run in progress, after `deadlineMs`.
+ */
+export async function awaitSourceRun(
+  load,
+  commit,
+  { sleep, now = Date.now, pollMs = 60_000, appearMs = 5 * 60_000, deadlineMs = 90 * 60_000 },
+) {
+  const start = now();
+  for (;;) {
+    const runs = load();
+    const waited = now() - start;
+    if (runs.some((item) => item.head_sha === commit && item.head_branch === 'main')) {
+      const run = selectSourceRun(runs, commit);
+      if (run.status === 'completed') return run;
+      if (waited >= deadlineMs)
+        throw new Error(`Main build ${run.html_url} is still running; rerun this workflow later`);
+    } else if (waited >= appearMs) return selectSourceRun(runs, commit);
+    await sleep(pollMs);
+  }
+}
+
 // Check job results too, even if a future workflow permits individual job failures.
 export function validateSourceRun(run, jobs, artifacts, commit) {
   if (
@@ -132,17 +156,22 @@ function pages(endpoint, key) {
   }
 }
 
-function resolveRun(commit) {
+async function resolveRun(commit) {
   const repo = process.env.GITHUB_REPOSITORY;
   if (!/^[\w.-]+\/[\w.-]+$/.test(repo ?? '') || !/^[a-f0-9]{40}$/.test(commit)) {
     throw new Error('Expected a GitHub repository and full commit');
   }
   const base = `repos/${repo}/actions`;
-  const runs = pages(
-    `${base}/workflows/build.yml/runs?branch=main&head_sha=${commit}`,
-    'workflow_runs',
+  const run = await awaitSourceRun(
+    () => pages(`${base}/workflows/build.yml/runs?branch=main&head_sha=${commit}`, 'workflow_runs'),
+    commit,
+    {
+      sleep: (ms) => {
+        console.log('Waiting for the main build of this commit to finish');
+        return new Promise((done) => setTimeout(done, ms));
+      },
+    },
   );
-  const run = selectSourceRun(runs, commit);
   const jobs = pages(`${base}/runs/${run.id}/jobs?filter=latest`, 'jobs');
   const artifacts = pages(`${base}/runs/${run.id}/artifacts`, 'artifacts');
   const selected = validateSourceRun(run, jobs, artifacts, commit);
@@ -170,7 +199,7 @@ if (import.meta.main) {
   if (command === 'resolve') {
     if (process.env.GITHUB_REF_NAME !== `v${pkg.version}`)
       throw new Error('Tag does not match package version');
-    resolveRun(commit);
+    await resolveRun(commit);
   } else if (command === 'record') {
     const info = json('src-tauri/generated/build-info.json');
     if (info.commit !== commit || info.version !== pkg.version || info.dirty !== false) {
