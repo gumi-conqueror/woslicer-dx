@@ -69,7 +69,7 @@ key identity. The codec sorts entries and keys, rejects duplicate ticks or keys,
 and omits an empty collection.
 
 Key numbers are logical marker attributes, independent of the input device.
-[`src/input/recording.ts`](../src/input/recording.ts) defines the keyboard,
+[`src/input/bindings.ts`](../src/input/bindings.ts) defines the keyboard,
 Xbox and YuanCon mappings and supplies the in-app guide. Device protocol evidence
 and limitations are documented with the [input fixture](../tests/fixtures/input/README.md).
 

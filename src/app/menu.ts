@@ -1,128 +1,67 @@
-import type { EditorStore } from '../slicing/editor-store';
-import { currentTrack } from '../project/codec';
+import type { AppCommand } from './commands';
 
-export type MenuEditorState = Pick<
-  EditorStore,
-  'document' | 'source' | 'ticks' | 'selectedTicks' | 'canUndo' | 'canRedo'
->;
+interface MenuGroup {
+  label: string;
+  mnemonic: string;
+  commands: readonly { id: AppCommand; mnemonic: string }[];
+}
 
-// The visible menu is also the source of its command type and input validation.
+/** Menu structure: groups, order and mnemonics. Labels and availability come from the commands. */
 export const APPLICATION_MENU = [
   {
     label: 'menu.project',
     mnemonic: 'p',
     commands: [
-      { id: 'open-project', key: 'menu.openProject', mnemonic: 'o' },
-      // Limited projects still save: the opened file's bytes are written unchanged.
-      { id: 'save-project', key: 'menu.saveProject', mnemonic: 's' },
-      { id: 'relink-audio', key: 'menu.relinkAudio', mnemonic: 'r' },
-      { id: 'open-audio', key: 'menu.openAudio', mnemonic: 'a' },
-      { id: 'new-project-wos', key: 'menu.newProjectWos', mnemonic: 'n' },
-      { id: 'import-wos', key: 'menu.importWos', mnemonic: 'i' },
-      { id: 'export-wos', key: 'menu.exportWos', mnemonic: 'w' },
-      { id: 'close-project', key: 'chrome.close', mnemonic: 'c' },
-      { id: 'export-slice', key: 'menu.exportSlice', mnemonic: 'e' },
-      { id: 'export-all', key: 'menu.exportAll', mnemonic: 'x' },
+      { id: 'open-project', mnemonic: 'o' },
+      { id: 'save-project', mnemonic: 's' },
+      { id: 'relink-audio', mnemonic: 'r' },
+      { id: 'open-audio', mnemonic: 'a' },
+      { id: 'new-project-wos', mnemonic: 'n' },
+      { id: 'import-wos', mnemonic: 'i' },
+      { id: 'export-wos', mnemonic: 'w' },
+      { id: 'close-project', mnemonic: 'c' },
+      { id: 'export-slice', mnemonic: 'e' },
+      { id: 'export-all', mnemonic: 'x' },
     ],
   },
   {
     label: 'menu.edit',
     mnemonic: 'e',
     commands: [
-      { id: 'undo', key: 'menu.undo', mnemonic: 'u' },
-      { id: 'redo', key: 'menu.redo', mnemonic: 'r' },
-      { id: 'select-all', key: 'menu.selectAll', mnemonic: 'a' },
-      { id: 'clear-markers', key: 'menu.clearMarkers', mnemonic: 'd' },
-      { id: 'copy-selection', key: 'menu.copySelection', mnemonic: 'c' },
-      { id: 'cut-selection', key: 'menu.cutSelection', mnemonic: 't' },
-      { id: 'paste-selection', key: 'menu.pasteSelection', mnemonic: 'p' },
+      { id: 'undo', mnemonic: 'u' },
+      { id: 'redo', mnemonic: 'r' },
+      { id: 'select-all', mnemonic: 'a' },
+      { id: 'clear-markers', mnemonic: 'd' },
+      { id: 'copy-selection', mnemonic: 'c' },
+      { id: 'cut-selection', mnemonic: 't' },
+      { id: 'paste-selection', mnemonic: 'p' },
     ],
   },
   {
     label: 'menu.view',
     mnemonic: 'v',
     commands: [
-      { id: 'zoom-in', key: 'menu.zoomIn', mnemonic: 'i' },
-      { id: 'zoom-out', key: 'menu.zoomOut', mnemonic: 'o' },
+      { id: 'zoom-in', mnemonic: 'i' },
+      { id: 'zoom-out', mnemonic: 'o' },
     ],
   },
   {
     label: 'menu.tools',
     mnemonic: 't',
     commands: [
-      { id: 'toggle-recording', key: 'recording.mode', mnemonic: 'r' },
-      { id: 'connect-yuancon', key: 'recording.controller', mnemonic: 'y' },
-      { id: 'calibrate', key: 'chrome.calibrate', mnemonic: 'c' },
+      { id: 'toggle-recording', mnemonic: 'r' },
+      { id: 'connect-yuancon', mnemonic: 'y' },
+      { id: 'calibrate', mnemonic: 'c' },
     ],
   },
   {
     label: 'menu.help',
     mnemonic: 'h',
     commands: [
-      { id: 'help', key: 'menu.guide', mnemonic: 'g' },
-      { id: 'troubleshoot', key: 'menu.troubleshoot', mnemonic: 't' },
-      { id: 'open-data-folder', key: 'menu.openDataFolder', mnemonic: 'd' },
-      { id: 'about', key: 'menu.about', mnemonic: 'a' },
+      { id: 'help', mnemonic: 'g' },
+      { id: 'troubleshoot', mnemonic: 't' },
+      { id: 'open-data-folder', mnemonic: 'd' },
+      { id: 'about', mnemonic: 'a' },
     ],
   },
-] as const;
-
-export type MenuCommand = (typeof APPLICATION_MENU)[number]['commands'][number]['id'];
-export const MENU_COMMANDS = APPLICATION_MENU.flatMap((group) =>
-  group.commands.map((item) => item.id),
-);
-
-/** Recording needs audio. */
-export function canRecord(editor: Pick<MenuEditorState, 'source'>): boolean {
-  return editor.source !== null;
-}
-
-/**
- * Menu availability reflects the workspace guards; commands also validate at
- * their mutation boundary because shortcuts and toolbars bypass this menu.
- */
-export function menuCommandEnabled(id: MenuCommand, editor: MenuEditorState): boolean {
-  switch (id) {
-    case 'open-project':
-    case 'new-project-wos':
-    case 'save-project':
-    case 'close-project':
-    case 'zoom-in':
-    case 'zoom-out':
-    case 'about':
-    case 'help':
-    case 'troubleshoot':
-    case 'open-data-folder':
-    case 'connect-yuancon':
-      return true;
-    case 'toggle-recording':
-      return canRecord(editor);
-    case 'calibrate':
-      return editor.source !== null;
-    case 'open-audio':
-    case 'import-wos':
-    case 'export-wos':
-    case 'paste-selection':
-      return true;
-    case 'relink-audio':
-      return currentTrack(editor.document).media !== null;
-    case 'export-slice':
-    case 'export-all':
-      return editor.source !== null && editor.ticks.length > 0;
-    case 'undo':
-      return editor.canUndo;
-    case 'redo':
-      return editor.canRedo;
-    case 'select-all':
-    case 'copy-selection':
-      return editor.ticks.length > 0;
-    case 'clear-markers':
-      return editor.ticks.length > 0;
-    case 'cut-selection':
-      return editor.selectedTicks.length > 0;
-    default: {
-      const exhaustive: never = id;
-      return exhaustive;
-    }
-  }
-}
+] as const satisfies readonly MenuGroup[];

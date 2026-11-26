@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
-  menuCommandEnabled,
-  MENU_COMMANDS,
-  type MenuCommand,
-  type MenuEditorState,
-} from '../../src/app/menu';
-import { APP_COMMANDS } from '../../src/app/command-types';
+  APP_COMMANDS,
+  COMMANDS,
+  commandEnabled,
+  type AppCommand,
+  type CommandState as MenuEditorState,
+} from '../../src/app/commands';
+import { APPLICATION_MENU } from '../../src/app/menu';
 
 const document = (media: unknown) =>
   ({ tracks: [{ media }] }) as unknown as MenuEditorState['document'];
@@ -24,7 +25,7 @@ const withSource = state({
 });
 const busy = state({ ticks: [12], selectedTicks: [12], document: document({}) });
 
-const table: ReadonlyArray<readonly [MenuCommand, MenuEditorState, boolean]> = [
+const table: ReadonlyArray<readonly [AppCommand, MenuEditorState, boolean]> = [
   // Always available: project replacement, explicit save, close, view helpers.
   ['open-project', state(), true],
   ['new-project-wos', busy, true],
@@ -65,18 +66,34 @@ const table: ReadonlyArray<readonly [MenuCommand, MenuEditorState, boolean]> = [
   ['cut-selection', state({ ticks: [12], selectedTicks: [12] }), true],
   ['cut-selection', state(), false],
   ['paste-selection', state(), true],
+  // Playback, recording and marker placement need audio.
+  ['play-pause', state(), false],
+  ['play-pause', withSource, true],
+  ['preview', state(), false],
+  ['preview-previous', withSource, true],
+  ['seek-backward', withSource, true],
+  ['recording-tap', withSource, true],
+  ['seek-forward', state(), false],
+  ['place-marker', state(), false],
+  ['place-marker-free', withSource, true],
+  // Marker-wide edits need markers.
+  ['shift-markers-earlier', state(), false],
+  ['shift-markers-later', withSource, true],
+  ['copy-bmse', state(), false],
+  ['paste-bmse', state(), true],
+  ['measure-paste', state(), true],
+  ['open-wheel', state(), true],
 ];
 
-describe('menu availability rules', () => {
-  it('covers every menu command and nothing else in the rule table', () => {
+describe('command availability rules', () => {
+  it('covers every command that has a rule', () => {
     const ids = new Set(table.map(([id]) => id));
-    for (const id of MENU_COMMANDS) expect(ids.has(id)).toBe(true);
-    for (const id of table.map(([id]) => id)) expect(MENU_COMMANDS).toContain(id);
+    for (const id of APP_COMMANDS)
+      if ('enabled' in COMMANDS[id]) expect(ids.has(id), id).toBe(true);
+    for (const group of APPLICATION_MENU)
+      for (const item of group.commands) expect(ids.has(item.id), item.id).toBe(true);
   });
   it.each(table)('enables %s per the shared rule', (id, editorState, expected) => {
-    expect(menuCommandEnabled(id, editorState)).toBe(expected);
-  });
-  it('keeps menu commands inside the application command set', () => {
-    for (const id of MENU_COMMANDS) expect(APP_COMMANDS).toContain(id);
+    expect(commandEnabled(id, editorState)).toBe(expected);
   });
 });

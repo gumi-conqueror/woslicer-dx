@@ -3,35 +3,40 @@ import { computed, ref } from 'vue';
 import { ElButton, ElDialog } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import {
-  SHORTCUTS,
+  boundCommands,
   CALIBRATION_TAP,
   CANCEL,
-  formatBindings,
-  gamepadShortcut,
-  SHORTCUT_GROUPS,
+  formatChords,
+  gamepadControls,
+  keyboardChords,
 } from '../../input/bindings';
-import { GAMEPAD_MENU_SHORTCUTS } from '../../input/gamepad';
+import { UI_NAVIGATION } from '../../input/gamepad';
+import { COMMAND_GROUPS, commandGroup, commandLabel } from '../commands';
 import { APPLICATION_MENU } from '../menu';
 import GamepadIcon from '../../ui/GamepadIcon.vue';
 import UninstallGuide from './UninstallGuide.vue';
 import RecordingGuide from './RecordingGuide.vue';
 const open = defineModel<boolean>({ required: true });
 const { t } = useI18n();
-const groups = SHORTCUT_GROUPS;
 // This choice belongs to the guide. Actual input activity must never change it.
 const guideDevice = ref<'keyboard' | 'gamepad' | 'yuancon'>('keyboard');
+const editing = boundCommands('edit').map((command) => ({
+  command,
+  group: commandGroup(command),
+  keyboard: formatChords(keyboardChords(command)),
+  gamepad: gamepadControls(command),
+}));
 const sections = computed(() =>
-  groups
-    .map((group) => ({
-      group,
-      shortcuts: SHORTCUTS.filter(
-        (item) =>
-          item.group === group &&
-          (guideDevice.value === 'keyboard' ||
-            (guideDevice.value === 'gamepad' && gamepadShortcut(item.command))),
-      ),
-    }))
-    .filter((section) => section.shortcuts.length),
+  COMMAND_GROUPS.map((group) => ({
+    group,
+    rows: editing.filter(
+      (row) =>
+        row.group === group &&
+        (guideDevice.value === 'keyboard'
+          ? row.keyboard
+          : guideDevice.value === 'gamepad' && row.gamepad.length),
+    ),
+  })).filter((section) => section.rows.length),
 );
 </script>
 <template>
@@ -78,7 +83,7 @@ const sections = computed(() =>
       <p>{{ t('help.workspaceBody') }}</p>
       <template v-if="guideDevice === 'keyboard'">
         <h3>{{ t('help.mouse') }}</h3>
-        <p>{{ t('help.mouseBody', { cancel: formatBindings(CANCEL) }) }}</p>
+        <p>{{ t('help.mouseBody', { cancel: formatChords(CANCEL) }) }}</p>
         <h3>{{ t('help.keyboard') }}</h3>
         <p>{{ t('help.keyboardScope') }}</p>
         <p>{{ t('input.altNavigation') }}</p>
@@ -89,24 +94,29 @@ const sections = computed(() =>
             >{{ t(menu.label) }} <kbd>Alt+{{ menu.mnemonic.toUpperCase() }}</kbd></span
           >
         </div>
+        <h4>{{ t('input.wheel') }}</h4>
+        <p>{{ t('input.wheelKeyboard', { key: formatChords(keyboardChords('open-wheel')) }) }}</p>
       </template>
       <template v-else-if="guideDevice === 'gamepad'">
         <h3>{{ t('input.xbox') }}</h3>
-        <p>{{ t('input.gamepadNotice') }}</p>
         <p>{{ t('input.gamepadScope') }}</p>
-        <h4>{{ t('input.menuMode') }}</h4>
+        <h4>{{ t('input.navigation') }}</h4>
+        <p>{{ t('input.dialogNavigation') }}</p>
         <dl>
           <template
-            v-for="binding in GAMEPAD_MENU_SHORTCUTS"
-            :key="binding.control"
-            ><dt>{{ t(binding.label) }}</dt>
-            <dd><GamepadIcon :control="binding.control" /></dd
+            v-for="item in UI_NAVIGATION"
+            :key="item.action"
+            ><dt>{{ t(item.label) }}</dt>
+            <dd>
+              <GamepadIcon
+                v-for="control in item.controls"
+                :key="control"
+                :control="control"
+              /></dd
           ></template>
         </dl>
-        <p>{{ t('input.dialogNavigation') }}</p>
-        <p class="scroll-hint">
-          <GamepadIcon control="lt" /><GamepadIcon control="rt" />{{ t('input.scrollHelp') }}
-        </p>
+        <h4>{{ t('input.wheel') }}</h4>
+        <p>{{ t('input.wheelGamepad') }}</p>
       </template>
       <RecordingGuide :device="guideDevice" />
       <section
@@ -116,15 +126,18 @@ const sections = computed(() =>
         <h4>{{ t(`help.groups.${section.group}`) }}</h4>
         <dl>
           <template
-            v-for="shortcut in section.shortcuts"
-            :key="shortcut.command"
+            v-for="row in section.rows"
+            :key="row.command"
           >
-            <dt>{{ t(shortcut.label) }}</dt>
+            <dt>{{ t(commandLabel(row.command)) }}</dt>
             <dd>
-              <GamepadIcon
-                v-if="guideDevice === 'gamepad'"
-                :control="gamepadShortcut(shortcut.command) ?? 'a'"
-              /><kbd v-else>{{ formatBindings(shortcut.bindings) }}</kbd>
+              <template v-if="guideDevice === 'gamepad'"
+                ><GamepadIcon
+                  v-for="control in row.gamepad"
+                  :key="control"
+                  :control="control"
+              /></template>
+              <kbd v-else>{{ row.keyboard }}</kbd>
             </dd>
           </template>
         </dl>
@@ -133,8 +146,8 @@ const sections = computed(() =>
       <p v-if="guideDevice === 'keyboard'">
         {{
           t('help.calibrationBody', {
-            keys: formatBindings(CALIBRATION_TAP),
-            cancel: formatBindings(CANCEL),
+            keys: formatChords(CALIBRATION_TAP),
+            cancel: formatChords(CANCEL),
           })
         }}
       </p>
@@ -167,11 +180,6 @@ const sections = computed(() =>
   display: flex;
   flex-wrap: wrap;
   gap: 6px 16px;
-}
-.scroll-hint {
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 h3 {
   margin: 18px 0 6px;

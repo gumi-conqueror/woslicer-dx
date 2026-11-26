@@ -9,14 +9,14 @@ import EditorToolbar from '../../src/app/components/EditorToolbar.vue';
 import WorkspacePanels from '../../src/app/components/WorkspacePanels.vue';
 import AboutDialog from '../../src/app/components/AboutDialog.vue';
 import ApplicationMenu from '../../src/app/components/ApplicationMenu.vue';
-import { APPLICATION_MENU, menuCommandEnabled } from '../../src/app/menu';
+import { APPLICATION_MENU } from '../../src/app/menu';
+import { APP_COMMANDS, commandEnabled, commandLabel } from '../../src/app/commands';
 import { setupI18n } from '../../src/i18n/setup';
 import { useEditorStore } from '../../src/slicing/editor-store';
 import { useBmhelperStore } from '../../src/bmhelper/store';
 import { useUiPreferencesStore } from '../../src/ui/preferences';
 import { GRID_DENSITIES } from '../../src/core/gridlines';
 import { MAX_TICKS } from '../../src/core/timebase';
-import { APP_COMMANDS } from '../../src/app/command-types';
 import { createI18n } from 'vue-i18n';
 import en from '../../src/i18n/en.json';
 import { workspaceKey } from '../../src/workspace/workspace';
@@ -103,10 +103,10 @@ describe('application controls', () => {
           (item) => item.id,
         ),
       ).toEqual(['help', 'troubleshoot', 'open-data-folder', 'about']);
-      expect(menuCommandEnabled('calibrate', instance.editor)).toBe(false);
+      expect(commandEnabled('calibrate', instance.editor)).toBe(false);
       instance.editor.setSource(source);
       await nextTick();
-      expect(menuCommandEnabled('calibrate', instance.editor)).toBe(true);
+      expect(commandEnabled('calibrate', instance.editor)).toBe(true);
     } finally {
       wrapper.unmount();
       instance.dispose();
@@ -130,7 +130,7 @@ describe('application controls', () => {
           // labels are verified through the same translator the component uses.
           expect(wrapper.text()).toContain(translate(group.label));
           for (const item of group.commands)
-            expect(translate(item.key)).not.toMatch(/^(menu|chrome)\./);
+            expect(translate(commandLabel(item.id))).not.toMatch(/^(menu|chrome)\./);
         }
       }
     } finally {

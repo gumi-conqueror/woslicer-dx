@@ -1,19 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { GAMEPAD_CONTROLS, GAMEPAD_ROTATIONS, type GamepadControl } from '../input/gamepad';
-const props = defineProps<{ control: GamepadControl; dpadOnly?: boolean }>();
-const label = computed(() => {
-  const text = [...GAMEPAD_CONTROLS, ...GAMEPAD_ROTATIONS].find(
-    (item) => item.id === props.control,
-  )?.label;
-  return props.dpadOnly ? text?.split(' / ')[0] : text;
-});
-const arrows = {
+import { GAMEPAD_CONTROLS, type GamepadControl } from '../input/gamepad';
+const props = defineProps<{ control: GamepadControl }>();
+const label = computed(() => GAMEPAD_CONTROLS.find((item) => item.id === props.control)?.label);
+const arrows: Readonly<Record<string, string>> = {
   up: 'm12 7-3 4h6Z',
   down: 'm12 17-3-4h6Z',
   left: 'm7 12 4-3v6Z',
   right: 'm17 12-4-3v6Z',
 };
+/** The direction of a D-pad or stick control, if it has one. */
+const direction = computed(() => props.control.match(/^(?:dpad|ls|rs)-(up|down|left|right)$/)?.[1]);
+const stick = computed(() => props.control.match(/^(ls|rs)(?:-|$)/)?.[1]?.toUpperCase());
 </script>
 <template>
   <svg
@@ -43,17 +41,43 @@ const arrows = {
         LS
       </text>
     </template>
-    <template v-else-if="control in arrows">
+    <template v-else-if="control.startsWith('dpad-') && direction">
       <path
         d="M8 3h8v5h5v8h-5v5H8v-5H3V8h5Z"
         fill="none"
         stroke="currentColor"
       />
       <path
-        v-if="control === 'up' || control === 'down' || control === 'left' || control === 'right'"
-        :d="arrows[control]"
+        :d="arrows[direction]"
         fill="currentColor"
       />
+    </template>
+    <template v-else-if="stick">
+      <circle
+        cx="12"
+        cy="12"
+        r="10"
+        fill="none"
+        stroke="currentColor"
+        :stroke-dasharray="direction ? undefined : '2 2'"
+      />
+      <path
+        v-if="direction"
+        :d="arrows[direction]"
+        transform="translate(12 12) scale(1.35) translate(-12 -12)"
+        fill="currentColor"
+        opacity="0.45"
+      />
+      <text
+        x="12"
+        y="15.5"
+        text-anchor="middle"
+        font-size="9"
+        font-weight="600"
+        fill="currentColor"
+      >
+        {{ stick }}
+      </text>
     </template>
     <template v-else-if="control === 'menu' || control === 'view'">
       <circle
