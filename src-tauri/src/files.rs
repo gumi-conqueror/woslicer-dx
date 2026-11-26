@@ -35,7 +35,7 @@ pub(crate) enum FileKind {
 impl FileKind {
     fn extensions(&self) -> &[&str] {
         match self {
-            // Keep aligned with AUDIO_EXTENSIONS in src/core/audio-formats.ts.
+            // AUDIO_EXTENSIONS in src/core/audio-formats.ts owns this list; scripts/native-consistency.test.mjs checks it.
             Self::Audio => &[
                 "wav", "ogg", "oga", "flac", "mp3", "aac", "m4a", "mp4", "aif", "aiff", "mka",
                 "mkv",

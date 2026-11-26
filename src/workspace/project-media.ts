@@ -3,6 +3,8 @@ import type { MediaAsset, ProjectDocument, ProjectFileV1 } from '../project/sche
 import type { OpenedFile } from '../platform/contracts';
 import type { DecodedAudio } from '../audio/audio-jobs';
 import { audioFileFormat } from '../core/audio-formats';
+import { defaultBaseName } from '../core/slices';
+import { portableStem } from '../platform/file-names';
 
 /** Portable metadata includes media identity but never a host grant. */
 export async function identifyAudio(file: OpenedFile) {
@@ -78,19 +80,11 @@ export function projectWithAudio(
   ];
   if (!preserveBaseName) {
     project.name = name;
-    project.output.baseName = name.replace(/[^\w.-]/g, '_') || 'slice';
+    project.output.baseName = defaultBaseName(name);
   }
   return project;
 }
 
 export function projectFileName(name: string): string {
-  const stem =
-    name
-      .replace(/\.wosdx$/i, '')
-      // Control characters are intentionally matched: they must never survive into a project file name.
-      // eslint-disable-next-line no-control-regex
-      .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_')
-      .replace(/[. ]+$/g, '')
-      .slice(0, 60) || 'project';
-  return `${/^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)/i.test(stem) ? '_' : ''}${stem}.wosdx`;
+  return `${portableStem(name.replace(/\.wosdx$/i, ''), 'project', 60)}.wosdx`;
 }

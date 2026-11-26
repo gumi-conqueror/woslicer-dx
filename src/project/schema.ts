@@ -6,8 +6,17 @@ import { audioFileFormatSchema } from '../core/audio-formats';
 export const PROJECT_FORMAT = 'wosdx' as const;
 export const PROJECT_SCHEMA_VERSION = 1 as const;
 // Application memory budgets, not requirements of the original binary formats.
+// The native host repeats them in src-tauri/src/files.rs and session.rs;
+// scripts/native-consistency.test.mjs checks that the values agree.
+/** Largest audio or exported file that the app reads or writes. */
+export const MEDIA_FILE_MAX_BYTES = 2 * 1024 * 1024 * 1024;
 export const PROJECT_FILE_MAX_BYTES = 64 * 1024 * 1024;
 export const SESSION_FILE_MAX_BYTES = PROJECT_FILE_MAX_BYTES + 1024 * 1024;
+/** A byte budget as shown in messages: `2 GiB`, `64 MiB`. */
+export function byteLimitText(bytes: number): string {
+  const gib = bytes / 1024 ** 3;
+  return Number.isInteger(gib) ? `${gib} GiB` : `${bytes / 1024 ** 2} MiB`;
+}
 export const PROJECT_MAX_MEDIA = 256;
 export const PROJECT_MAX_TRACKS = 256;
 export const PROJECT_MAX_CLIPS = 100_000;

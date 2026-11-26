@@ -7,7 +7,7 @@ import {
   projectFromWos,
   projectToWos,
 } from '../project/codec';
-import { PROJECT_FILE_MAX_BYTES } from '../project/schema';
+import { byteLimitText, MEDIA_FILE_MAX_BYTES, PROJECT_FILE_MAX_BYTES } from '../project/schema';
 import {
   activeMedia,
   identifyAudio,
@@ -387,8 +387,9 @@ export function createWorkspace(options: WorkspaceOptions) {
       revision = editor.docRevision,
       documentGeneration = editor.documentGeneration;
     try {
-      if (file.size > (project ? PROJECT_FILE_MAX_BYTES : 2 * 1024 * 1024 * 1024))
-        throw new Error(project ? 'Project exceeds 64 MiB' : 'Audio exceeds 2 GiB');
+      const limit = project ? PROJECT_FILE_MAX_BYTES : MEDIA_FILE_MAX_BYTES;
+      if (file.size > limit)
+        throw new Error(`${project ? 'Project' : 'Audio'} exceeds ${byteLimitText(limit)}`);
       const bytes = new Uint8Array(await file.arrayBuffer());
       if (
         !disposed &&

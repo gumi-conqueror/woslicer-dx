@@ -1,10 +1,9 @@
 import { invoke } from '@tauri-apps/api/core';
-import { PROJECT_FILE_MAX_BYTES } from '../project/schema';
+import { byteLimitText, MEDIA_FILE_MAX_BYTES, PROJECT_FILE_MAX_BYTES } from '../project/schema';
 import type { OpenedFile, Platform } from './contracts';
 import type { AboutLink } from './about-links';
 
 const CHUNK_BYTES = 1024 * 1024;
-const MAX_FILE_BYTES = 2 * 1024 * 1024 * 1024;
 
 function reference(value: unknown): string {
   if (typeof value !== 'string' || value.length === 0) throw new Error('Invalid host reference');
@@ -25,13 +24,13 @@ async function readOpened(value: unknown, project = false): Promise<OpenedFile> 
     typeof value.size !== 'number' ||
     !Number.isSafeInteger(value.size) ||
     value.size < 0 ||
-    value.size > MAX_FILE_BYTES
+    value.size > MEDIA_FILE_MAX_BYTES
   ) {
     throw new Error('Invalid host file descriptor');
   }
   const id = reference(value.reference);
   if ((project || /\.wosdx$/i.test(value.name)) && value.size > PROJECT_FILE_MAX_BYTES)
-    throw new Error('Project exceeds 64 MiB');
+    throw new Error(`Project exceeds ${byteLimitText(PROJECT_FILE_MAX_BYTES)}`);
   // Every transfer reads through its own host handle; concurrent transfers of
   // the same reference keep independent seek positions and lifetimes.
   const transfer = reference(await invoke('begin_read', { reference: id }));
@@ -80,7 +79,7 @@ export function createTauriPlatform(): Platform {
     },
     async saveFile(kind, name, bytes) {
       if (kind === 'wosdx' && bytes.byteLength > PROJECT_FILE_MAX_BYTES)
-        throw new Error('Project exceeds 64 MiB');
+        throw new Error(`Project exceeds ${byteLimitText(PROJECT_FILE_MAX_BYTES)}`);
       const id: unknown = await invoke('prepare_save', { kind, name, size: bytes.byteLength });
       if (id === null) return false;
       await writeBytes(reference(id), bytes);

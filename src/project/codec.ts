@@ -1,7 +1,9 @@
 import type { z } from 'zod';
+import { defaultBaseName } from '../core/slices';
 import { DEFAULT_CUE_DB, DEFAULT_PLAYBACK_DB } from '../core/volume';
 import { MAX_TICKS } from '../core/timebase';
 import {
+  byteLimitText,
   PROJECT_FILE_MAX_BYTES,
   PROJECT_FORMAT,
   PROJECT_MAX_CLIPS,
@@ -171,12 +173,16 @@ export function encodeProject(value: ProjectDocument): Uint8Array {
     throw new ProjectFormatError('unsupported project schema cannot be written');
   const bytes = new TextEncoder().encode(JSON.stringify(normalized.project));
   if (bytes.byteLength > PROJECT_FILE_MAX_BYTES)
-    throw new ProjectFormatError('project exceeds the 64 MiB limit');
+    throw new ProjectFormatError(
+      `project exceeds the ${byteLimitText(PROJECT_FILE_MAX_BYTES)} limit`,
+    );
   return bytes;
 }
 export function decodeProject(bytes: Uint8Array): ProjectDecodeResult {
   if (bytes.byteLength > PROJECT_FILE_MAX_BYTES)
-    throw new ProjectFormatError('project exceeds the 64 MiB limit');
+    throw new ProjectFormatError(
+      `project exceeds the ${byteLimitText(PROJECT_FILE_MAX_BYTES)} limit`,
+    );
   let value: unknown;
   try {
     value = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
@@ -214,7 +220,7 @@ export function createSingleTrackProject(input: SingleTrackProjectInput): Projec
     slicing: { ...project.slicing, ...input.slicing },
     output: {
       ...project.output,
-      baseName: input.name.replace(/[^\w.-]/g, '_') || 'slice',
+      baseName: defaultBaseName(input.name),
       ...input.output,
     },
     global: {

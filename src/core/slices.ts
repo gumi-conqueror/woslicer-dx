@@ -36,6 +36,11 @@ export function sliceRanges(
   return { ranges, skipped };
 }
 
+/** The base name a new project takes from its audio file name: letters, digits, `.`, `-` and `_`. */
+export function defaultBaseName(audioStem: string): string {
+  return audioStem.replace(/[^\w.-]/g, '_') || 'slice';
+}
+
 /** Exported slice files and `#WAV` definitions use this name. */
 export function sliceFileName(baseName: string, index: number): string {
   return `${baseName}_${String(index).padStart(3, '0')}.wav`;

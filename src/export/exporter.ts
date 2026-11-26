@@ -1,4 +1,5 @@
 import { sliceFileName, sliceRanges } from '../core/slices';
+import { portableStem } from '../platform/file-names';
 import type { Platform, OutputFile } from '../platform/contracts';
 import type { AudioEngine } from '../audio/audio-jobs';
 import type { EditorStore } from '../slicing/editor-store';
@@ -28,9 +29,7 @@ export function createExporter(
     const base = { bpm: s.doc.bpm, shift: s.doc.shift, sampleRate: source.sampleRate };
     const fadeoutMs = s.doc.fadeoutMs;
     const noisegateDb = s.noisegateEnabled ? s.doc.noisegateDb : 0;
-    // The sanitizer intentionally targets control characters to keep exported names portable.
-    // eslint-disable-next-line no-control-regex
-    const baseName = s.baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_') || 'slice';
+    const baseName = portableStem(s.baseName, 'slice');
     const { ranges, skipped } = sliceRanges(ticks, base, source.length);
     function assertCurrent(): void {
       if (generation() !== version) throw new DOMException('Export cancelled', 'AbortError');
