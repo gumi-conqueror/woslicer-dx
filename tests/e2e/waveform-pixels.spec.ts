@@ -11,6 +11,7 @@ test('keeps a constant waveform one device pixel thick across zoom and fractiona
   await Promise.all(
     scales.map(async (dpr) => {
       const context = await browser.newContext({
+        baseURL: info.project.use.baseURL,
         viewport: { width: 1000, height: 640 },
         deviceScaleFactor: dpr,
         locale: 'en-US',
@@ -18,7 +19,7 @@ test('keeps a constant waveform one device pixel thick across zoom and fractiona
       try {
         const page = await context.newPage();
         await page.addInitScript(() => localStorage.setItem('woslicer.theme', 'dark'));
-        await page.goto('http://127.0.0.1:4184/');
+        await page.goto('/');
         const choosing = page.waitForEvent('filechooser');
         await page.getByRole('button', { name: 'Project', exact: true }).click();
         await page.getByRole('menuitem', { name: 'Open audio…', exact: true }).click();

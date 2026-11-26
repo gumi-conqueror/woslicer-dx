@@ -1,25 +1,11 @@
 import { wavBytesDepth, writeWavHeader } from '../fixtures';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { wavFile } from '../support/audio';
+import { pick } from './pages';
 import { decodeProject } from '../../src/project/codec';
 import { readBmh } from '@gumi-conqueror/bmh-file';
 import { expectViewportLayout } from './layout-assertions';
-
-async function pick(page: Page, label: string, name: string, bytes: Uint8Array): Promise<void> {
-  const choosing = page.waitForEvent('filechooser');
-  if (label === 'Open' || label === 'Open .wosdx…') {
-    await page.getByRole('button', { name: 'Project', exact: true }).click();
-    await page
-      .getByRole('menuitem', { name: label === 'Open' ? 'Open audio…' : label, exact: true })
-      .click();
-  } else {
-    await page.getByRole('button', { name: label, exact: true }).click();
-  }
-  await (
-    await choosing
-  ).setFiles({ name, mimeType: 'application/octet-stream', buffer: Buffer.from(bytes) });
-}
 
 test('imports Ogg, FLAC and Matroska through the audio worker under the packaged CSP', async ({
   page,

@@ -6,6 +6,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { wavFile } from '../support/audio';
+import { pick } from './pages';
 import { writeSmfSequence } from '../../src/core/formats/smf';
 
 const TABS: ReadonlyArray<{ name: string; label: string; ready: string }> = [
@@ -27,21 +28,6 @@ test.skip(
   process.env.WOSLICER_UI_BASELINE !== '1',
   'baseline capture runs via scripts/verify-ui-readability.mjs',
 );
-
-async function pick(page: Page, label: string, name: string, bytes: Uint8Array): Promise<void> {
-  const choosing = page.waitForEvent('filechooser');
-  if (label === 'Open' || label === 'Open .wosdx…') {
-    await page.getByRole('button', { name: 'Project', exact: true }).click();
-    await page
-      .getByRole('menuitem', { name: label === 'Open' ? 'Open audio…' : label, exact: true })
-      .click();
-  } else {
-    await page.getByRole('button', { name: label, exact: true }).click();
-  }
-  await (
-    await choosing
-  ).setFiles({ name, mimeType: 'application/octet-stream', buffer: Buffer.from(bytes) });
-}
 
 async function openAudio(page: Page): Promise<void> {
   const pcm = Int16Array.from({ length: 48000 }, (_, i) => Math.round(Math.sin(i / 12) * 16000));

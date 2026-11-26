@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 /** Browser verification of the Vue lane; native Tauri UI profiles remain separate. */
 export default defineConfig({
-  testDir: './tests/app',
+  testDir: './tests/e2e',
   testMatch: '**/*.spec.ts',
   timeout: 30_000,
   // Run independent files concurrently within each isolated 30-second profile.

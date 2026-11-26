@@ -224,10 +224,10 @@ noise-gate thresholds and does not flatten multiple tracks.
 
 Behavior tests live in:
 
-- `tests/project/project.test.ts`: codec and project data.
-- `tests/project/editor.test.ts`: document editing.
-- `tests/app/project-files.test.ts`: project file operations.
-- `tests/app/project-workflow.spec.ts`: browser workflows.
+- `tests/algorithm/project-document.test.ts`: codec and project data.
+- `tests/algorithm/project-history.test.ts`: document editing.
+- `tests/business/project-files.test.ts`: project file operations.
+- `tests/e2e/project-workflow.spec.ts`: browser workflows.
 
 Cover preservation across capability/version boundaries, host isolation,
 recovery identity and media mismatch confirmation through observable behavior.

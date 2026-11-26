@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { collectErrors } from './pages';
 import { expectViewportLayout } from './layout-assertions';
 
 // Reproduce switching a Chinese installation to Japanese without OS font assumptions.
@@ -7,11 +8,7 @@ test.use({ locale: 'zh-CN' });
 test('uses local regional fonts after language changes and leaves inputs unrestricted', async ({
   page,
 }) => {
-  const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
-  page.on('console', (message) => {
-    if (message.type() === 'error') errors.push(message.text());
-  });
+  const errors = collectErrors(page);
   await page.goto('/');
   await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN');
   let chromeHeights: number[] | undefined;

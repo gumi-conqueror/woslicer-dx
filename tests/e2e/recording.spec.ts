@@ -154,8 +154,8 @@ test('records with keyboard, Xbox and YuanCon while preserving menus and playbac
   await setPad(-1, 1, 0);
   await expect(cursor).toHaveText(beforeRotation ?? '');
   await setPad();
+  // Holding RT starts playback after the long-press delay; the assertion waits for it.
   await setPad(7);
-  await page.waitForTimeout(430);
   await expect(play).toHaveAttribute('aria-pressed', 'true');
   await setPad();
   await press(7);
@@ -222,6 +222,7 @@ test('records with keyboard, Xbox and YuanCon while preserving menus and playbac
   await expect(cursor).not.toHaveText(beforeRewind ?? '');
   await page.evaluate(() => window.dispatchEvent(new Event('recording-disconnect')));
   const stopped = await cursor.textContent();
+  // Proving that nothing moves needs elapsed time: several 25 ms device polls.
   await page.waitForTimeout(180);
   await expect(cursor).toHaveText(stopped ?? '');
   await expect(play).toHaveAttribute('aria-pressed', 'false');

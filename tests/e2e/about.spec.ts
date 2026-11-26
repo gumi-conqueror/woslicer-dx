@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { collectErrors } from './pages';
 import { readFile } from 'node:fs/promises';
 import { creditLinks } from '../../src/platform/about-links';
 
@@ -6,6 +7,7 @@ test('shows embedded build information under offline CSP and opens only clicked 
   page,
   context,
 }, info) => {
+  // `npm run build` writes the build identity that the page must show.
   const identity: unknown = JSON.parse(await readFile('dist/app/build-info.json', 'utf8'));
   if (
     typeof identity !== 'object' ||
@@ -15,12 +17,8 @@ test('shows embedded build information under offline CSP and opens only clicked 
   ) {
     throw new Error('Missing build identity');
   }
-  const errors: string[] = [];
+  const errors = collectErrors(page);
   const requests: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
-  page.on('console', (message) => {
-    if (message.type() === 'error') errors.push(message.text());
-  });
   page.on('request', (request) => requests.push(request.url()));
   await page.goto('/');
   await expect(page.getByRole('menubar')).toBeVisible();
