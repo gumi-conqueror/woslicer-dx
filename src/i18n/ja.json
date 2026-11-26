@@ -318,6 +318,7 @@
     "playbackVolumeDb": "再生音量 {db} dB",
     "cueVolumeDb": "合図音の音量 {db} dB",
     "sessionRecoverInvalid": "復元データが破損。元のデータを保持し、復元データの更新を停止。",
+    "sessionRecoverEarlier": "復元データは 2.0 より前のバージョン用で、復元できない。元のデータを保持し、復元データの更新を停止。",
     "sessionRecoverFuture": "復元データは新しいバージョン（{version}）用。元のデータを保持し、復元データの更新を停止。",
     "sessionRecoverReadFailed": "復元データの読み込み失敗：{message}",
     "importedWosSettings": ".wos 設定を読み込み：{file}（BPM {bpm}、位置補正 {shift}）。1 回の操作で元に戻せる。",

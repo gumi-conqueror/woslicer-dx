@@ -318,6 +318,7 @@
     "playbackVolumeDb": "Playback volume {db} dB",
     "cueVolumeDb": "Cue volume {db} dB",
     "sessionRecoverInvalid": "Recovery data is damaged. Original data kept. Saving recovery data is paused.",
+    "sessionRecoverEarlier": "Recovery data is from a version before 2.0 and cannot be restored. Original data kept. Saving recovery data is paused.",
     "sessionRecoverFuture": "Recovery data requires a newer version ({version}). Original data kept. Saving recovery data is paused.",
     "sessionRecoverReadFailed": "Could not read recovery data: {message}",
     "importedWosSettings": "Imported .wos settings: {file} (BPM {bpm}, shift {shift}). Undo in one step.",

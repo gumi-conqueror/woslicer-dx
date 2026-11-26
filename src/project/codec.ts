@@ -69,8 +69,8 @@ function unknownFields(input: unknown, project: ProjectFile): string[] {
 }
 
 /**
- * The track that the editor edits. Projects have exactly one track until the
- * multi-track editor lands; this is the one place that assumes it.
+ * The track that the editor edits. Until the multi-track editor lands it is
+ * the only track; `requireEditableTracks` keeps other projects out of the editor.
  */
 export function currentTrack<T extends ProjectDocument | ProjectFile>(
   project: T,
@@ -78,6 +78,17 @@ export function currentTrack<T extends ProjectDocument | ProjectFile>(
   const track = project.tracks[0];
   if (!track) throw new ProjectFormatError('Project has no track');
   return track;
+}
+
+/**
+ * The editor edits projects with one track. The codec reads and writes any
+ * number; the workspace calls this where a document enters the editor.
+ */
+export function requireEditableTracks(project: ProjectDocument | ProjectFile): void {
+  if (project.tracks.length !== 1)
+    throw new ProjectFormatError(
+      `This project has ${project.tracks.length} tracks; this version edits projects with one track`,
+    );
 }
 
 /**
@@ -150,15 +161,9 @@ export function parseProject(input: unknown): ProjectParseResult {
   const { schemaVersion: version } = parseStructure(projectHeaderSchema, input);
   if (version > PROJECT_SCHEMA_VERSION) return { kind: 'unsupported-version', version, raw: input };
   const upgraded = version === 1 && isRecord(input) ? upgradeV1(input) : input;
-  if (version !== 1 && version !== PROJECT_SCHEMA_VERSION)
-    return { kind: 'unsupported-version', version, raw: input };
   const project = parseStructure(projectSchema, upgraded);
   // Version 1 fields that have no place in version 2 are dropped without a report.
   const extensions = version === PROJECT_SCHEMA_VERSION ? unknownFields(input, project) : [];
-  if (project.tracks.length !== 1)
-    throw new ProjectFormatError(
-      `This project has ${project.tracks.length} tracks; this version edits projects with one track`,
-    );
   const ids = new Set<string>();
   for (const track of project.tracks) {
     if (ids.has(track.trackId))

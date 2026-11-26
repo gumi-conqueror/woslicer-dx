@@ -318,6 +318,7 @@
     "playbackVolumeDb": "재생 음량 {db} dB",
     "cueVolumeDb": "알림음 음량 {db} dB",
     "sessionRecoverInvalid": "복구 데이터 손상. 원본을 유지하고 복구 데이터 갱신 중지.",
+    "sessionRecoverEarlier": "2.0 이전 버전의 복구 데이터라 복원할 수 없음. 원본을 유지하고 복구 데이터 갱신 중지.",
     "sessionRecoverFuture": "새 버전({version})용 복구 데이터. 원본을 유지하고 복구 데이터 갱신 중지.",
     "sessionRecoverReadFailed": "복구 데이터 읽기 실패: {message}",
     "importedWosSettings": ".wos 설정 불러오기 완료: {file} (BPM {bpm}, 위치 보정 {shift}). 한 번의 실행 취소로 되돌리기 가능.",

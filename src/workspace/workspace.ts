@@ -3,6 +3,7 @@ import { errorMessage } from '../core/messages';
 import {
   currentTrack,
   decodeProject,
+  requireEditableTracks,
   encodeProject,
   parseProject,
   projectFromWos,
@@ -31,6 +32,7 @@ import { readEditorSession, restoreEditorSession, type SessionReadResult } from 
 
 export type RecoveryBlock =
   | { kind: 'invalid' }
+  | { kind: 'earlier' }
   | { kind: 'read-failed' }
   | { kind: 'future'; version: number };
 export interface RelinkDifference {
@@ -241,6 +243,7 @@ export function createWorkspace(options: WorkspaceOptions) {
     const parsed = decodeProject(file.bytes);
     if (parsed.kind === 'unsupported-version')
       throw new Error(`Unsupported project version: ${parsed.version}`);
+    requireEditableTracks(parsed.project);
     invalidate();
     sessionClosed = false;
     persistence.resume();
@@ -491,14 +494,15 @@ export function createWorkspace(options: WorkspaceOptions) {
         if (outcome.session.lastFile) await reopen(outcome.session.lastFile.reference, true);
         return;
       }
-      // Damaged, future and unreadable records stay preserved; recovery writes stay paused.
+      // Earlier, damaged, future and unreadable records stay preserved; recovery writes stay paused.
       recoveryBlock =
         outcome.kind === 'future'
           ? { kind: 'future', version: outcome.version }
-          : outcome.kind === 'invalid'
-            ? { kind: 'invalid' }
+          : outcome.kind === 'invalid' || outcome.kind === 'earlier'
+            ? { kind: outcome.kind }
             : { kind: 'read-failed' };
       if (outcome.kind === 'invalid') editor.setStatus('sessionRecoverInvalid', true);
+      else if (outcome.kind === 'earlier') editor.setStatus('sessionRecoverEarlier', true);
       else if (outcome.kind === 'future')
         editor.setStatus('sessionRecoverFuture', { version: outcome.version }, true);
       else

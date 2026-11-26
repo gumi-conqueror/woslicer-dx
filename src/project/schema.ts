@@ -17,7 +17,6 @@ export function byteLimitText(bytes: number): string {
   const gib = bytes / 1024 ** 3;
   return Number.isInteger(gib) ? `${gib} GiB` : `${bytes / 1024 ** 2} MiB`;
 }
-export const PROJECT_MAX_MEDIA = 256;
 export const PROJECT_MAX_TRACKS = 256;
 export const PROJECT_MAX_MARKERS = 49_152;
 export const PROJECT_MAX_FRAMES = 2_000_000_000;

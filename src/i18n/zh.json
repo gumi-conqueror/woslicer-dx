@@ -318,6 +318,7 @@
     "playbackVolumeDb": "播放音量 {db} dB",
     "cueVolumeDb": "提示音音量 {db} dB",
     "sessionRecoverInvalid": "恢复数据已损坏，原数据保留，暂停更新恢复数据。",
+    "sessionRecoverEarlier": "恢复数据来自 2.0 之前的版本，无法恢复。原数据保留，暂停更新恢复数据。",
     "sessionRecoverFuture": "恢复数据需要更新的应用版本（{version}）。原数据保留，暂停更新恢复数据。",
     "sessionRecoverReadFailed": "恢复数据读取失败：{message}",
     "importedWosSettings": "已导入 .wos 设置：{file}（BPM {bpm}，偏移 {shift}），可一步撤销。",

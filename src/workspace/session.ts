@@ -1,4 +1,4 @@
-import { currentTrack, parseProject } from '../project/codec';
+import { currentTrack, parseProject, requireEditableTracks } from '../project/codec';
 import type { ProjectDocument } from '../project/schema';
 import { MAX_TICKS, MEASURE_TICKS } from '../core/timebase';
 import type { BandName } from '../core/bands';
@@ -95,6 +95,7 @@ function parseEditorSession(input: Record<string, unknown>): EditorSession | nul
   try {
     const parsed = parseProject(input.project);
     if (parsed.kind !== 'supported') return null;
+    requireEditableTracks(parsed.project);
     project = parsed.project;
   } catch {
     return null;
@@ -131,6 +132,7 @@ export type SessionReadResult =
   | { kind: 'absent' }
   | { kind: 'restored'; session: EditorSession }
   | { kind: 'invalid'; raw: unknown }
+  | { kind: 'earlier'; raw: unknown }
   | { kind: 'future'; raw: unknown; version: number }
   | { kind: 'read-failed'; error: unknown };
 
@@ -139,6 +141,14 @@ export function readEditorSession(input: unknown): SessionReadResult {
   if (input === null || input === undefined) return { kind: 'absent' };
   const version = object(input) && Number.isInteger(input.version) ? Number(input.version) : 0;
   if (version > SESSION_VERSION) return { kind: 'future', raw: input, version };
+  // Versions 1 and 2, and the unversioned records before them, came from releases before 2.0.
+  if (
+    object(input) &&
+    (version === 1 ||
+      version === 2 ||
+      (input.version === undefined && ('doc' in input || 'project' in input)))
+  )
+    return { kind: 'earlier', raw: input };
   const session = object(input) && version === SESSION_VERSION ? parseEditorSession(input) : null;
   return session ? { kind: 'restored', session } : { kind: 'invalid', raw: input };
 }

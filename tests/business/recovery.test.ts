@@ -62,7 +62,7 @@ it('keeps recovery data of an earlier version unchanged instead of reading it', 
   };
   f.session = earlier;
   await f.workspace.restoreSession();
-  expect(f.editor.status.segments[0]?.key).toBe('sessionRecoverInvalid');
+  expect(f.editor.status.segments[0]?.key).toBe('sessionRecoverEarlier');
   f.workspace.actions.setMarker(5);
   await f.workspace.flushSession();
   expect(f.session).toBe(earlier);
@@ -322,6 +322,14 @@ it('classifies recovery reads as absent, restored, damaged or future without rei
   if (restored.kind === 'restored') expect(restored.session.project).toEqual(valid.project);
   const future = { version: 4, note: 'newer' };
   expect(readEditorSession(future)).toEqual({ kind: 'future', raw: future, version: 4 });
+  for (const earlier of [{ version: 1, doc: {} }, { version: 2, project: {} }, { doc: {} }])
+    expect(readEditorSession(earlier)).toEqual({ kind: 'earlier', raw: earlier });
+  const track = valid.project.tracks[0];
+  const multiTrack = {
+    ...valid,
+    project: { ...valid.project, tracks: [track, { ...track, trackId: 'b' }] },
+  };
+  expect(readEditorSession(JSON.parse(JSON.stringify(multiTrack))).kind).toBe('invalid');
   const damaged = { version: 3, project: { timing: { bpm: 0, shiftTicks: 0 } } };
   const read = readEditorSession(damaged);
   expect(read.kind).toBe('invalid');

@@ -264,10 +264,17 @@ describe('.wosdx project document', () => {
     expect(() => parseProject(withTrack(value, { gainDb: Number.NaN }))).toThrow();
   });
 
-  it('opens only projects with one track in this version', () => {
+  it('reads and writes projects with several tracks', () => {
     const value = project();
-    const second = { ...trackOf(value), trackId: 'track-2' };
-    expect(() => parseProject({ ...value, tracks: [trackOf(value), second] })).toThrow(/2 tracks/);
+    const second = { ...trackOf(value), trackId: 'track-2', media: null };
+    second.slicing = { ...second.slicing, markers: [48, 12] };
+    const decoded = decodeProject(encodeProject({ ...value, tracks: [trackOf(value), second] }));
+    if (decoded.kind !== 'supported') throw new Error('Expected supported project');
+    expect(decoded.project.tracks.map((track) => track.trackId)).toEqual([
+      'project-1:track:1',
+      'track-2',
+    ]);
+    expect(decoded.project.tracks[1]?.slicing.markers).toEqual([12, 48]);
   });
 
   it('keeps spectrum explicitly reserved and keeps global view defaults separate from detection settings', () => {
