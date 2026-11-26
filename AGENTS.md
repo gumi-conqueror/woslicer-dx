@@ -5,6 +5,7 @@
 - The existing `.wos` binary format is locked. Preserve its layout, field encoding, size and read/write compatibility.
 - The original Windows BMHelper beta 4′ `.bmh` format is equally locked. Preserve its layout, field encoding and read/write compatibility at import and export. Use the [format contract](docs/BMH_FORMAT.md) and checked-in compatibility fixtures as references. DX projects use UTF-8 JSON independently of legacy BMH encoding.
 - These format contracts are the fixed project invariants. Other instructions are defaults that may change to support user goals and human maintenance.
+- The `.wosdx` project format, recovery data and stored preferences are internal formats. Change them when the change makes the code simpler. Increase the format version. State in the changelog what older data loses.
 - If a user instruction would change `.wos` or original `.bmh` compatibility, explain the exact change and its compatibility effects. Obtain explicit user confirmation before implementation. The initial conflicting instruction does not count as confirmation. Continue unrelated work while confirmation is pending.
 
 ## Product boundaries
@@ -17,14 +18,21 @@
 
 ## Implementation and validation
 
-- Follow existing module boundaries. Keep changes focused. Preserve unrelated work.
+- Use the module boundaries and fact owners in the [architecture guide](docs/ARCHITECTURE.md). Keep changes focused. Preserve unrelated work. When a change moves an implementation, update the architecture guide in the same change.
+- Give each fact one owner. A fact is a format rule, a unit conversion, a limit, a default or a naming scheme. Put the owner in the module that is named after its domain concept. Do not add `constants` or `utils` modules. Keep code separate when it only looks similar and changes for different reasons.
+- Write the main flow of a feature in one function, in the order that the steps occur. Keep a cohesive flow in one function, even when it is long.
+- Extract a function or a file only for one of these reasons: it has a second user; it owns state or a lifecycle; it crosses a boundary (platform, file format, Worker); or it names one of several independent parts of a function, such as one gesture or one drawing layer. Do not extract code to meet a size limit.
+- Remove a layer that only renames and forwards.
+- Size and smell metrics identify candidates. They are not a reason to refactor.
+- When two code paths implement one rule differently, make them the same. Do not add a parameter to keep the difference. Record user-visible changes in the changelog.
 - Keep TypeScript strict checks enabled. Validate external input at boundaries. Avoid `any`, unchecked assertions, non-null assertions and compiler suppressions.
-- Keep things in one function unless the logic is composable or reusable.
 - Validate unknown values once at the boundary that owns them. Pass typed values inward. Do not repeat object-shape checks or revalidate values already guaranteed by a schema, constructor or internal type.
-- Do not extract single-use helpers preemptively. Inline the logic unless the helper is reused, hides a complex boundary, or has a clear independent name that improves the caller.
 - Before adding complexity for a speculative or very unlikely race or security edge case, explain the concrete failure mode, likelihood and complexity cost to the user and get their buy-in. Do not expand scope for theoretical robustness.
 - Avoid `try`/`catch` where possible. Catch errors where the caller can recover or report them; otherwise let them propagate.
-- Test observable behavior. Use Node.js 26.x and npm. Use `npm ci` for clean installs. See the [development guide](docs/DEVELOPMENT.md) and [CI guide](docs/CI.md).
+- Test algorithm units and business units. An algorithm unit is a pure computation. A business unit is one user task from input to result. Put their tests in `tests/algorithm/` and `tests/business/`. Business tests use the test driver in `tests/support/`.
+- Get expected values from hand-calculated examples, format specifications or fixtures from the original programs. Do not compare the code under test with a second implementation of the same rule. Do not repeat its formula in the test.
+- Do not test code that only tests use, internal call counts or private state. Do not set a coverage target. Delete tests that do not obey these rules.
+- Use Node.js 26.x and npm. Use `npm ci` for clean installs. See the [development guide](docs/DEVELOPMENT.md) and [CI guide](docs/CI.md).
 - Default to debug for local builds, Rust tests, Clippy and native UI checks. Prioritize local build speed. Select release explicitly when needed.
 - CI uses debug native builds outside `main` and release frontend assets on every branch. Dev supplies shared debug caches. Main supplies release packages and its release caches. Tags publish verified main artifacts without rebuilding. See [CI profiles and cache policy](docs/CI.md).
 - Before reporting a complete build, run typecheck, unit tests, both browser UI profiles and archive validation. Diagnose failures before packaging. State the platform and actual test coverage.
@@ -44,7 +52,7 @@
 ## Commit messages
 
 - Use one concise Conventional Commit line: `genre(module): contents`.
-- Include the module. Describe the change in the imperative mood. Do not add a body or footers.
+- Include the module. Describe the change in the imperative mood. Do not add a body or footers. This includes co-author lines.
 
 ## Documentation and versioning
 
@@ -67,6 +75,6 @@
 
 - Use the relevant skills in [`.agents/skills/`](.agents/skills/README.md). Load only the skills needed for the task.
 - Repository constraints and explicit user instructions take precedence over generic skill advice. Prioritize human maintenance when choosing between valid implementations.
-- For maintainability refactors, preserve platform and audio-processing boundaries and audio output.
+- For maintainability refactors, keep audio processing in the Worker and keep file access authorized by the host. Keep exported audio unchanged unless the user requests a change.
 - Keep upstream skills at their recorded submodule commits. Do not edit upstream files for project-specific rules.
 - Initialize missing submodules with the [setup guide](docs/SKILLS.md). Read the skill catalog for companion-skill references.
