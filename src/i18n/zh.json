@@ -191,7 +191,9 @@
     "decoderLicenses": "音频解码器许可证",
     "tracks": "音轨",
     "renameTrack": "重命名音轨",
-    "trackName": "音轨名称"
+    "trackName": "音轨名称",
+    "muteTrack": "静音此音轨",
+    "soloTrack": "独奏此音轨"
   },
   "status": {
     "projectOpened": "已打开工程：{name}",
@@ -328,7 +330,9 @@
     "projectUnknownFields": "包含 {count} 个不支持的字段，保存时仅保留支持的工程数据。",
     "trackLimit": "一个工程最多 {count} 条音轨。",
     "lastTrackKept": "工程至少保留一条音轨。",
-    "trackRemoved": "已删除音轨 {name}。撤销可恢复。"
+    "trackRemoved": "已删除音轨 {name}。撤销可恢复。",
+    "exportNameConflict": "两条音轨都会写出 {name}。请为音轨设置不同的输出名称。",
+    "exportTracksWithoutAudio": "{count} 条没有音频的音轨未导出。"
   },
   "menu": {
     "file": "文件",
@@ -368,7 +372,8 @@
     "troubleshoot": "故障排查",
     "openDataFolder": "打开数据文件夹",
     "addTrack": "添加音轨…",
-    "removeTrack": "删除当前音轨"
+    "removeTrack": "删除当前音轨",
+    "exportAllTracks": "导出全部音轨的切片…"
   },
   "dialogs": {
     "loadAudio": "打开音频",
@@ -390,7 +395,7 @@
     "workflow": "开始使用",
     "workflowBody": "打开或拖入 音频文件，设置 BPM 和网格，在波形上添加切点。在“输出”中设置名称并导出切片。工作保存为 .wosdx 工程，音频移动后需“重新关联音频”。",
     "workspace": "音轨与面板",
-    "workspaceBody": "点击或拖动音轨缩略图可定位时间轴。新面板在最右侧打开，已有面板向左移动。再次点击开关或关闭按钮可隐藏面板，输入内容保留。面板可铺满工作区，空间不足时从最早打开的面板开始关闭，无横向滚动条。工程 → 添加音轨 可添加带独立音频和切点的音轨。点击音轨即可编辑，双击名称可重命名。",
+    "workspaceBody": "点击或拖动音轨缩略图可定位时间轴。新面板在最右侧打开，已有面板向左移动。再次点击开关或关闭按钮可隐藏面板，输入内容保留。面板可铺满工作区，空间不足时从最早打开的面板开始关闭，无横向滚动条。工程 → 添加音轨 可添加带独立音频和切点的音轨。点击音轨即可编辑，双击名称可重命名。播放时会同时播放全部音轨，可用音轨上的 M、S 静音或独奏。",
     "mouse": "鼠标操作",
     "mouseBody": "左键拖动添加切点，右键拖动删除。拖动切点可移动选中的切点。Shift+拖动加选，Ctrl/Cmd+拖动反转范围内的选择。中键拖动平移，Ctrl/Cmd+滚轮缩放。Alt 临时关闭吸附，{cancel} 取消拖动。",
     "keyboard": "快捷键",

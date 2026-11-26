@@ -76,7 +76,12 @@ export function createWorkspace(options: WorkspaceOptions) {
   const persistence = createSessionPersistence(platform, editor, (error) => {
     editor.setStatus('sessionSaveFailed', { message: errorMessage(error) }, true);
   });
-  const exporter = createExporter(platform, editor, currentEngine, () => generation);
+  const exporter = createExporter(
+    platform,
+    editor,
+    (trackId) => engines.get(trackId) ?? null,
+    () => generation,
+  );
   const detection = createDetection(editor, currentEngine, () => generation);
   function beginOpening(activity: LoadingActivity | null = null): number {
     opening++;

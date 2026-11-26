@@ -10,7 +10,9 @@ import { APPLICATION_MENU } from '../../src/app/menu';
 
 const track = (media: unknown) => ({ media }) as unknown as MenuEditorState['track'];
 const tracks = (count: number) =>
-  ({ tracks: Array.from({ length: count }, () => ({})) }) as unknown as MenuEditorState['document'];
+  ({
+    tracks: Array.from({ length: count }, () => ({ slicing: { markers: [] } })),
+  }) as unknown as MenuEditorState['document'];
 const state = (overrides: Partial<MenuEditorState> = {}): MenuEditorState => ({
   track: track(null),
   document: tracks(1),
@@ -87,6 +89,7 @@ const table: ReadonlyArray<readonly [AppCommand, MenuEditorState, boolean]> = [
   ['open-wheel', state(), true],
   // A project keeps at least one track.
   ['add-track', state(), true],
+  ['export-all-tracks', state(), false],
   ['remove-track', state(), false],
   ['remove-track', state({ document: tracks(2) }), true],
 ];

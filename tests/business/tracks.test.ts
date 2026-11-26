@@ -91,3 +91,20 @@ it('restores every track and its audio from recovery data', async () => {
   restored.editor.selectTrack(restored.editor.document.tracks[0]?.trackId ?? '');
   expect(restored.editor.source?.length).toBe(48000);
 });
+
+it('exports the slices of every track into one archive and refuses equal file names', async () => {
+  const f = setup();
+  await f.workspace.loadAudio(audioFile('kick.wav', 96000));
+  f.workspace.actions.setMarker(48);
+  f.opened = audioFile('snare.wav', 96000);
+  await f.run('add-track');
+  f.workspace.actions.setMarker(96);
+  f.editor.setOutputOptions({ baseName: 'kick' });
+  await f.run('export-all-tracks');
+  expect(f.editor.isError).toBe(true);
+  expect(f.exported).toHaveLength(0);
+  f.editor.setOutputOptions({ baseName: 'snare' });
+  await f.run('export-all-tracks');
+  expect(f.editor.isError).toBe(false);
+  expect(f.exported.map((file) => file.name).sort()).toEqual(['kick_000.wav', 'snare_000.wav']);
+});
