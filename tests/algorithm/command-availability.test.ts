@@ -89,6 +89,7 @@ const table: ReadonlyArray<readonly [AppCommand, MenuEditorState, boolean]> = [
   ['open-wheel', state(), true],
   // A project keeps at least one track.
   ['add-track', state(), true],
+  ['wheel-settings', state(), true],
   ['export-all-tracks', state(), false],
   ['remove-track', state(), false],
   ['remove-track', state({ document: tracks(2) }), true],

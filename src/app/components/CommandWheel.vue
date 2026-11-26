@@ -27,7 +27,7 @@ const position = computed(() => {
   return { ...box, left: `${x - half}px`, top: `${y - half}px` };
 });
 const slots = computed(() => {
-  const page = props.wheel.wheels[open.value?.page ?? 0] ?? [];
+  const page = props.wheel.wheels.value[props.wheel.openPage.value] ?? [];
   return Array.from({ length: WHEEL_SLOTS }, (_, slot) => {
     const command = page[slot] ?? null;
     const angle = (slot * 2 * Math.PI) / WHEEL_SLOTS;
@@ -69,7 +69,9 @@ const slots = computed(() => {
       class="wheel-center"
       aria-hidden="true"
     >
-      <span v-if="wheel.wheels.length > 1">{{ open.page + 1 }} / {{ wheel.wheels.length }}</span>
+      <span v-if="wheel.wheels.value.length > 1"
+        >{{ wheel.openPage.value + 1 }} / {{ wheel.wheels.value.length }}</span
+      >
     </div>
   </div>
 </template>

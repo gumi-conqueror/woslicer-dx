@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+### Added
+
+- **Tools → Command wheel settings** chooses the command of each wheel direction, with up to four wheels. The layout stays on this device.
+
 ## 2.0.0-alpha.6 — 2026-11-27
 
 ### Added

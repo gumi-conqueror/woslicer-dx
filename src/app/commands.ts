@@ -34,6 +34,7 @@ export interface CommandHosts {
   toggleRecording?(): void;
   connectYuancon?(): void;
   openWheel?(): void;
+  wheelSettings?(): void;
   openProject(): void | Promise<void>;
   newProjectFromWos(): void | Promise<void>;
   /** An app-owned dialog or lock is open. Visible dialogs always block commands. */
@@ -150,6 +151,11 @@ export const COMMANDS = {
     label: 'recording.controller',
     group: 'playback',
     run: ({ hosts }) => hosts.connectYuancon?.(),
+  },
+  'wheel-settings': {
+    label: 'menu.wheelSettings',
+    group: 'navigation',
+    run: ({ hosts }) => hosts.wheelSettings?.(),
   },
   'open-wheel': {
     label: 'input.wheel',

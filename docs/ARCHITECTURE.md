@@ -50,7 +50,8 @@ Each fact below has one owner. Change the fact there; other code reads it.
 | Default key, controller and YuanCon bindings | `BINDINGS` in [`src/input/bindings.ts`](../src/input/bindings.ts) |
 | Fixed controller navigation | `UI_NAVIGATION` in [`src/input/gamepad.ts`](../src/input/gamepad.ts) |
 | Controller thresholds and repeat timing | top of [`src/input/gamepad.ts`](../src/input/gamepad.ts) |
-| Command wheel slots, travel and size | [`src/input/wheel.ts`](../src/input/wheel.ts), [`use-wheel.ts`](../src/input/use-wheel.ts) |
+| Command wheel travel and size; default slots | [`src/input/wheel.ts`](../src/input/wheel.ts), [`use-wheel.ts`](../src/input/use-wheel.ts) |
+| The user's wheel layouts (local preference) | [`src/input/wheel-layout.ts`](../src/input/wheel-layout.ts) |
 | Editor state saved with recovery data | `SAVED_STATE` in [`src/workspace/session.ts`](../src/workspace/session.ts) |
 | Theme colors | [`src/app/styles.css`](../src/app/styles.css) for the interface, [`src/ui/palette.ts`](../src/ui/palette.ts) for canvases |
 

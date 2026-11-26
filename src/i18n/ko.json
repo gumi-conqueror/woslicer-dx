@@ -193,7 +193,21 @@
     "renameTrack": "트랙 이름 변경",
     "trackName": "트랙 이름",
     "muteTrack": "트랙 음소거",
-    "soloTrack": "트랙 솔로"
+    "soloTrack": "트랙 솔로",
+    "wheelSettingsHint": "방향마다 명령 선택. 변경 사항은 즉시 적용되며 이 기기에 저장.",
+    "wheelPage": "휠 {number}",
+    "addWheel": "휠 추가",
+    "removeWheel": "휠 삭제",
+    "resetWheels": "기본값 복원",
+    "emptySlot": "(없음)",
+    "directionUp": "위",
+    "directionUpRight": "오른쪽 위",
+    "directionRight": "오른쪽",
+    "directionDownRight": "오른쪽 아래",
+    "directionDown": "아래",
+    "directionDownLeft": "왼쪽 아래",
+    "directionLeft": "왼쪽",
+    "directionUpLeft": "왼쪽 위"
   },
   "status": {
     "projectOpened": "프로젝트 열기 완료: {name}",
@@ -373,7 +387,8 @@
     "openDataFolder": "데이터 폴더 열기",
     "addTrack": "오디오 트랙 추가…",
     "removeTrack": "현재 트랙 삭제",
-    "exportAllTracks": "모든 트랙의 구간 내보내기…"
+    "exportAllTracks": "모든 트랙의 구간 내보내기…",
+    "wheelSettings": "명령 휠 설정…"
   },
   "dialogs": {
     "loadAudio": "음원 열기",

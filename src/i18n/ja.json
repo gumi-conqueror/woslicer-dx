@@ -193,7 +193,21 @@
     "renameTrack": "トラック名を変更",
     "trackName": "トラック名",
     "muteTrack": "トラックをミュート",
-    "soloTrack": "トラックをソロ"
+    "soloTrack": "トラックをソロ",
+    "wheelSettingsHint": "方向ごとにコマンドを選択。変更はすぐに反映され、この端末に保存。",
+    "wheelPage": "ホイール {number}",
+    "addWheel": "ホイールを追加",
+    "removeWheel": "ホイールを削除",
+    "resetWheels": "初期設定に戻す",
+    "emptySlot": "（なし）",
+    "directionUp": "上",
+    "directionUpRight": "右上",
+    "directionRight": "右",
+    "directionDownRight": "右下",
+    "directionDown": "下",
+    "directionDownLeft": "左下",
+    "directionLeft": "左",
+    "directionUpLeft": "左上"
   },
   "status": {
     "projectOpened": "プロジェクトを開いた：{name}",
@@ -373,7 +387,8 @@
     "openDataFolder": "データフォルダーを開く",
     "addTrack": "オーディオトラックを追加…",
     "removeTrack": "現在のトラックを削除",
-    "exportAllTracks": "全トラックの区間を書き出す…"
+    "exportAllTracks": "全トラックの区間を書き出す…",
+    "wheelSettings": "コマンドホイール設定…"
   },
   "dialogs": {
     "loadAudio": "音声を開く",

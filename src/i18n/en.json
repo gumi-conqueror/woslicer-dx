@@ -193,7 +193,21 @@
     "renameTrack": "Rename track",
     "trackName": "Track name",
     "muteTrack": "Mute track",
-    "soloTrack": "Solo track"
+    "soloTrack": "Solo track",
+    "wheelSettingsHint": "Choose the command of each direction. Changes apply at once and stay on this device.",
+    "wheelPage": "Wheel {number}",
+    "addWheel": "Add wheel",
+    "removeWheel": "Remove wheel",
+    "resetWheels": "Restore defaults",
+    "emptySlot": "(Empty)",
+    "directionUp": "Up",
+    "directionUpRight": "Up right",
+    "directionRight": "Right",
+    "directionDownRight": "Down right",
+    "directionDown": "Down",
+    "directionDownLeft": "Down left",
+    "directionLeft": "Left",
+    "directionUpLeft": "Up left"
   },
   "status": {
     "projectOpened": "Opened project: {name}",
@@ -373,7 +387,8 @@
     "openDataFolder": "Open data folder",
     "addTrack": "Add audio track…",
     "removeTrack": "Remove current track",
-    "exportAllTracks": "Export slices of all tracks…"
+    "exportAllTracks": "Export slices of all tracks…",
+    "wheelSettings": "Command wheel settings…"
   },
   "dialogs": {
     "loadAudio": "Open audio",
