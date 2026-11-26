@@ -1,3 +1,4 @@
+import { shallowRef } from 'vue';
 import type { AppCommand } from '../app/commands';
 import type { GamepadControl } from './gamepad';
 import type { YuanconControl } from './yuancon/protocol';
@@ -183,6 +184,28 @@ export const BINDINGS: readonly Binding[] = [
   },
 ];
 
+/** Stable identity of a binding row: layer, command and, for recording taps, the key. */
+export function bindingId(binding: Pick<Binding, 'layer' | 'command' | 'args'>): string {
+  const key = binding.args ? '/' + binding.args.keys.join('+') : '';
+  return `${binding.layer}/${binding.command ?? '-'}${key}`;
+}
+/** A user's replacement of a row's keyboard or controller controls. YuanCon keys are fixed. */
+export interface BindingOverride {
+  keyboard?: readonly KeyChord[];
+  gamepad?: readonly GamepadControl[];
+}
+/** The default table with the user's overrides applied; every lookup below reads it. */
+const active = shallowRef<readonly Binding[]>(BINDINGS);
+export function applyBindingOverrides(overrides: Readonly<Record<string, BindingOverride>>): void {
+  active.value = BINDINGS.map((binding) => {
+    const override = overrides[bindingId(binding)];
+    return override ? { ...binding, ...override } : binding;
+  });
+}
+export function activeBindings(): readonly Binding[] {
+  return active.value;
+}
+
 type KeyEvent = Pick<
   KeyboardEvent,
   'key' | 'code' | 'ctrlKey' | 'metaKey' | 'altKey' | 'shiftKey' | 'isComposing'
@@ -220,7 +243,7 @@ function layers(layer: InputLayer): readonly InputLayer[] {
 }
 function find(layer: InputLayer, matches: (binding: Binding) => boolean): Binding | undefined {
   for (const current of layers(layer)) {
-    const binding = BINDINGS.find((item) => item.layer === current && matches(item));
+    const binding = active.value.find((item) => item.layer === current && matches(item));
     if (binding) return binding.command === null ? undefined : binding;
   }
   return undefined;
@@ -247,7 +270,7 @@ function effective<Control>(
   const result: Control[] = [];
   const taken = new Set<string>();
   for (const current of layers(layer)) {
-    const rows = BINDINGS.filter((item) => item.layer === current);
+    const rows = active.value.filter((item) => item.layer === current);
     for (const binding of rows)
       if (binding.command === command)
         for (const control of controls(binding) ?? []) {
@@ -294,7 +317,7 @@ export function recordingKeys(): readonly {
 export function boundCommands(layer: InputLayer): AppCommand[] {
   return [
     ...new Set(
-      BINDINGS.flatMap((binding) =>
+      active.value.flatMap((binding) =>
         binding.layer === layer && binding.command ? [binding.command] : [],
       ),
     ),

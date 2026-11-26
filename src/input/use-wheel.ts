@@ -1,6 +1,7 @@
-import { onMounted, onUnmounted, shallowRef } from 'vue';
+import { computed, onMounted, onUnmounted, shallowRef } from 'vue';
 import { commandEnabled, type AppCommand, type CommandState } from '../app/commands';
-import { DEFAULT_WHEELS, stepWheel, type WheelEvent, type WheelState } from './wheel';
+import { stepWheel, type WheelEvent, type WheelState } from './wheel';
+import { useWheelLayout } from './wheel-layout';
 
 import type { Pointing } from './gamepad';
 
@@ -20,7 +21,10 @@ export function useCommandWheel(options: {
   state: CommandState;
   run: (command: AppCommand) => void;
 }) {
-  const wheels = DEFAULT_WHEELS;
+  const layout = useWheelLayout();
+  const wheels = computed(() => layout.wheels);
+  /** The open page; a removed page falls back to the last remaining one. */
+  const openPage = computed(() => Math.min(state.value.page, wheels.value.length - 1));
   const state = shallowRef<WheelState>({ open: false, page: 0 });
   /** Viewport position of the wheel center; `null` centers it in the window. */
   const center = shallowRef<{ x: number; y: number } | null>(null);
@@ -28,11 +32,11 @@ export function useCommandWheel(options: {
   let pointer = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
 
   function send(event: WheelEvent): void {
-    const page = wheels[state.value.page];
+    const slots = wheels.value[openPage.value];
     const step = stepWheel(state.value, event);
     state.value = step.state;
     if (!step.state.open) holdCode = undefined;
-    const command = step.chosen === undefined ? undefined : page?.[step.chosen];
+    const command = step.chosen === undefined ? undefined : slots?.[step.chosen];
     if (command && commandEnabled(command, options.state)) options.run(command);
   }
   /** Opens the wheel held by a controller; it appears in the middle of the window. */
@@ -62,7 +66,7 @@ export function useCommandWheel(options: {
     send({ type: 'point', x, y, keepAtCenter: !from && lastPointing === 'dpad' });
   }
   function page(delta: number): void {
-    send({ type: 'page', delta, pages: wheels.length });
+    send({ type: 'page', delta, pages: wheels.value.length });
   }
 
   function pointerMove(event: PointerEvent): void {
@@ -123,6 +127,7 @@ export function useCommandWheel(options: {
     state,
     center,
     wheels,
+    openPage,
     send,
     page,
     cancel,

@@ -55,6 +55,7 @@ export const APPLICATION_MENU = [
       { id: 'toggle-recording', mnemonic: 'r' },
       { id: 'connect-yuancon', mnemonic: 'y' },
       { id: 'calibrate', mnemonic: 'c' },
+      { id: 'input-settings', mnemonic: 'i' },
     ],
   },
   {
