@@ -25,8 +25,8 @@ The parser rejects invalid UTF-8, JSON, format identifiers or invalid data.
 
 A project has tracks. Each track is one complete source file with its own
 markers and output settings. All tracks share the time base, the global
-playback settings and the BMHelper data. This version edits projects with
-exactly one track; it rejects others with an explanation.
+playback settings and the BMHelper data. The codec reads and writes any number of tracks. The editor edits projects
+with exactly one track; the workspace rejects others with an explanation.
 
 | Path | Meaning |
 | --- | --- |
@@ -57,7 +57,7 @@ Only the two layouts that earlier releases could edit upgrade:
 
 Other version 1 layouts (several tracks or clips, trimmed clips, leading
 silence) are rejected, and the original file stays unchanged. Unknown version 1
-fields are dropped without a report. Releases before 1.3 reject version 2 files
+fields are dropped without a report. Releases before 2.0 reject version 2 files
 as a future version.
 
 ### Recorded marker keys
@@ -185,7 +185,8 @@ The recovery session stores the active media's host reference separately as `las
 Recovery data has its own version (3), separate from the project format. It stores the project, `dirty`, `lastFile`
 and editor state grouped by owner: `state.view`, `state.detection` and `state.calibration`.
 `src/workspace/session.ts` lists the saved fields. The app keeps a record of any other version unchanged,
-reports it, and asks before it replaces the record. Version 3 does not read records from 1.2 and earlier.
+reports it, and asks before it replaces the record. Version 3 does not read the records of releases before 2.0;
+the status bar names them as records from an earlier version.
 Decode failures must not delete bindings. Desktop paths must not become browser references.
 
 Desktop media stores its absolute native path in `originHint.pathHint`.
