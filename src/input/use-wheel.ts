@@ -2,8 +2,15 @@ import { onMounted, onUnmounted, shallowRef } from 'vue';
 import { commandEnabled, type AppCommand, type CommandState } from '../app/commands';
 import { DEFAULT_WHEELS, stepWheel, type WheelEvent, type WheelState } from './wheel';
 
-/** CSS pixels from the wheel center to a mouse pointer at full travel. */
-export const WHEEL_POINTER_RADIUS_PX = 90;
+import type { Pointing } from './gamepad';
+
+/** The wheel's diameter as a share of the smaller window side. */
+export const WHEEL_VIEWPORT_SHARE = 2 / 3;
+/** Distance from the center to each slot, as a share of the diameter. A mouse pointer there has full travel. */
+export const WHEEL_SLOT_RADIUS_SHARE = 0.34;
+export function wheelDiameter(): number {
+  return Math.min(window.innerWidth, window.innerHeight) * WHEEL_VIEWPORT_SHARE;
+}
 
 /**
  * The open command wheel and its keyboard and mouse handling. The controller
@@ -30,7 +37,10 @@ export function useCommandWheel(options: {
   }
   /** Opens the wheel held by a controller; it appears in the middle of the window. */
   function holdFromController(time: number): void {
-    if (!state.value.open) center.value = null;
+    if (!state.value.open) {
+      center.value = null;
+      lastPointing = null;
+    }
     send({ type: 'open', time });
   }
   /** Opens the wheel held by a keyboard key; it appears at the mouse pointer. */
@@ -41,8 +51,15 @@ export function useCommandWheel(options: {
     }
     send({ type: 'open', time: performance.now() });
   }
-  function pointController(vector: { x: number; y: number }): void {
-    if (state.value.open) send({ type: 'point', ...vector, keepAtCenter: true });
+  /**
+   * A stick that returns to its center deselects, like a mouse pointer. A
+   * D-pad press stays selected after release, so a tap can then be confirmed.
+   */
+  let lastPointing: Pointing['from'] = null;
+  function pointController({ x, y, from }: Pointing): void {
+    if (!state.value.open) return;
+    if (from) lastPointing = from;
+    send({ type: 'point', x, y, keepAtCenter: !from && lastPointing === 'dpad' });
   }
   function page(delta: number): void {
     send({ type: 'page', delta, pages: wheels.length });
@@ -52,10 +69,11 @@ export function useCommandWheel(options: {
     pointer = { x: event.clientX, y: event.clientY };
     const origin = center.value;
     if (!state.value.open || !origin) return;
+    const radius = wheelDiameter() * WHEEL_SLOT_RADIUS_SHARE;
     send({
       type: 'point',
-      x: (event.clientX - origin.x) / WHEEL_POINTER_RADIUS_PX,
-      y: (event.clientY - origin.y) / WHEEL_POINTER_RADIUS_PX,
+      x: (event.clientX - origin.x) / radius,
+      y: (event.clientY - origin.y) / radius,
       keepAtCenter: false,
     });
   }

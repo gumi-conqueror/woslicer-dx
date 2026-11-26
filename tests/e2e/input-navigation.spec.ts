@@ -17,6 +17,12 @@ test('navigates menus during audio loading and keeps the help input view manual'
       buttons: Array.from({ length: 17 }, () => ({ value: 0, pressed: false, touched: false })),
     };
     Object.defineProperty(navigator, 'getGamepads', { value: () => [pad] });
+    window.addEventListener('test-gamepad-axes', (event) => {
+      if (!(event instanceof CustomEvent)) return;
+      const detail: unknown = event.detail;
+      if (Array.isArray(detail) && detail.every((value) => typeof value === 'number'))
+        pad.axes = detail;
+    });
     window.addEventListener('test-gamepad', (event) => {
       if (!(event instanceof CustomEvent) || typeof event.detail !== 'number') return;
       for (const [index, button] of pad.buttons.entries()) {
@@ -167,6 +173,23 @@ test('navigates menus during audio loading and keeps the help input view manual'
   await press(6);
   const wheel = page.getByRole('menu', { name: 'Command wheel', exact: true });
   await expect(wheel).toBeVisible();
+  // The right stick points; back at its center it deselects.
+  const axes = async (values: number[]) => {
+    await page.evaluate(
+      (detail) => window.dispatchEvent(new CustomEvent('test-gamepad-axes', { detail })),
+      values,
+    );
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        ),
+    );
+  };
+  await axes([0, 0, 1, 0]);
+  await expect(wheel.locator('.wheel-slot.selected')).toHaveText('Redo');
+  await axes([0, 0, 0, 0]);
+  await expect(wheel.locator('.wheel-slot.selected')).toHaveCount(0);
   await press(14);
   await expect(wheel.locator('.wheel-slot.selected')).toHaveText('Undo');
   await press(0);

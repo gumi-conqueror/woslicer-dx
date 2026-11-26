@@ -89,8 +89,15 @@ export function uiNavigation(control: GamepadControl, dialog = false): UiNavigat
   return UI_NAVIGATION.find((item) => item.controls.includes(control))?.action;
 }
 
-/** Stick and trigger travel that counts as a press. It is generous to ignore stick drift. */
+/** Stick travel that counts as a press. It is generous to ignore stick drift. */
 export const GAMEPAD_DEAD_ZONE = 0.55;
+/**
+ * Trigger travel that counts as a press: a light touch, so controllers with
+ * trigger stops work. A held trigger releases below the lower value, so a
+ * finger resting at the threshold does not repeat presses.
+ */
+export const TRIGGER_PRESS = 0.12;
+const TRIGGER_RELEASE = 0.06;
 /** A held direction or shoulder button repeats after this delay, then at this interval. */
 const REPEAT_DELAY_MS = 380;
 const REPEAT_INTERVAL_MS = 110;
@@ -115,17 +122,26 @@ function axes(pad: Pad | undefined, first: number): { x: number; y: number } {
   return { x: pad?.axes[first] ?? 0, y: pad?.axes[first + 1] ?? 0 };
 }
 
+export interface Pointing {
+  x: number;
+  y: number;
+  /** The control that points, or `null` when every control is neutral. */
+  from: 'stick' | 'dpad' | null;
+}
 /**
  * Pointing direction for the command wheel: the right stick, else the left
- * stick, else the D-pad. Screen coordinates: x right, y down.
+ * stick, else the D-pad. Screen coordinates: x right, y down. A stick returning
+ * toward its center still points, with decreasing travel.
  */
-export function pointingVector(pad: Pad | undefined): { x: number; y: number } {
+export function pointingVector(pad: Pad | undefined): Pointing {
   for (const first of [2, 0]) {
     const stick = axes(pad, first);
-    if (Math.hypot(stick.x, stick.y) > GAMEPAD_DEAD_ZONE / 2) return stick;
+    if (Math.hypot(stick.x, stick.y) > GAMEPAD_DEAD_ZONE / 2) return { ...stick, from: 'stick' };
   }
   const pressed = (button: number) => (pad?.buttons[button]?.pressed ? 1 : 0);
-  return { x: pressed(15) - pressed(14), y: pressed(13) - pressed(12) };
+  const x = pressed(15) - pressed(14),
+    y = pressed(13) - pressed(12);
+  return { x, y, from: x || y ? 'dpad' : null };
 }
 
 /** Edge-trigger presses and releases; directions and shoulder buttons repeat while held. */
@@ -146,7 +162,8 @@ export function createGamepadReader() {
       const button = pad.buttons[control.button];
       if (!button) continue;
       const analog = control.id === 'lt' || control.id === 'rt';
-      if (analog ? button.value > GAMEPAD_DEAD_ZONE : button.pressed) pressed.set(control.id, 1);
+      const threshold = held.has(control.id) ? TRIGGER_RELEASE : TRIGGER_PRESS;
+      if (analog ? button.value > threshold : button.pressed) pressed.set(control.id, 1);
     }
     // The dominant axis of each stick avoids diagonal double steps.
     // In recording mode the left stick seeks by rotation instead.
