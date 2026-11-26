@@ -38,6 +38,24 @@ export type EditorPhase =
   | { kind: 'loading'; name: string }
   | { kind: 'ready' }
   | { kind: 'error'; message: string };
+/** The runtime state of one track's audio. It is not part of the project document. */
+export interface TrackSession {
+  source: AudioSource | null;
+  peaks: PeakCache | null;
+  phase: EditorPhase;
+  /** Host binding of the last opened audio, independent of the decoded source's lifetime. */
+  lastFile: { reference: string; name: string } | null;
+  bandAnalysis: BandAnalysis | null;
+  bandEstimate: number | null;
+}
+const EMPTY_SESSION: Readonly<TrackSession> = Object.freeze<TrackSession>({
+  source: null,
+  peaks: null,
+  phase: { kind: 'empty' },
+  lastFile: null,
+  bandAnalysis: null,
+  bandEstimate: null,
+});
 export interface StatusSegment {
   key: StatusKey;
   params?: FormatParams;
@@ -62,6 +80,23 @@ export const useEditorStore = defineStore('editor', () => {
   /** The track that the editor, panels and commands work on. */
   const currentTrackId = shallowRef<string | null>(null);
   const track = computed(() => currentTrack(document.value, currentTrackId.value));
+  const sessions = shallowRef<ReadonlyMap<string, Readonly<TrackSession>>>(new Map());
+  const session = computed(() => sessions.value.get(track.value.trackId) ?? EMPTY_SESSION);
+  /** Updates one track's session; the current track by default. */
+  function updateSession(patch: Partial<TrackSession>, trackId = track.value.trackId): void {
+    const next = new Map(sessions.value);
+    next.set(trackId, Object.freeze({ ...(next.get(trackId) ?? EMPTY_SESSION), ...patch }));
+    sessions.value = next;
+  }
+  const source = computed(() => session.value.source);
+  const peaks = computed(() => session.value.peaks);
+  const phase = computed(() => session.value.phase);
+  const lastFile = computed(() => session.value.lastFile);
+  const bandAnalysis = computed(() => session.value.bandAnalysis);
+  const bandEstimate = computed({
+    get: () => session.value.bandEstimate,
+    set: (value: number | null) => updateSession({ bandEstimate: value }),
+  });
   const doc = computed(() =>
     Object.freeze({
       bpm: document.value.timing.bpm,
@@ -82,13 +117,8 @@ export const useEditorStore = defineStore('editor', () => {
       : null,
   );
   let cancelActiveDraft: (() => void) | null = null;
-  const source = shallowRef<AudioSource | null>(null);
-  const peaks = shallowRef<PeakCache | null>(null);
-  const phase = shallowRef<EditorPhase>({ kind: 'empty' });
   const status = shallowRef<{ segments: StatusSegment[] }>({ segments: [{ key: 'statusEmpty' }] });
   const isError = shallowRef(false);
-  // Host binding of the last opened audio, independent of the decoded source's lifetime.
-  const lastFile = shallowRef<{ reference: string; name: string } | null>(null);
   const grid = shallowRef(8),
     snap = shallowRef(true),
     cursorTick = shallowRef(0);
@@ -191,12 +221,10 @@ export const useEditorStore = defineStore('editor', () => {
   const clipStartNumber = computed(() => track.value.output.clipStartNumber);
   const useFfNumbering = computed(() => track.value.output.useFfNumbering);
   const exportLock = shallowRef(false);
-  const bandAnalysis = shallowRef<BandAnalysis | null>(null);
   // Detection settings belong to the track and are saved with the project.
   const bandDetection = computed(() => track.value.slicing.bandDetection);
   const tapOffsetMs = shallowRef(0);
-  const bandEstimate = shallowRef<number | null>(null),
-    bandBusy = shallowRef(false);
+  const bandBusy = shallowRef(false);
   const ticks = computed(() => track.value.slicing.markers);
   const markerKeys = computed(() => track.value.slicing.markerKeys ?? []);
   const canUndo = computed(() => project.value.canUndo);
@@ -239,6 +267,9 @@ export const useEditorStore = defineStore('editor', () => {
     project.value.replace(value, options);
     if (!value.tracks.some((item) => item.trackId === currentTrackId.value))
       currentTrackId.value = value.tracks[0]?.trackId ?? null;
+    // Sessions of tracks that the new document does not have are released.
+    const kept = new Set(value.tracks.map((item) => item.trackId));
+    sessions.value = new Map([...sessions.value].filter(([id]) => kept.has(id)));
     selectedTicks.value = [];
     setSelection(null, null);
     publish();
@@ -262,7 +293,7 @@ export const useEditorStore = defineStore('editor', () => {
     return changed;
   }
   function setLastFile(value: { reference: string; name: string } | null): void {
-    lastFile.value = value;
+    updateSession({ lastFile: value });
   }
   function setTicks(value: readonly number[], keys: MarkerKeys = markerKeys.value): boolean {
     return transact((draft) => {
@@ -368,18 +399,20 @@ export const useEditorStore = defineStore('editor', () => {
   }
   function setSource(value: AudioSource | null, cache: PeakCache | null = null): void {
     cancelDraft();
-    source.value = value ? markRaw(value) : null;
-    peaks.value = cache ? markRaw(cache) : null;
-    bandAnalysis.value = null;
-    bandEstimate.value = null;
+    updateSession({
+      source: value ? markRaw(value) : null,
+      peaks: cache ? markRaw(cache) : null,
+      bandAnalysis: null,
+      bandEstimate: null,
+    });
     playing.value = false;
     playheadSample.value = 0;
   }
   function setPhase(value: EditorPhase): void {
-    phase.value = value;
+    updateSession({ phase: value });
   }
   function setBandAnalysis(value: BandAnalysis | null): void {
-    bandAnalysis.value = value ? markRaw(value) : null;
+    updateSession({ bandAnalysis: value ? markRaw(value) : null });
   }
   function setDocumentOptions(values: Partial<DocumentOptions>): void {
     transact((draft) => {
@@ -399,10 +432,9 @@ export const useEditorStore = defineStore('editor', () => {
     });
   }
   function reset(): void {
-    lastFile.value = null;
+    sessions.value = new Map();
     replaceDocument(createEmptyProject());
     setSource(null);
-    phase.value = { kind: 'empty' };
     setStatus('statusEmpty');
     grid.value = 8;
     snap.value = true;
@@ -420,6 +452,7 @@ export const useEditorStore = defineStore('editor', () => {
     doc,
     track,
     currentTrackId,
+    sessions,
     timeBase,
     docRevision,
     documentGeneration,
