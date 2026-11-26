@@ -144,7 +144,7 @@ describe('waveform drawing algorithms', () => {
   it('places one-device-pixel sample dots within their channel', () => {
     const { context, record } = canvasFixture();
     const data = Int16Array.of(1000, 8192, -16384, 4096, 0);
-    drawWaveLane(context, view, data, 20, 16, colors, true);
+    drawWaveLane(context, view, data, { center: 20, halfHeight: 16 }, colors, true);
     expect(record.fills).toHaveLength(4);
     expect(
       record.fills.every(
@@ -162,7 +162,14 @@ describe('waveform drawing algorithms', () => {
   it('renders the intermediate connected curve instead of RMS envelope columns', () => {
     const { context, record } = canvasFixture();
     const data = Int16Array.of(0, 8192, -8192, 16384);
-    drawWaveLane(context, { ...view, scrollTick: 0, pxPerTick: 500 }, data, 20, 16, colors, true);
+    drawWaveLane(
+      context,
+      { ...view, scrollTick: 0, pxPerTick: 500 },
+      data,
+      { center: 20, halfHeight: 16 },
+      colors,
+      true,
+    );
     expect(record.fills).toHaveLength(4);
     expect(record.fills.every((fill) => fill.color === 'outer')).toBe(true);
     expect(record.context.moveTo).toHaveBeenCalledWith(0.5, 32.5);
@@ -172,12 +179,26 @@ describe('waveform drawing algorithms', () => {
   it('draws envelope and RMS in device columns without extending the source', () => {
     const { context, record } = canvasFixture();
     const data = Int16Array.from({ length: 1000 }, (_, i) => (i % 2 ? 8192 : -8192));
-    drawWaveLane(context, { ...view, scrollTick: 0, pxPerTick: 1 }, data, 20, 16, colors, true);
+    drawWaveLane(
+      context,
+      { ...view, scrollTick: 0, pxPerTick: 1 },
+      data,
+      { center: 20, halfHeight: 16 },
+      colors,
+      true,
+    );
     expect(record.fills.filter((fill) => fill.color === 'outer')).toHaveLength(4);
     expect(record.fills.filter((fill) => fill.color === 'rms')).toHaveLength(4);
     expect(Math.max(...record.fills.map((fill) => fill.x))).toBe(3);
     record.fills.length = 0;
-    drawWaveLane(context, { ...view, scrollTick: 0, pxPerTick: 1 }, data, 20, 16, colors, false);
+    drawWaveLane(
+      context,
+      { ...view, scrollTick: 0, pxPerTick: 1 },
+      data,
+      { center: 20, halfHeight: 16 },
+      colors,
+      false,
+    );
     expect(record.fills.some((fill) => fill.color === 'rms')).toBe(false);
   });
   it('uses each channel raw samples at finer-than-cache envelope zoom', () => {
@@ -187,8 +208,7 @@ describe('waveform drawing algorithms', () => {
       context,
       { ...view, dpr: 1, scrollTick: 0, pxPerTick: 10 },
       data,
-      20,
-      16,
+      { center: 20, halfHeight: 16 },
       colors,
       false,
     );
@@ -200,23 +220,20 @@ describe('waveform drawing algorithms', () => {
     drawBandEnvelope(
       context,
       { ...view, scrollTick: 0, pxPerTick: 500 },
-      buildPeakCache([new Int16Array(20)], 1),
-      20,
-      20,
-      16,
-      'band',
-      [4, 2],
+      { peaks: buildPeakCache([new Int16Array(20)], 1), length: 20, color: 'band', dash: [4, 2] },
+      { center: 20, halfHeight: 16 },
     );
     expect(record.context.moveTo).not.toHaveBeenCalled();
     drawBandEnvelope(
       context,
       { ...view, scrollTick: 0, pxPerTick: 500 },
-      buildPeakCache([new Int16Array(20).fill(8192)], 1),
-      20,
-      20,
-      16,
-      'band',
-      [4, 2],
+      {
+        peaks: buildPeakCache([new Int16Array(20).fill(8192)], 1),
+        length: 20,
+        color: 'band',
+        dash: [4, 2],
+      },
+      { center: 20, halfHeight: 16 },
     );
     expect(record.context.moveTo).toHaveBeenCalledWith(0.25, 16.25);
     expect(record.context.lineWidth).toBe(0.5);

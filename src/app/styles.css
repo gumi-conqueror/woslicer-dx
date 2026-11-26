@@ -1,67 +1,70 @@
 @import './fonts.css';
 
-/* Shared surface tokens keep native chrome, controls and editor panels consistent. */
+/* Shared surface tokens keep native chrome, controls and editor panels consistent.
+   Both themes follow the surfaces and orange accent of Ableton Live 12's stock
+   Default Light and Default Dark themes (Cool tone, medium contrast). */
 :root {
-  --wos-chrome: #e6e9e6;
-  --wos-workspace: #d6dbd7;
-  --wos-panel-header: #edf0ed;
-  --el-bg-color: #f7f9f6;
-  --el-bg-color-page: #e6e9e6;
-  --el-bg-color-overlay: #ffffff;
-  --el-text-color-primary: #242c27;
-  --el-text-color-regular: #414c44;
-  --el-text-color-secondary: #627066;
-  --el-text-color-placeholder: #748178;
-  --el-border-color: #c6cec7;
-  --el-border-color-light: #d4dbd5;
-  --el-border-color-lighter: #e1e6e1;
-  --el-fill-color: #dce3dc;
-  --el-fill-color-light: #eaf0e9;
-  --el-fill-color-lighter: #f0f4ef;
-  --el-fill-color-blank: #f7f9f6;
-  --el-color-primary: #527c35;
-  --el-color-primary-rgb: 82, 124, 53;
-  --el-color-primary-light-3: #739657;
-  --el-color-primary-light-5: #94af7e;
-  --el-color-primary-light-7: #bacbb0;
-  --el-color-primary-light-8: #d4dfcd;
-  --el-color-primary-light-9: #e5ecdf;
-  --el-color-primary-dark-2: #416329;
+  --wos-chrome: #b8bac2;
+  --wos-workspace: #696e7a;
+  --wos-panel-header: #bdbfc6;
+  --el-bg-color: #c4c6cd;
+  --el-bg-color-page: #b8bac2;
+  --el-bg-color-overlay: #d6d8dd;
+  --el-text-color-primary: #0f121a;
+  --el-text-color-regular: #262a33;
+  --el-text-color-secondary: #4b4f5c;
+  --el-text-color-placeholder: #5a5e6a;
+  --el-text-color-disabled: #6e727e;
+  --el-border-color: #8f929c;
+  --el-border-color-light: #a3a6af;
+  --el-border-color-lighter: #b3b5bd;
+  --el-fill-color: #b3b5bd;
+  --el-fill-color-light: #bdbfc6;
+  --el-fill-color-lighter: #c9cbd1;
+  --el-fill-color-blank: #d6d8dd;
+  --el-color-primary: #a85600;
+  --el-color-primary-rgb: 168, 86, 0;
+  --el-color-primary-light-3: #c2894d;
+  --el-color-primary-light-5: #d4ab80;
+  --el-color-primary-light-7: #e5ccb3;
+  --el-color-primary-light-8: #eeddcc;
+  --el-color-primary-light-9: #f6eee6;
+  --el-color-primary-dark-2: #864500;
   --el-border-radius-base: 4px;
   --el-border-radius-small: 3px;
   --el-font-size-base: 13px;
   --el-font-size-small: 12px;
 }
 html.dark {
-  --wos-chrome: #202224;
-  --wos-workspace: #17191b;
-  --wos-panel-header: #2c2f32;
-  --el-bg-color: #25282b;
-  --el-bg-color-page: #202224;
-  --el-bg-color-overlay: #303438;
-  --el-text-color-primary: #e4e8e5;
-  --el-text-color-regular: #c7cfca;
-  --el-text-color-secondary: #9da9a1;
-  --el-text-color-placeholder: #8b9790;
-  --el-text-color-disabled: #737d77;
-  --el-border-color: #3b4140;
-  --el-border-color-light: #353b39;
-  --el-border-color-lighter: #303633;
-  --el-border-color-extra-light: #2c322f;
-  --el-fill-color: #3a4240;
-  --el-fill-color-light: #303634;
-  --el-fill-color-lighter: #2b302e;
-  --el-fill-color-blank: #25282b;
-  --el-fill-color-disabled: #242826;
-  --el-color-primary: #afcc83;
-  --el-color-primary-rgb: 175, 204, 131;
-  --el-color-primary-light-3: #91ad6c;
-  --el-color-primary-light-5: #728b55;
-  --el-color-primary-light-7: #4c5e3d;
-  --el-color-primary-light-8: #3b4931;
-  --el-color-primary-light-9: #303b2b;
-  --el-color-primary-dark-2: #c2dea0;
-  --el-mask-color: rgba(12, 15, 13, 0.65);
+  --wos-chrome: #2b2d36;
+  --wos-workspace: #22242d;
+  --wos-panel-header: #3b3d48;
+  --el-bg-color: #33353f;
+  --el-bg-color-page: #2b2d36;
+  --el-bg-color-overlay: #3b3d48;
+  --el-text-color-primary: #dcdde3;
+  --el-text-color-regular: #b3b4bd;
+  --el-text-color-secondary: #8f909c;
+  --el-text-color-placeholder: #7f818d;
+  --el-text-color-disabled: #737581;
+  --el-border-color: #1c1e26;
+  --el-border-color-light: #24262f;
+  --el-border-color-lighter: #2b2d36;
+  --el-border-color-extra-light: #2e3039;
+  --el-fill-color: #454753;
+  --el-fill-color-light: #3b3d48;
+  --el-fill-color-lighter: #2f313b;
+  --el-fill-color-blank: #1c1e26;
+  --el-fill-color-disabled: #24262e;
+  --el-color-primary: #ffad56;
+  --el-color-primary-rgb: 255, 173, 86;
+  --el-color-primary-light-3: #bf874c;
+  --el-color-primary-light-5: #956d46;
+  --el-color-primary-light-7: #6b5340;
+  --el-color-primary-light-8: #55473c;
+  --el-color-primary-light-9: #403a39;
+  --el-color-primary-dark-2: #ffbd78;
+  --el-mask-color: rgba(10, 11, 15, 0.65);
 }
 
 * {
@@ -118,10 +121,10 @@ button:focus-visible {
   line-height: 1.5;
 }
 html.dark .el-button--primary {
-  --el-button-text-color: #1e2818;
-  --el-button-hover-text-color: #172011;
-  --el-button-active-text-color: #172011;
-  --el-button-disabled-text-color: #b0bca5;
+  --el-button-text-color: #0f1117;
+  --el-button-hover-text-color: #0f1117;
+  --el-button-active-text-color: #0f1117;
+  --el-button-disabled-text-color: #5a4a36;
 }
 .el-slider {
   --el-slider-height: 3px;

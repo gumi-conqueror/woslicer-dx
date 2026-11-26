@@ -409,13 +409,7 @@ function seekBy({ editor, playback }: CommandContext, seconds: number): void {
     Math.min(source.length, playback.currentSample() + seconds * source.sampleRate),
   );
   playback.seekSample(sample);
-  editor.setCursorTick(
-    sampleToTickNearest(sample, {
-      bpm: editor.doc.bpm,
-      shift: editor.doc.shift,
-      sampleRate: source.sampleRate,
-    }),
-  );
+  if (editor.timeBase) editor.setCursorTick(sampleToTickNearest(sample, editor.timeBase));
 }
 function placeMarker(
   { editor, workspace, playback }: CommandContext,
@@ -423,12 +417,12 @@ function placeMarker(
   position: 'cursor' | 'playhead' = 'cursor',
   input?: RecordingInput,
 ): void {
-  const source = editor.source;
-  if (!source) {
+  const source = editor.source,
+    base = editor.timeBase;
+  if (!source || !base) {
     editor.setStatus('loadBeforeBreakPoint', true);
     return;
   }
-  const base = { bpm: editor.doc.bpm, shift: editor.doc.shift, sampleRate: source.sampleRate };
   const captured =
     input?.time === undefined
       ? { sample: playback.currentSample(), playing: editor.playing }

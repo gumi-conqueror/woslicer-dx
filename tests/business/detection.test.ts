@@ -13,7 +13,7 @@ it('detects real burst onsets in one undo transaction and preserves legacy edge 
     reference: null,
     bytes: wavFile([pcm], 48000),
   });
-  f.editor.bandSnap = false;
+  f.editor.setBandDetection({ snap: false });
   await f.workspace.detect();
   expect(f.editor.ticks.length).toBeGreaterThan(0);
   expect(f.editor.ticks.every(f.editor.legalTick)).toBe(true);
@@ -54,4 +54,20 @@ it('ignores late detection results when the time base was edited', async () => {
   await detecting;
   expect(f.editor.ticks).toEqual([]);
   expect(f.editor.bandBusy).toBe(false);
+});
+
+it('keeps detection settings with the track as undoable project edits', () => {
+  const f = setup();
+  f.editor.setBandDetection({ thresholdDb: 12, bands: { low: false, mid: true, high: true } });
+  const track = f.editor.document.tracks[0];
+  expect(track?.slicing.bandDetection).toEqual({
+    bands: { low: false, mid: true, high: true },
+    thresholdDb: 12,
+    minGapUnits: 1,
+    snap: true,
+  });
+  expect(f.editor.isDirty).toBe(true);
+  f.workspace.actions.undo();
+  expect(f.editor.bandDetection.thresholdDb).toBe(6);
+  expect(f.editor.bandDetection.bands.low).toBe(true);
 });

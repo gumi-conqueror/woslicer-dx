@@ -47,34 +47,32 @@ export function createDetection(
       return;
     }
     if (editor.bandBusy && !analysisTask) return;
-    const bands = BAND_NAMES.filter((name) => editor.bandDetectBands[name]);
+    const settings = editor.bandDetection;
+    const bands = BAND_NAMES.filter((name) => settings.bands[name]);
     if (!bands.length) {
       editor.setStatus('bandDetectSelectBand', true);
       return;
     }
     await ensureBands();
-    if (version !== generation() || !editor.bandAnalysis || !editor.source) return;
+    const base = editor.timeBase;
+    if (version !== generation() || !editor.bandAnalysis || !base) return;
     const revision = editor.docRevision;
     const start = editor.selectionStartTick,
       end = editor.selectionEndTick;
     const cell = gridStepTicks(editor.grid),
-      threshold = editor.bandThresholdDb;
+      threshold = settings.thresholdDb;
     editor.bandBusy = true;
     try {
       const result = await worker.detect({
         bands,
         thresholdDb: threshold,
         grid: cell,
-        minGapTicks: cell * editor.bandMinGapUnits,
+        minGapTicks: cell * settings.minGapUnits,
         fromTick: start === null || end === null ? 0 : Math.min(start, end),
         toTick: start === null || end === null ? MAX_TICKS - 1 : Math.max(start, end),
-        base: {
-          bpm: editor.doc.bpm,
-          shift: editor.doc.shift,
-          sampleRate: editor.source.sampleRate,
-        },
+        base,
         existing: new Set(editor.ticks),
-        snap: editor.bandSnap,
+        snap: settings.snap,
       });
       // An edit or source replacement while detecting invalidates its captured time base.
       if (generation() !== version || editor.docRevision !== revision) return;
@@ -94,21 +92,17 @@ export function createDetection(
   }
   async function edgeDetect(): Promise<void> {
     const worker = engine(),
-      source = editor.source,
+      base = editor.timeBase,
       version = generation(),
       revision = editor.docRevision;
-    if (!worker || !source) {
+    if (!worker || !base) {
       editor.setStatus('edgeDetectionNeedsSource', true);
       return;
     }
     if (editor.bandBusy) return;
     editor.bandBusy = true;
     try {
-      const ticks = await worker.edges({
-        bpm: editor.doc.bpm,
-        shift: editor.doc.shift,
-        sampleRate: source.sampleRate,
-      });
+      const ticks = await worker.edges(base);
       if (version !== generation() || revision !== editor.docRevision) return;
       const legal = ticks.filter(editor.legalTick);
       editor.setTicks(legal, []);

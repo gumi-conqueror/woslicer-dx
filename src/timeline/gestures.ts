@@ -24,34 +24,22 @@ export interface TimelinePointer {
   ctrlKey: boolean;
 }
 type Selection = { ticks: number[]; start: number | null; end: number | null };
-type Gesture =
-  | { kind: 'idle' }
-  | {
-      kind: 'pending' | 'paint';
-      revision: number;
-      bitmap: Uint8Array;
-      selection: Selection;
-      anchor: TimelinePointer;
-      anchorTick: number;
-      lastTick: number;
-      lastX: number;
-      changed: Set<number>;
-    }
-  | {
-      kind: 'erase';
-      revision: number;
-      bitmap: Uint8Array;
-      selection: Selection;
-      lastTick: number;
-      count: number;
-    }
-  | { kind: 'move'; revision: number; anchorTick: number; ticks: number[]; selection: Selection }
-  | { kind: 'box'; revision: number; anchorTick: number; selection: Selection }
-  | { kind: 'pan'; anchorX: number; scroll: number };
+/** One active pointer gesture with its private draft state. */
+interface Gesture {
+  /** Document revision at the start; drafts of an outdated document are discarded. */
+  revision?: number;
+  /** Selection to restore when the gesture is cancelled. */
+  selection?: Selection;
+  move(point: TimelinePointer): void;
+  /** Commits the gesture. */
+  end(point: TimelinePointer): void;
+  /** Undoes the gesture's own live changes, such as scrolling. */
+  cancel(): void;
+}
 
 /** Gesture transaction state, independent of DOM listeners and canvas drawing. */
 export function createTimelineGestures(editor: EditorStore) {
-  let gesture: Gesture = { kind: 'idle' };
+  let gesture: Gesture | null = null;
   const ghost = shallowRef<Ghost>();
   const cursor = shallowRef('copy');
   const unregister = editor.registerDraftCancellation(() => {
@@ -113,205 +101,203 @@ export function createTimelineGestures(editor: EditorStore) {
     editor.setPreviewTicks(markerTicks(draft));
     return hits.length;
   }
+  /** Starts the gesture this press means. Order matters: button, then modifiers, then hit test. */
   function begin(point: TimelinePointer): void {
     cancel();
-    if (point.button === 1) {
-      gesture = { kind: 'pan', anchorX: point.x, scroll: editor.scrollTick };
-      cursor.value = 'grabbing';
-      return;
+    if (point.button === 1) gesture = pan(point);
+    else if (point.button === 2) gesture = eraseStroke(point);
+    else if (point.button !== 0) return;
+    else if (point.shiftKey || point.ctrlKey) gesture = boxSelect(point);
+    else {
+      const hit = near(point.x);
+      gesture = hit === undefined ? paintStroke(point) : moveMarkersGesture(point, hit);
     }
-    if (point.button === 2) {
-      const tick = tickAt(point.x);
-      const draft = bitmap();
-      gesture = {
-        kind: 'erase',
-        revision: editor.docRevision,
-        bitmap: draft,
-        selection: selection(),
-        lastTick: tick,
-        count: erase(tick, tick, draft),
-      };
-      cursor.value = 'no-drop';
-      return;
-    }
-    if (point.button !== 0) return;
-    if (point.shiftKey || point.ctrlKey) {
-      const tick = clamped(tickAt(point.x));
-      gesture = {
-        kind: 'box',
-        revision: editor.docRevision,
-        anchorTick: tick,
-        selection: selection(),
-      };
-      editor.setSelection(tick, tick);
-      editor.setSelectedTicks([]);
-      cursor.value = 'crosshair';
-      editor.setStatus('boxSelectHint');
-      return;
-    }
-    const hit = near(point.x);
-    if (hit !== undefined) {
-      const previous = selection();
-      const ticks = editor.selectedTicks.includes(hit) ? [...editor.selectedTicks] : [hit];
-      gesture = {
-        kind: 'move',
-        revision: editor.docRevision,
-        anchorTick: tickAt(point.x),
-        ticks,
-        selection: previous,
-      };
-      editor.setSelectedTicks(ticks);
-      editor.setSelection(null, null);
-      cursor.value = 'ew-resize';
-      editor.setStatus('draggingMarkers', { count: ticks.length });
-      return;
-    }
-    const tick = paintTick(point);
-    gesture = {
-      kind: 'pending',
-      revision: editor.docRevision,
-      bitmap: bitmap(),
-      selection: selection(),
-      anchor: point,
-      anchorTick: tick,
-      lastTick: tick,
-      lastX: point.x,
-      changed: new Set(),
+  }
+
+  /** Middle drag scrolls the view; cancelling restores the scroll position. */
+  function pan(point: TimelinePointer): Gesture {
+    const anchorX = point.x,
+      scroll = editor.scrollTick;
+    cursor.value = 'grabbing';
+    return {
+      move: (next) => editor.setScrollTick(scroll - (next.x - anchorX) / editor.pxPerTick),
+      end: () => {},
+      cancel: () => editor.setScrollTick(scroll),
     };
-    editor.setCursorTick(tick);
-    cursor.value = 'copy';
   }
-  function move(point: TimelinePointer): void {
-    const current = gesture;
-    switch (current.kind) {
-      case 'idle':
-        cursor.value =
-          point.shiftKey || point.ctrlKey
-            ? 'crosshair'
-            : near(point.x) === undefined
-              ? 'copy'
-              : 'ew-resize';
-        break;
-      case 'pan':
-        editor.setScrollTick(current.scroll - (point.x - current.anchorX) / editor.pxPerTick);
-        break;
-      case 'pending':
-      case 'paint': {
-        if (current.kind === 'pending') {
-          if (Math.hypot(point.x - current.anchor.x, point.y - current.anchor.y) < DRAG_START_PX)
-            break;
-          current.kind = 'paint';
-          paint(current.anchorTick, current.changed, current.bitmap);
-        }
-        if ((!editor.snap || point.altKey) && Math.abs(point.x - current.lastX) < FREEHAND_STEP_PX)
-          break;
-        const tick = paintTick(point);
-        paintSegment(current.lastTick, tick, point, current.changed, current.bitmap);
-        current.lastTick = tick;
-        current.lastX = point.x;
-        editor.setPreviewTicks(markerTicks(current.bitmap));
-        editor.setCursorTick(tick);
-        editor.setStatus('paintingMarkers', { count: current.changed.size });
-        break;
-      }
-      case 'erase': {
-        const tick = tickAt(point.x);
-        current.count += erase(current.lastTick, tick, current.bitmap);
-        current.lastTick = tick;
-        editor.setStatus('erasingMarkers', { count: current.count });
-        break;
-      }
-      case 'box':
-        editor.setSelection(current.anchorTick, clamped(tickAt(point.x)));
-        break;
-      case 'move': {
-        const raw = tickAt(point.x) - current.anchorTick,
-          cell = gridStepTicks(editor.grid);
-        const requested =
-          editor.snap && !point.altKey && cell > 0
-            ? Math.round(raw / cell) * cell
-            : Math.round(raw);
-        ghost.value = {
-          ticks: current.ticks,
-          delta: groupMoveDelta(editor, current.ticks, requested),
-        };
-        break;
-      }
-    }
+
+  /** Right drag removes markers near the pointer path, committed as one edit on release. */
+  function eraseStroke(point: TimelinePointer): Gesture {
+    const draft = bitmap();
+    let lastTick = tickAt(point.x);
+    let count = erase(lastTick, lastTick, draft);
+    cursor.value = 'no-drop';
+    return {
+      revision: editor.docRevision,
+      selection: selection(),
+      move: (next) => {
+        const tick = tickAt(next.x);
+        count += erase(lastTick, tick, draft);
+        lastTick = tick;
+        editor.setStatus('erasingMarkers', { count });
+      },
+      end: () => {
+        const committed = editor.setTicks(markerTicks(draft));
+        editor.setStatus(committed ? 'erasedMarkers' : 'eraseGestureNoop', { count });
+      },
+      cancel: () => {},
+    };
   }
-  function end(point: TimelinePointer): void {
-    const current = gesture;
-    if ('revision' in current && current.revision !== editor.docRevision) {
-      cancel();
-      return;
-    }
-    // Release the draft before entering the store's command/transaction gate.
-    gesture = { kind: 'idle' };
-    editor.setPreviewTicks(null);
-    switch (current.kind) {
-      case 'pending':
-      case 'paint': {
-        if (current.kind === 'pending') paint(current.anchorTick, current.changed, current.bitmap);
-        const committed = editor.setTicks(markerTicks(current.bitmap));
-        editor.setStatus(committed ? 'paintedMarkers' : 'paintGestureNoop', {
-          count: current.changed.size,
-        });
-        break;
-      }
-      case 'erase': {
-        const committed = editor.setTicks(markerTicks(current.bitmap));
-        editor.setStatus(committed ? 'erasedMarkers' : 'eraseGestureNoop', {
-          count: current.count,
-        });
-        break;
-      }
-      case 'box': {
-        const end = editor.selectionEndTick ?? current.anchorTick;
+
+  /** Shift drag adds to the selection, Ctrl/Cmd drag toggles it, plain box drag replaces it. */
+  function boxSelect(point: TimelinePointer): Gesture {
+    const anchorTick = clamped(tickAt(point.x));
+    const previous = selection();
+    editor.setSelection(anchorTick, anchorTick);
+    editor.setSelectedTicks([]);
+    cursor.value = 'crosshair';
+    editor.setStatus('boxSelectHint');
+    return {
+      revision: editor.docRevision,
+      selection: previous,
+      move: (next) => editor.setSelection(anchorTick, clamped(tickAt(next.x))),
+      end: (last) => {
+        const end = editor.selectionEndTick ?? anchorTick;
         const inside = editor.ticks.filter(
-          (tick) =>
-            tick >= Math.min(current.anchorTick, end) && tick <= Math.max(current.anchorTick, end),
+          (tick) => tick >= Math.min(anchorTick, end) && tick <= Math.max(anchorTick, end),
         );
-        const previous = current.selection.ticks;
-        const selected = point.shiftKey
-          ? [...new Set([...previous, ...inside])]
-          : point.ctrlKey
+        const before = previous.ticks;
+        const selected = last.shiftKey
+          ? [...new Set([...before, ...inside])]
+          : last.ctrlKey
             ? [
-                ...previous.filter((tick) => !inside.includes(tick)),
-                ...inside.filter((tick) => !previous.includes(tick)),
+                ...before.filter((tick) => !inside.includes(tick)),
+                ...inside.filter((tick) => !before.includes(tick)),
               ]
             : inside;
         editor.setSelectedTicks(selected);
-        const mode = point.shiftKey ? 'add' : point.ctrlKey ? 'toggle' : 'replace';
+        const mode = last.shiftKey ? 'add' : last.ctrlKey ? 'toggle' : 'replace';
         editor.setStatus(selected.length ? 'boxSelectSelected' : 'boxSelectEmpty', {
           count: selected.length,
           mode,
         });
-        break;
-      }
-      case 'move': {
-        const applied = moveMarkers(editor, current.ticks, ghost.value?.delta ?? 0);
-        if (applied)
-          editor.setStatus('movedMarkersBy', { count: current.ticks.length, delta: applied });
-        break;
-      }
-      case 'idle':
-      case 'pan':
-        break;
-    }
-    gesture = { kind: 'idle' };
-    ghost.value = undefined;
-    cursor.value = 'copy';
+      },
+      cancel: () => {},
+    };
   }
-  function cancel(): boolean {
-    const current = gesture;
-    if (current.kind === 'idle') return false;
-    if ('revision' in current && current.revision === editor.docRevision)
-      restoreSelection(current.selection);
-    if (current.kind === 'pan') editor.setScrollTick(current.scroll);
-    gesture = { kind: 'idle' };
+
+  /** Dragging a marker moves the selected group, or the marker alone; a ghost shows the target. */
+  function moveMarkersGesture(point: TimelinePointer, hit: number): Gesture {
+    const previous = selection();
+    const ticks = editor.selectedTicks.includes(hit) ? [...editor.selectedTicks] : [hit];
+    const anchorTick = tickAt(point.x);
+    editor.setSelectedTicks(ticks);
+    editor.setSelection(null, null);
+    cursor.value = 'ew-resize';
+    editor.setStatus('draggingMarkers', { count: ticks.length });
+    return {
+      revision: editor.docRevision,
+      selection: previous,
+      move: (next) => {
+        const raw = tickAt(next.x) - anchorTick,
+          cell = gridStepTicks(editor.grid);
+        const requested =
+          editor.snap && !next.altKey && cell > 0 ? Math.round(raw / cell) * cell : Math.round(raw);
+        ghost.value = { ticks, delta: groupMoveDelta(editor, ticks, requested) };
+      },
+      end: () => {
+        const applied = moveMarkers(editor, ticks, ghost.value?.delta ?? 0);
+        if (applied) editor.setStatus('movedMarkersBy', { count: ticks.length, delta: applied });
+      },
+      cancel: () => {},
+    };
+  }
+
+  /**
+   * Left press on empty space adds a marker at the cursor; dragging paints markers
+   * along the path (on the grid when snapping, freehand otherwise).
+   */
+  function paintStroke(point: TimelinePointer): Gesture {
+    const draft = bitmap();
+    const changed = new Set<number>();
+    const anchorTick = paintTick(point);
+    let painting = false,
+      lastTick = anchorTick,
+      lastX = point.x;
+    editor.setCursorTick(anchorTick);
+    cursor.value = 'copy';
+    return {
+      revision: editor.docRevision,
+      selection: selection(),
+      move: (next) => {
+        if (!painting) {
+          if (Math.hypot(next.x - point.x, next.y - point.y) < DRAG_START_PX) return;
+          painting = true;
+          paint(anchorTick, changed, draft);
+        }
+        if ((!editor.snap || next.altKey) && Math.abs(next.x - lastX) < FREEHAND_STEP_PX) return;
+        const tick = paintTick(next);
+        paintSegment(lastTick, tick, next, changed, draft);
+        lastTick = tick;
+        lastX = next.x;
+        editor.setPreviewTicks(markerTicks(draft));
+        editor.setCursorTick(tick);
+        editor.setStatus('paintingMarkers', { count: changed.size });
+      },
+      end: () => {
+        if (!painting) paint(anchorTick, changed, draft);
+        const committed = editor.setTicks(markerTicks(draft));
+        editor.setStatus(committed ? 'paintedMarkers' : 'paintGestureNoop', {
+          count: changed.size,
+        });
+      },
+      cancel: () => {},
+    };
+  }
+
+  /** Hover feedback when no gesture is active. */
+  function hover(point: TimelinePointer): void {
+    cursor.value =
+      point.shiftKey || point.ctrlKey
+        ? 'crosshair'
+        : near(point.x) === undefined
+          ? 'copy'
+          : 'ew-resize';
+  }
+  function finish(): void {
+    gesture = null;
     editor.setPreviewTicks(null);
     ghost.value = undefined;
     cursor.value = 'copy';
+  }
+  function move(point: TimelinePointer): void {
+    if (gesture) gesture.move(point);
+    else hover(point);
+  }
+  function end(point: TimelinePointer): void {
+    const current = gesture;
+    if (!current) {
+      finish();
+      return;
+    }
+    // A document replaced or edited elsewhere invalidates the draft.
+    if (current.revision !== undefined && current.revision !== editor.docRevision) {
+      cancel();
+      return;
+    }
+    // Release the draft before entering the store's transaction gate.
+    gesture = null;
+    editor.setPreviewTicks(null);
+    current.end(point);
+    finish();
+  }
+  function cancel(): boolean {
+    const current = gesture;
+    if (!current) return false;
+    if (current.selection && current.revision === editor.docRevision)
+      restoreSelection(current.selection);
+    current.cancel();
+    finish();
     return true;
   }
   function wheel(x: number, deltaX: number, deltaY: number, zoom: boolean): void {

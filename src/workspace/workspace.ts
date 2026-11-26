@@ -9,7 +9,12 @@ import {
   projectFromWos,
   projectToWos,
 } from '../project/codec';
-import { byteLimitText, MEDIA_FILE_MAX_BYTES, PROJECT_FILE_MAX_BYTES } from '../project/schema';
+import {
+  byteLimitText,
+  MEDIA_FILE_MAX_BYTES,
+  PROJECT_FILE_MAX_BYTES,
+  type ProjectDocument,
+} from '../project/schema';
 import {
   activeMedia,
   identifyAudio,
@@ -239,19 +244,26 @@ export function createWorkspace(options: WorkspaceOptions) {
       finishOpening(request);
     }
   }
+  /**
+   * Replaces the whole workspace with another project: stale requests end, the
+   * audio, history and editing state are cleared, and recovery data resumes.
+   */
+  function replaceWorkspace(project: ProjectDocument): void {
+    invalidate();
+    sessionClosed = false;
+    persistence.resume();
+    editor.setLastFile(null);
+    editor.replaceDocument(project);
+    actions.reset();
+    editor.setSource(null);
+    editor.setPhase({ kind: 'empty' });
+  }
   async function acceptProject(file: OpenedFile): Promise<void> {
     const parsed = decodeProject(file.bytes);
     if (parsed.kind === 'unsupported-version')
       throw new Error(`Unsupported project version: ${parsed.version}`);
     requireEditableTracks(parsed.project);
-    invalidate();
-    sessionClosed = false;
-    persistence.resume();
-    editor.setLastFile(null);
-    editor.replaceDocument(parsed.project);
-    actions.reset();
-    editor.setSource(null);
-    editor.setPhase({ kind: 'empty' });
+    replaceWorkspace(parsed.project);
     const media = activeMedia(editor.document);
     if (parsed.unknownFields.length)
       editor.setStatus([
@@ -409,14 +421,7 @@ export function createWorkspace(options: WorkspaceOptions) {
       const file = await platform.openFile('wos');
       if (!file || disposed || request !== opening || revision !== editor.docRevision) return;
       const data = readWos(file.bytes);
-      const project = projectFromWos(data, file.name);
-      beginOpening();
-      invalidate();
-      editor.setLastFile(null);
-      editor.replaceDocument(project);
-      actions.reset();
-      editor.setSource(null);
-      editor.setPhase({ kind: 'empty' });
+      replaceWorkspace(projectFromWos(data, file.name));
       editor.setStatus('loadedWos', { file: file.name, bpm: data.bpm, shift: data.shift });
     } catch (error) {
       if (!disposed && request === opening)

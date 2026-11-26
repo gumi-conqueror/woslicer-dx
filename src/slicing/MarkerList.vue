@@ -37,14 +37,8 @@ function choose(tick: number, event: MouseEvent): void {
   editor.setCursorTick(tick);
   editor.setSelectedTicks(nextSelection(tick, event));
   editor.setScrollTick(Math.max(0, tick - 24));
-  if (editor.source && !editor.playing)
-    editor.setPlayheadSample(
-      tickToSampleExport(tick, {
-        bpm: editor.doc.bpm,
-        shift: editor.doc.shift,
-        sampleRate: editor.source.sampleRate,
-      }),
-    );
+  if (editor.timeBase && !editor.playing)
+    editor.setPlayheadSample(tickToSampleExport(tick, editor.timeBase));
 }
 // Selection branch of the click protocol.
 function nextSelection(tick: number, event: MouseEvent): number[] {
