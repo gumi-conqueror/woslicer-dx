@@ -8,6 +8,7 @@ import {
   type WheelState,
 } from '../../src/input/wheel';
 import { isAppCommand } from '../../src/app/commands';
+import { MAX_WHEELS, parseWheels } from '../../src/input/wheel-layout';
 
 function run(events: readonly WheelEvent[], start: WheelState = { open: false, page: 0 }) {
   let state = start;
@@ -113,5 +114,24 @@ describe('command wheel', () => {
         expect(command).not.toBe('recording-tap');
       }
     }
+  });
+});
+
+describe('stored wheel layouts', () => {
+  const empty = Array.from({ length: WHEEL_SLOTS }, () => null);
+  it('reads valid layouts and empties slots with unknown or argument-taking commands', () => {
+    const slots = ['undo', 'gone', 'recording-tap', null, 'redo', 'open-wheel', 'help', 'about'];
+    expect(parseWheels({ version: 1, wheels: [slots] })).toEqual([
+      ['undo', null, null, null, 'redo', null, 'help', 'about'],
+    ]);
+  });
+  it('rejects other versions, wrong slot counts and too many wheels', () => {
+    expect(parseWheels({ version: 2, wheels: [empty] })).toBeNull();
+    expect(parseWheels({ version: 1, wheels: [['undo']] })).toBeNull();
+    expect(parseWheels({ version: 1, wheels: [] })).toBeNull();
+    expect(
+      parseWheels({ version: 1, wheels: Array.from({ length: MAX_WHEELS + 1 }, () => empty) }),
+    ).toBeNull();
+    expect(parseWheels('junk')).toBeNull();
   });
 });
