@@ -191,7 +191,9 @@
     "decoderLicenses": "音声デコーダーのライセンス",
     "tracks": "トラック",
     "renameTrack": "トラック名を変更",
-    "trackName": "トラック名"
+    "trackName": "トラック名",
+    "muteTrack": "トラックをミュート",
+    "soloTrack": "トラックをソロ"
   },
   "status": {
     "projectOpened": "プロジェクトを開いた：{name}",

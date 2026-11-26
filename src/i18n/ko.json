@@ -191,7 +191,9 @@
     "decoderLicenses": "음원 디코더 라이선스",
     "tracks": "트랙",
     "renameTrack": "트랙 이름 변경",
-    "trackName": "트랙 이름"
+    "trackName": "트랙 이름",
+    "muteTrack": "트랙 음소거",
+    "soloTrack": "트랙 솔로"
   },
   "status": {
     "projectOpened": "프로젝트 열기 완료: {name}",

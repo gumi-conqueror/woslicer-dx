@@ -1,5 +1,5 @@
 import { effectScope, inject, provide, watch, type InjectionKey } from 'vue';
-import type { EditorStore } from '../slicing/editor-store';
+import type { AudioSource, EditorStore } from '../slicing/editor-store';
 import { renderSlice } from '../core/audio/slice';
 import { sliceRanges } from '../core/slices';
 import { FULL_SCALE } from '../core/audio/pcm';
@@ -32,7 +32,23 @@ export function createPlayback(editor: EditorStore): Playback {
   const cue = createCueSynth(context);
   const scope = effectScope(true);
   const inputTimeline = createInputTimeline();
-  let buffer: AudioBuffer | null = null;
+  /** Audio buffers by decoded source; a source is immutable after decoding. */
+  const buffers = new WeakMap<AudioSource, AudioBuffer>();
+  function bufferOf(source: AudioSource | null): AudioBuffer | null {
+    if (!source || source.length === 0 || source.floatData.length === 0) return null;
+    let buffer = buffers.get(source);
+    if (!buffer) {
+      buffer = context.createBuffer(source.floatData.length, source.length, source.sampleRate);
+      for (const [index, channel] of source.floatData.entries())
+        buffer.getChannelData(index).set(channel);
+      buffers.set(source, buffer);
+    }
+    return buffer;
+  }
+  /** Each playing track's gain stage, by track id. */
+  const trackGains = new Map<string, GainNode>();
+  /** Other tracks that play along with the current track. */
+  let accompaniment: AudioBufferSourceNode[] = [];
   let track: AudioBufferSourceNode | null = null;
   let preview: AudioBufferSourceNode | null = null;
   let frame = 0;
@@ -84,6 +100,10 @@ export function createPlayback(editor: EditorStore): Playback {
     frame = 0;
     release(track);
     track = null;
+    for (const node of accompaniment) release(node);
+    accompaniment = [];
+    for (const gain of trackGains.values()) gain.disconnect();
+    trackGains.clear();
     release(preview);
     preview = null;
     cue.silence();
@@ -113,18 +133,42 @@ export function createPlayback(editor: EditorStore): Playback {
         if (!disposed && (track === node || preview === node)) stop();
       });
   }
+  /** A buffer node of one track, routed through that track's gain. */
+  function trackNode(trackId: string, buffer: AudioBuffer): AudioBufferSourceNode {
+    const gain = context.createGain();
+    gain.gain.value = editor.trackAmps.get(trackId) ?? 1;
+    gain.connect(master);
+    trackGains.set(trackId, gain);
+    const node = context.createBufferSource();
+    node.buffer = buffer;
+    node.playbackRate.value = activeRate;
+    node.connect(gain);
+    return node;
+  }
+  /**
+   * Plays every track that has audio. The current track drives the playhead
+   * and ends playback; the others start at the same time position.
+   */
   function play(): void {
-    if (disposed || track || !buffer || !editor.source || buffer.length === 0) return;
+    const buffer = bufferOf(editor.source);
+    if (disposed || track || !buffer || !editor.source) return;
     release(preview);
     preview = null;
     if (editor.playheadSample >= editor.source.length) editor.setPlayheadSample(0);
-    const node = context.createBufferSource();
-    node.buffer = buffer;
     activeRate = editor.playbackRate;
-    node.playbackRate.value = activeRate;
-    node.connect(master);
+    const node = trackNode(editor.track.trackId, buffer);
     anchorSample = editor.playheadSample;
     anchorTime = context.currentTime;
+    // Tracks share the tick grid, so the same playhead time applies to every sample rate.
+    const offset = anchorSample / buffer.sampleRate;
+    for (const [trackId, session] of editor.sessions) {
+      const other = trackId === editor.track.trackId ? null : bufferOf(session.source);
+      if (!other || offset >= other.duration) continue;
+      if (!editor.document.tracks.some((item) => item.trackId === trackId)) continue;
+      const along = trackNode(trackId, other);
+      along.start(0, offset);
+      accompaniment.push(along);
+    }
     lastCueTick = tickAtSample(anchorSample);
     track = node;
     node.onended = () => {
@@ -133,7 +177,7 @@ export function createPlayback(editor: EditorStore): Playback {
       stop();
     };
     resume(node);
-    node.start(0, anchorSample / buffer.sampleRate);
+    node.start(0, offset);
     editor.setPlaying(true);
     remember(anchorSample);
     tick();
@@ -212,22 +256,23 @@ export function createPlayback(editor: EditorStore): Playback {
     });
   }
   scope.run(() => {
+    // Another current track or new audio on it restarts the playhead.
     watch(
       () => editor.source,
-      (source) => {
+      () => {
         stop();
-        buffer = null;
-        if (source && source.length > 0 && source.floatData.length > 0) {
-          buffer = context.createBuffer(source.floatData.length, source.length, source.sampleRate);
-          source.floatData.forEach((channel, index) => {
-            buffer?.getChannelData(index).set(channel);
-          });
-        }
         editor.setPlayheadSample(0);
         inputTimeline.reset();
         remember(0);
       },
       { immediate: true, flush: 'sync' },
+    );
+    watch(
+      () => editor.trackAmps,
+      (amps) => {
+        for (const [trackId, gain] of trackGains) gain.gain.value = amps.get(trackId) ?? 0;
+      },
+      { flush: 'sync' },
     );
     watch(
       () => editor.masterAmp,
@@ -249,6 +294,7 @@ export function createPlayback(editor: EditorStore): Playback {
         anchorTime = context.currentTime;
         activeRate = value;
         if (track) track.playbackRate.value = value;
+        for (const node of accompaniment) node.playbackRate.value = value;
         remember(previous);
       },
       { flush: 'sync' },
@@ -292,7 +338,6 @@ export function createPlayback(editor: EditorStore): Playback {
       stop();
       cue.dispose();
       master.disconnect();
-      buffer = null;
       void context.close().catch(() => {
         /* Disposal is idempotent even after host context shutdown. */
       });

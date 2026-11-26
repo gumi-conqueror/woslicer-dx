@@ -30,6 +30,9 @@ class BufferDouble {
   ) {
     this.channels = Array.from({ length: numberOfChannels }, () => new Float32Array(length));
   }
+  get duration(): number {
+    return this.length / this.sampleRate;
+  }
   getChannelData(index: number): Float32Array {
     const channel = this.channels[index];
     if (!channel) throw new RangeError('Invalid channel');
@@ -445,7 +448,8 @@ describe('Pinia playback lifetime and audio clock', () => {
     const voiceSources = [...context.oscillators, ...context.sources.slice(1)];
     const callbacks = voiceSources.map((node) => node.onended);
     for (const callback of callbacks) callback?.();
-    for (const node of [...voiceSources, ...context.filters, ...context.gains.slice(2)])
+    // Gains 0–2 are the master, the cue bus and the playing track; voice gains follow.
+    for (const node of [...voiceSources, ...context.filters, ...context.gains.slice(3)])
       expect(node.disconnect).toHaveBeenCalledTimes(1);
     expect(editor.playing).toBe(true);
     playback.stop();
@@ -461,5 +465,36 @@ describe('Pinia playback lifetime and audio clock', () => {
     playback.previewSlice();
     expect(editor.status.segments[0]?.key).toBe('emptySlice');
     expect(context.sources).toHaveLength(0);
+  });
+});
+
+describe('multi-track playback', () => {
+  it('plays every track with audio through its own gain and follows mute and solo', async () => {
+    const app = createTestApp();
+    await app.workspace.loadAudio(audioFile('kick.wav', 96000));
+    const kick = app.editor.track.trackId;
+    app.opened = audioFile('snare.wav', 48000);
+    await app.run('add-track');
+    const snare = app.editor.track.trackId;
+    const playback = createPlayback(app.editor);
+    owners.push(playback);
+    const context = required(contexts.at(-1));
+    playback.play();
+    // The current track drives the playhead; the other track plays along from the same time.
+    expect(context.sources).toHaveLength(2);
+    expect(context.sources.map((node) => node.buffer?.length)).toEqual([48000, 96000]);
+    // Gains 0 and 1 are the master and cue buses; then one gain per playing track.
+    const [snareGain, kickGain] = context.gains.slice(2);
+    expect([snareGain?.gain.value, kickGain?.gain.value]).toEqual([1, 1]);
+    app.editor.setTrackMix(kick, { muted: true });
+    expect(kickGain?.gain.value).toBe(0);
+    app.editor.setTrackMix(kick, { muted: false });
+    app.editor.setTrackMix(snare, { solo: true });
+    expect([snareGain?.gain.value, kickGain?.gain.value]).toEqual([1, 0]);
+    app.editor.setTrackMix(snare, { solo: false, gainDb: -6 });
+    expect(snareGain?.gain.value).toBeCloseTo(Math.pow(10, -6 / 20), 12);
+    expect(kickGain?.gain.value).toBe(1);
+    playback.stop();
+    for (const gain of [snareGain, kickGain]) expect(gain?.disconnect).toHaveBeenCalled();
   });
 });

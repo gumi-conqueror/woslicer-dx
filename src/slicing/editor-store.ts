@@ -136,10 +136,32 @@ export const useEditorStore = defineStore('editor', () => {
   // projections keep the UI and command entry points stable. One user intent is
   // one transaction, so playback properties participate in undo and dirty.
   const applyGlobal = (edit: (draft: ProjectFile) => void): void => void transact(edit);
-  const trackPlayback = computed(() => {
-    const { gainDb, muted, solo } = track.value;
-    return { gainDb, muted, solo };
+  /**
+   * Linear gain of each track. Mute wins over solo; when any unmuted track is
+   * soloed, only unmuted solo tracks are audible.
+   */
+  const trackAmps = computed<ReadonlyMap<string, number>>(() => {
+    const tracks = document.value.tracks;
+    const soloing = tracks.some((item) => item.solo && !item.muted);
+    return new Map(
+      tracks.map((item) => [
+        item.trackId,
+        item.muted || (soloing && !item.solo) ? 0 : dbToAmp(clampGainDb(item.gainDb)),
+      ]),
+    );
   });
+  /** Mute, solo and gain of a track, as one undoable edit. */
+  function setTrackMix(
+    trackId: string,
+    value: Partial<Pick<ProjectTrack, 'muted' | 'solo' | 'gainDb'>>,
+  ): void {
+    editTrack((draft) => {
+      if (value.muted !== undefined) draft.muted = value.muted;
+      if (value.solo !== undefined) draft.solo = value.solo;
+      if (value.gainDb !== undefined && Number.isFinite(value.gainDb))
+        draft.gainDb = clampGainDb(value.gainDb);
+    }, trackId);
+  }
   // Fader previews affect monitoring immediately, without adding undo entries.
   const volumePreview = shallowRef<number | null>(null);
   const cueVolumePreview = shallowRef<number | null>(null);
@@ -151,12 +173,12 @@ export const useEditorStore = defineStore('editor', () => {
     if (value === null || Number.isFinite(value))
       cueVolumePreview.value = value === null ? null : Math.max(0, Math.min(1, value));
   }
-  // Master route: master mute or track mute wins over solo; gains sum in dB.
+  /** The master bus after its mute; track gains apply before it. */
   const masterAmp = computed(() => {
     const global = document.value.global;
-    if (global.masterMuted || trackPlayback.value.muted) return 0;
+    if (global.masterMuted) return 0;
     const gain = volumePreview.value === null ? global.masterGainDb : ampToDb(volumePreview.value);
-    return dbToAmp(clampGainDb(gain + trackPlayback.value.gainDb));
+    return dbToAmp(clampGainDb(gain));
   });
   const volume = computed({
     get: () => dbToAmp(document.value.global.masterGainDb),
@@ -504,6 +526,8 @@ export const useEditorStore = defineStore('editor', () => {
     playing,
     playheadSample,
     masterAmp,
+    trackAmps,
+    setTrackMix,
     cueAmp,
     setVolumePreview,
     setCueVolumePreview,

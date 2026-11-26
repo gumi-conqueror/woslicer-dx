@@ -191,7 +191,9 @@
     "decoderLicenses": "Audio decoder licenses",
     "tracks": "Tracks",
     "renameTrack": "Rename track",
-    "trackName": "Track name"
+    "trackName": "Track name",
+    "muteTrack": "Mute track",
+    "soloTrack": "Solo track"
   },
   "status": {
     "projectOpened": "Opened project: {name}",

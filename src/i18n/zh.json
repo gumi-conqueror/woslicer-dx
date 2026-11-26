@@ -191,7 +191,9 @@
     "decoderLicenses": "音频解码器许可证",
     "tracks": "音轨",
     "renameTrack": "重命名音轨",
-    "trackName": "音轨名称"
+    "trackName": "音轨名称",
+    "muteTrack": "静音此音轨",
+    "soloTrack": "独奏此音轨"
   },
   "status": {
     "projectOpened": "已打开工程：{name}",
