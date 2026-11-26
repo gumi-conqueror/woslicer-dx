@@ -3,16 +3,20 @@
 The root `package.json` contains the editable application version. Use `major.minor.patch`.
 Feature versions increment minor. Fix versions increment patch. Versioning is separate from GitHub release publication.
 
+Before a version is final, collaborators check it through alpha prereleases: `major.minor.patch-alpha.N`.
+N starts at 1 and increases by 1 for each published prerelease. No other prerelease form is accepted.
+
 ## Prepare a version
 
 Run from the repository root, replacing the placeholder with the intended version:
 
 ```sh
-npm version <major.minor.patch> --no-git-tag-version --ignore-scripts
+npm version <version> --no-git-tag-version --ignore-scripts
 ```
 
 This updates `package.json` and `package-lock.json` without a commit or tag.
 Add matching entries at the top of `CHANGELOG.md` and `CHANGELOG.zh-CN.md` using `## <version> — YYYY-MM-DD`.
+An alpha entry lists the changes since the previous alpha. The final version replaces its alpha entries with one entry.
 Then validate the version and preview the release-note text:
 
 ```sh
