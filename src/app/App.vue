@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, shallowRef, useTemplateRef, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, shallowRef, useTemplateRef, watch } from 'vue';
 import { errorMessage } from '../core/messages';
 import { ElConfigProvider, ElMessageBox } from 'element-plus';
 import { useI18n } from 'vue-i18n';
@@ -9,7 +9,6 @@ import ApplicationMenu from './components/ApplicationMenu.vue';
 import WindowTitlebar from './components/WindowTitlebar.vue';
 import { getPlatform, getBuildIdentity } from '../platform';
 import type { BuildIdentity } from '../platform/contracts';
-import type { AppCommand } from './command-types';
 import { useEditorStore } from '../slicing/editor-store';
 import { useBmhelperStore } from '../bmhelper/store';
 import { createWorkspace, provideWorkspace } from '../workspace/workspace';
@@ -24,11 +23,13 @@ import HelpDialog from './components/HelpDialog.vue';
 import AboutDialog from './components/AboutDialog.vue';
 import TroubleshootDialog from './components/TroubleshootDialog.vue';
 import { useInputControls, navigateDialog } from './use-input-controls';
+import { editingControl, visibleDialog } from './input-context';
+import { canRecord } from './menu';
 import { gamepadNavigation } from './gamepad-controls';
 import { GAMEPAD_SHORTCUTS } from './shortcuts';
 import { openDataFolder } from '../platform/app-data';
 import { useInputState } from './input-state';
-import { recordingCommandForGamepad, type RecordingInput } from './recording-bindings';
+import { recordingCommandForGamepad } from './recording-bindings';
 import YuanconDialog from './components/YuanconDialog.vue';
 import { useYuanconRecording } from './use-yuancon-recording';
 import { audioFileFormat } from '../core/audio-formats';
@@ -60,6 +61,16 @@ const troubleshootOpen = ref(false);
 const yuanconOpen = ref(false);
 const applicationMenu = useTemplateRef<InstanceType<typeof ApplicationMenu>>('applicationMenu');
 const closing = ref(false);
+// Every app-owned dialog and the close lock: while one is open, app input does nothing.
+const modalOpen = computed(
+  () =>
+    calibrating.value ||
+    aboutOpen.value ||
+    helpOpen.value ||
+    troubleshootOpen.value ||
+    yuanconOpen.value ||
+    closing.value,
+);
 const dragActive = ref(false);
 const panelGeneration = ref(0);
 const identity = shallowRef<BuildIdentity | null>(null);
@@ -88,6 +99,7 @@ const commands = createCommands({
   onConnectYuancon: () => {
     yuanconOpen.value = true;
   },
+  report,
 });
 watch(
   () => editor.documentGeneration,
@@ -97,7 +109,7 @@ watch(
   { flush: 'sync' },
 );
 watch(
-  () => editor.limited || !editor.source,
+  () => !canRecord(editor),
   (disabled) => {
     if (disabled) input.recording = false;
   },
@@ -109,13 +121,7 @@ let stopAppearance: (() => void) | undefined;
 function report(error: unknown): void {
   if (!disposed) editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
 }
-async function execute(command: AppCommand, recordingInput?: RecordingInput): Promise<void> {
-  try {
-    await commands.execute(command, recordingInput);
-  } catch (error: unknown) {
-    report(error);
-  }
-}
+const execute = commands.run;
 // Confirmation dialogs; the shared closing lock rejects reentry.
 // Shared boolean-confirmation protocol: one closing lock, one MessageBox call,
 // cancellation filtered from error reporting. Callers pass pre-translated text.
@@ -213,34 +219,18 @@ async function newProjectFromWos(): Promise<void> {
 }
 // Keyboard gating, calibration entry and tap offset.
 function keydown(event: KeyboardEvent): void {
-  if (
-    !calibrating.value &&
-    !aboutOpen.value &&
-    !helpOpen.value &&
-    !troubleshootOpen.value &&
-    !yuanconOpen.value &&
-    !closing.value
-  )
-    commands.onKeyDown(event, input.recording);
+  if (!modalOpen.value) commands.onKeyDown(event, input.recording);
 }
 function recordingActive(): boolean {
+  const focused = document.activeElement;
   return (
     input.recording &&
-    !!editor.source &&
-    !editor.limited &&
-    !calibrating.value &&
-    !aboutOpen.value &&
-    !helpOpen.value &&
-    !troubleshootOpen.value &&
-    !yuanconOpen.value &&
-    !closing.value &&
+    canRecord(editor) &&
+    !modalOpen.value &&
     !applicationMenu.value?.isActive() &&
-    !document.activeElement?.closest(
-      'input,textarea,select,[contenteditable="true"],[role="dialog"],[role="listbox"],[role="slider"]',
-    ) &&
-    !Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"]')).some(
-      (dialog) => dialog.getClientRects().length > 0,
-    )
+    !editingControl(focused) &&
+    !focused?.closest('[role="dialog"]') &&
+    !visibleDialog()
   );
 }
 const yuancon = useYuanconRecording({
@@ -251,26 +241,12 @@ const yuancon = useYuanconRecording({
 });
 useInputControls((control, recordingInput) => {
   if (navigateDialog(control)) return;
-  if (
-    calibrating.value ||
-    aboutOpen.value ||
-    helpOpen.value ||
-    troubleshootOpen.value ||
-    yuanconOpen.value ||
-    closing.value
-  )
-    return;
+  if (modalOpen.value) return;
   const navigation = gamepadNavigation(control);
   if (navigation && applicationMenu.value?.navigate(navigation)) return;
   if (applicationMenu.value?.isActive()) return;
   // Text editing keeps its focus; menu/help remain reachable from a controller.
-  if (
-    control !== 'view' &&
-    document.activeElement?.closest(
-      'input,textarea,select,[contenteditable="true"],[role="listbox"],[role="slider"]',
-    )
-  )
-    return;
+  if (control !== 'view' && editingControl(document.activeElement)) return;
   if (recordingActive()) {
     const command = recordingCommandForGamepad(control);
     if (command) void execute(command, recordingInput);
@@ -367,9 +343,7 @@ onUnmounted(() => {
       >
         <ApplicationMenu
           ref="applicationMenu"
-          :disabled="
-            calibrating || aboutOpen || helpOpen || troubleshootOpen || yuanconOpen || closing
-          "
+          :disabled="modalOpen"
           :desktop="platform.kind === 'tauri'"
           @command="execute"
         />

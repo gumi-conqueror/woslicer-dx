@@ -72,6 +72,11 @@ export const MENU_COMMANDS = APPLICATION_MENU.flatMap((group) =>
   group.commands.map((item) => item.id),
 );
 
+/** Recording needs audio and an editable project. */
+export function canRecord(editor: Pick<MenuEditorState, 'source' | 'limited'>): boolean {
+  return editor.source !== null && !editor.limited;
+}
+
 /**
  * Menu availability reflects the workspace guards; commands also validate at
  * their mutation boundary because shortcuts and toolbars bypass this menu.
@@ -91,7 +96,7 @@ export function menuCommandEnabled(id: MenuCommand, editor: MenuEditorState): bo
     case 'connect-yuancon':
       return true;
     case 'toggle-recording':
-      return editor.source !== null && !editor.limited;
+      return canRecord(editor);
     case 'calibrate':
       return editor.source !== null;
     case 'open-audio':

@@ -6,6 +6,7 @@ import { wavFile } from './audio';
 import type { Platform, OpenedFile, OutputFile } from '../../src/platform/contracts';
 import { onTestFinished } from 'vitest';
 import { createCommands } from '../../src/app/commands';
+import { errorMessage } from '../../src/core/messages';
 import type { Playback } from '../../src/playback';
 
 /**
@@ -25,6 +26,9 @@ export function createTestApp(createEngine = processorEngine) {
     onAbout() {},
     onHelp() {},
     onCalibrate() {},
+    onOpenProject: () => app.workspace.openProject(),
+    onNewProjectFromWos: () => app.workspace.newProjectFromWos(),
+    report: (error) => app.editor.setStatus('loadFailed', { message: errorMessage(error) }, true),
   });
   return Object.assign(app, {
     playback,

@@ -1,6 +1,7 @@
 import { onMounted, onUnmounted } from 'vue';
 import { createGamepadReader, type GamepadControl } from './gamepad-controls';
 import { useInputState } from './input-state';
+import { visibleDialog } from './input-context';
 import { RECORDING_KEYS, type RecordingInput } from './recording-bindings';
 
 export function useInputControls(
@@ -82,9 +83,7 @@ export function useInputControls(
 /** Dialogs consume controller input before editor bindings. Focus stays inside
  * the visible modal, including the help's manually selected input guide. */
 export function navigateDialog(control: GamepadControl): boolean {
-  const dialog = Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"]'))
-    .reverse()
-    .find((item) => item.getClientRects().length > 0);
+  const dialog = visibleDialog();
   if (!dialog) return false;
   const controls = Array.from(
     dialog.querySelectorAll<HTMLElement>(

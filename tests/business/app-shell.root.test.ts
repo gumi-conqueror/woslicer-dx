@@ -51,17 +51,22 @@ vi.mock('../../src/app/commands', () => ({
     onAbout: () => void;
     onHelp: () => void;
     onCalibrate: () => void;
-  }) => ({
-    execute: async (command: string) => {
+    report: (error: unknown) => void;
+  }) => {
+    async function execute(command: string) {
       effects.execute(command);
       if (command === 'close-project') await options.onClose();
       if (command === 'open-project') await options.onOpenProject();
       if (command === 'calibrate') options.onCalibrate();
       if (command === 'help') options.onHelp();
       if (command === 'about') options.onAbout();
-    },
-    onKeyDown: effects.keydown,
-  }),
+    }
+    return {
+      execute,
+      run: (command: string) => execute(command).catch(options.report),
+      onKeyDown: effects.keydown,
+    };
+  },
 }));
 afterEach(() => {
   vi.restoreAllMocks();

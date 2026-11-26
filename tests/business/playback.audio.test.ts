@@ -136,6 +136,11 @@ describe('Pinia playback lifetime and audio clock', () => {
       onClose() {},
       onAbout() {},
       onCalibrate() {},
+      onOpenProject() {},
+      onNewProjectFromWos() {},
+      report(error) {
+        throw error;
+      },
     });
     editor.snap = false;
     editor.tapOffsetMs = 0;
@@ -181,6 +186,11 @@ describe('Pinia playback lifetime and audio clock', () => {
       onAbout() {},
       onHelp() {},
       onCalibrate() {},
+      onOpenProject() {},
+      onNewProjectFromWos() {},
+      report(error) {
+        throw error;
+      },
     });
     editor.snap = false;
     editor.tapOffsetMs = 100;
