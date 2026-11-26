@@ -1,9 +1,10 @@
 import type { EditorStore } from '../slicing/editor-store';
 import type { Palette } from '../ui/palette';
-import { MAX_TICKS, MEASURE_TICKS } from '../core/timebase';
+import { MAX_TICKS, MEASURE_TICKS, sampleToTick, tickToSample } from '../core/timebase';
 import { gridLineTicks, gridStepTicks, measureLabelStep } from '../core/gridlines';
 import { peakRange } from '../core/peaks';
-import { drawBandEnvelope, drawWaveLane, sampleToTick, tickToFrame } from './waveform';
+import { drawBandEnvelope, drawWaveLane } from './waveform';
+import { FULL_SCALE } from '../core/audio/pcm';
 
 export const RULER_HEIGHT = 28;
 export const OVERVIEW_HEIGHT = 36;
@@ -11,6 +12,7 @@ export type TimelineSnapshot = Pick<
   EditorStore,
   | 'doc'
   | 'ticks'
+  | 'markerKeys'
   | 'previewTicks'
   | 'source'
   | 'peaks'
@@ -205,6 +207,10 @@ export function drawTimeline(
     }
   }
   context.lineWidth = 1;
+  const recordedKeys = new Map(state.markerKeys.map((entry) => [entry.tick, entry.keys]));
+  context.font = '11px "WOS UI en", Consolas, monospace';
+  context.textBaseline = 'top';
+  let labelRight = -Infinity;
   for (const tick of state.previewTicks ?? state.ticks) {
     if (tick < state.scrollTick || tick > toTick) continue;
     const x = (tick - state.scrollTick) * state.pxPerTick;
@@ -218,6 +224,16 @@ export function drawTimeline(
     context.lineTo(x, 6);
     context.closePath();
     context.fill();
+    const keys = recordedKeys.get(tick);
+    if (keys?.length && x >= labelRight) {
+      const label = keys.join('+');
+      const labelWidth = label.length * 7 + 4;
+      context.fillStyle = palette.panel;
+      context.fillRect(x + 3, 8, labelWidth, 15);
+      context.fillStyle = state.selectedTicks.includes(tick) ? palette.selection : palette.accent;
+      context.fillText(label, x + 5, 10);
+      labelRight = x + labelWidth + 8;
+    }
   }
   if (state.selectionStartTick !== null && state.selectionEndTick !== null) {
     const first = Math.min(state.selectionStartTick, state.selectionEndTick),
@@ -289,14 +305,14 @@ export function drawOverview(
     context.fillStyle = palette.wave;
     for (let lane = 0; lane < source.channels; lane++) {
       for (let x = 0; x < width; x += 2) {
-        const first = tickToFrame((x / width) * MAX_TICKS, base),
-          last = tickToFrame(((x + 2) / width) * MAX_TICKS, base);
+        const first = tickToSample((x / width) * MAX_TICKS, base),
+          last = tickToSample(((x + 2) / width) * MAX_TICKS, base);
         if (last <= 0 || first >= source.length) continue;
         const range = peakRange(cache, source.length, first, last);
         const middle = laneHeight * (lane + 0.5),
           half = laneHeight / 2 - 2;
-        const top = middle - (range.max / 32768) * half,
-          bottom = middle - (range.min / 32768) * half;
+        const top = middle - (range.max / FULL_SCALE) * half,
+          bottom = middle - (range.min / FULL_SCALE) * half;
         context.fillRect(x, top, 2, Math.max(1, bottom - top));
       }
     }

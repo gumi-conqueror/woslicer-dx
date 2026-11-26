@@ -5,8 +5,9 @@ import { useI18n } from 'vue-i18n';
 import { MEASURE_TICKS } from '../../core/timebase';
 import type { BuildIdentity } from '../../platform/contracts';
 import { useEditorStore } from '../../slicing/editor-store';
-import { useInputState } from '../input-state';
+import { useInputState } from '../../input/state';
 import AppIcon from '../../ui/AppIcon.vue';
+import YuanconIcon from '../../ui/YuanconIcon.vue';
 const input = useInputState();
 defineProps<{ identity: BuildIdentity | null }>();
 const emit = defineEmits<{ about: [] }>();
@@ -47,7 +48,9 @@ const status = computed(() =>
       role="img"
       :aria-label="t(`input.${input.device}`)"
       :title="t(`input.${input.device}`)"
-      ><AppIcon :name="input.device"
+      ><YuanconIcon v-if="input.device === 'yuancon'" /><AppIcon
+        v-else
+        :name="input.device"
     /></span>
     <ElButton
       v-if="identity"

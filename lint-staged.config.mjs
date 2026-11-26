@@ -8,7 +8,7 @@ export default {
   '*.{css,html,json,jsonc,yml,yaml}': ['oxfmt --check'],
   // Any staged tool configuration widens the check to the full managed scope:
   // scripts/check-staged-quality.mjs ignores the file list and runs the full
-  // `lint` + `fmt:check` commands, exiting with their status.
+  // `lint` + `format:check` commands, exiting with their status.
   '{eslint.config.mjs,.oxfmtrc.json,tsconfig.json,tsconfig.app.json,tsconfig.tests.json,tsconfig.lint.json,tsconfig.lint.shims.d.ts,package.json,package-lock.json,vite.config.mts,vitest.config.mts,playwright.app.config.mts}':
     ['node scripts/check-staged-quality.mjs'],
 };

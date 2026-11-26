@@ -4,6 +4,10 @@
   "description": "Only the local editor can invoke offline operations and fixed About links.",
   "windows": ["main"],
   "permissions": [
+    "allow-input-clock",
+    "allow-yuancon-devices",
+    "allow-yuancon-connect",
+    "allow-yuancon-disconnect",
     "core:window:allow-minimize",
     "core:window:allow-toggle-maximize",
     "core:window:allow-is-maximized",
@@ -34,7 +38,6 @@
     "allow-read-session",
     "allow-write-session",
     "allow-clear-session",
-    "allow-import-legacy-session",
     "allow-set-theme",
     "allow-build-identity"
   ]

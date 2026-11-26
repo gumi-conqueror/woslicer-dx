@@ -74,19 +74,6 @@ pub(crate) fn clear_session(app: AppHandle) -> Result<(), String> {
         Err(error) => Err(error.to_string()),
     }
 }
-#[tauri::command]
-pub(crate) async fn import_legacy_session() -> Result<Option<Value>, String> {
-    let Some(file) = rfd::AsyncFileDialog::new()
-        .add_filter("Legacy session", &["json"])
-        .set_file_name("legacy-session-v1.json")
-        .pick_file()
-        .await
-    else {
-        return Ok(None);
-    };
-    // The workspace validates the envelope and data. No embedded path is opened here.
-    read_json(file.path()).map(Some)
-}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -103,10 +90,11 @@ mod tests {
         Ok(())
     }
     #[test]
-    fn legacy_json_is_data_only_and_round_trips() -> Result<(), Box<dyn std::error::Error>> {
+    fn session_writes_replace_the_file_atomically_and_reject_broken_json()
+    -> Result<(), Box<dyn std::error::Error>> {
         let directory = tempfile::tempdir()?;
-        let path = directory.path().join("legacy-session-v1.json");
-        let envelope = serde_json::json!({"version":1,"session":{"path":"C:/private.wav"},"preferences":{"theme":null,"language":"ja"}});
+        let path = directory.path().join("session.json");
+        let envelope = serde_json::json!({"version":3,"dirty":true,"lastFile":null});
         atomic_write(&path, &serde_json::to_vec(&envelope)?)?;
         assert_eq!(read_json(&path)?, envelope);
         assert_eq!(fs::read_dir(directory.path())?.count(), 1);

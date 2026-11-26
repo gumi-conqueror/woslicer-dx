@@ -6,7 +6,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "types": ["vite/client"],
+    "types": ["vite/client", "w3c-web-hid"],
     "lib": ["ES2022", "DOM", "DOM.Iterable"]
   },
   "include": [
@@ -28,6 +28,7 @@
     "src/bmhelper/**/*.ts",
     "src/bmhelper/**/*.vue",
     "src/workspace/**/*.ts",
+    "src/input/**/*.ts",
     "src/platform/**/*.ts",
     "src/i18n/**/*.ts",
     "src/ui/**/*.ts",

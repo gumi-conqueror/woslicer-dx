@@ -30,19 +30,18 @@ export function chronological(notes: readonly SourceNote[]): SourceNote[] {
     .sort((a, b) => a.n.onset - b.n.onset || a.i - b.i)
     .map((x) => ({ ...x.n }));
 }
+/** Groups compatible notes into sounds. `notes` must be in chronological order. */
 export function groupSounds(
   notes: readonly SourceNote[],
   durationTolerance: number,
   velocityTolerance: number,
 ): Sound[] {
-  if (![durationTolerance, velocityTolerance].every((n) => Number.isFinite(n) && n >= 0))
-    throw new RangeError('Invalid tolerance');
   const groups: SourceNote[][] = [];
   const compatible = (a: SourceNote, b: SourceNote): boolean =>
     a.pitch === b.pitch &&
     Math.abs(a.duration - b.duration) <= durationTolerance &&
     Math.abs(a.velocity - b.velocity) <= velocityTolerance;
-  for (const note of chronological(notes)) {
+  for (const note of notes) {
     const group = groups.find((g) => g.some((n) => compatible(n, note)));
     if (group) group.push(note);
     else groups.push([note]);

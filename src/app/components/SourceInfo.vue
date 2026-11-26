@@ -18,8 +18,8 @@ const sourceFormat = computed(() => {
       return t('chrome.srcPcm', { bits: format.bits });
     case 'float':
       return t('chrome.srcFloat', { bits: format.bits });
-    case 'vorbis':
-      return 'Ogg Vorbis';
+    case 'encoded':
+      return format.codec;
   }
 });
 // Length in seconds at fixed precision; "0" while no source is loaded.
@@ -48,7 +48,9 @@ const duration = computed(() =>
           t('chrome.srcFormat', { format: sourceFormat, channels: editor.source.channels })
         }}</ElDescriptionsItem
       >
-      <ElDescriptionsItem :label="t('chrome.processingFormatLabel')">PCM 16-bit</ElDescriptionsItem>
+      <ElDescriptionsItem :label="t('chrome.processingFormatLabel')"
+        >Float32 / PCM 16-bit</ElDescriptionsItem
+      >
       <ElDescriptionsItem :label="t('chrome.lengthLabel')">{{
         t('chrome.framesCount', { count: editor.source.length.toLocaleString() })
       }}</ElDescriptionsItem>

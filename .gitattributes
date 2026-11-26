@@ -1,3 +1,28 @@
 # Store and check out text files with LF on every platform.
 # This prevents CI build failures on Windows runners.
 * text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.wav binary
+*.aiff binary
+*.aif binary
+*.flac binary
+*.mp3 binary
+*.ogg binary
+*.oga binary
+*.aac binary
+*.m4a binary
+*.mp4 binary
+*.mka binary
+*.mkv binary
+*.wasm binary
+*.wos binary
+*.bmh binary
+*.mid binary
+*.ico binary
+*.png binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.zip binary

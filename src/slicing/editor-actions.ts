@@ -8,11 +8,49 @@ import {
   selectionToOffsets,
 } from '../core/markers';
 import type { EditorStore } from './editor-store';
+import type { MarkerKey } from '../project/schema';
+import { remapMarkerKeys, type MarkerKeys } from '../project/marker-keys';
+
+/**
+ * The delta that a group of markers can move by: as close to `delta` as the
+ * marker map and, with audio, the last legal tick allow. The group keeps its spacing.
+ */
+export function groupMoveDelta(
+  editor: EditorStore,
+  ticks: readonly number[],
+  delta: number,
+): number {
+  let applied = clampGroupDelta(ticks, delta);
+  if (editor.source && ticks.length) {
+    // The same integer export boundary as marker placement (the source end is legal).
+    let low = 0,
+      high = MAX_TICKS - 1;
+    while (low < high) {
+      const middle = Math.ceil((low + high) / 2);
+      if (editor.tickBeyondEnd(middle)) high = middle - 1;
+      else low = middle;
+    }
+    applied = Math.max(-Math.min(...ticks), Math.min(applied, low - Math.max(...ticks)));
+  }
+  return applied;
+}
+
+/** Moves `ticks` by `delta` in one undo step; their key attributes and selection move with them. */
+export function moveMarkers(editor: EditorStore, ticks: readonly number[], delta: number): number {
+  const applied = groupMoveDelta(editor, ticks, delta);
+  if (!applied) return 0;
+  editor.setTicks(
+    [...editor.ticks.filter((t) => !ticks.includes(t)), ...ticks.map((t) => t + applied)],
+    remapMarkerKeys(editor.markerKeys, (tick) => (ticks.includes(tick) ? tick + applied : tick)),
+  );
+  editor.setSelectedTicks(ticks.map((t) => t + applied));
+  return applied;
+}
 
 export function createEditorActions(editor: EditorStore) {
-  let measureClipboard: Uint8Array | null = null;
-  let selectionClipboard: { offsets: number[]; origin: number } | null = null;
-  function setMarker(tick: number, enabled = true): boolean {
+  let measureClipboard: { offsets: number[]; keys: MarkerKeys } | null = null;
+  let selectionClipboard: { offsets: number[]; origin: number; keys: MarkerKeys } | null = null;
+  function setMarker(tick: number, enabled = true, keys: readonly MarkerKey[] = []): boolean {
     editor.cancelDraft();
     if (
       !Number.isInteger(tick) ||
@@ -25,6 +63,7 @@ export function createEditorActions(editor: EditorStore) {
     }
     return editor.setTicks(
       enabled ? [...editor.ticks, tick] : editor.ticks.filter((t) => t !== tick),
+      enabled && keys.length ? [...editor.markerKeys, { tick, keys }] : editor.markerKeys,
     );
   }
   function toggleMarker(tick = editor.cursorTick): boolean {
@@ -41,7 +80,7 @@ export function createEditorActions(editor: EditorStore) {
       editor.setStatus('bmhNoDivision', true);
       return;
     }
-    editor.setTicks(accepted);
+    editor.setTicks(accepted, []);
     editor.setSelectedTicks([]);
     editor.setSelection(null, null);
     // MIDI has no reliable source tempo here. Preserve the current document BPM.
@@ -55,7 +94,16 @@ export function createEditorActions(editor: EditorStore) {
     const selected = editor.selectedTicks.filter((t) => editor.ticks.includes(t));
     const origin = selected[0];
     selectionClipboard =
-      origin === undefined ? null : { offsets: selectionToOffsets(selected), origin };
+      origin === undefined
+        ? null
+        : {
+            offsets: selectionToOffsets(selected),
+            origin,
+            keys: remapMarkerKeys(
+              editor.markerKeys.filter((entry) => selected.includes(entry.tick)),
+              (tick) => tick - origin,
+            ),
+          };
   }
   function cutSelection(): void {
     copySelection();
@@ -67,7 +115,7 @@ export function createEditorActions(editor: EditorStore) {
       editor.setStatus('pasteClipboardEmpty', true);
       return false;
     }
-    const { offsets, origin } = selectionClipboard;
+    const { offsets, origin, keys } = selectionClipboard;
     if (offsets.some((t) => !editor.legalTick(t + editor.cursorTick))) {
       editor.setStatus('cutBeyondEnd', true);
       return false;
@@ -79,7 +127,10 @@ export function createEditorActions(editor: EditorStore) {
       editor.setStatus('pasteRejected', { tick: editor.cursorTick, reason: pasted.reason }, true);
       return false;
     }
-    editor.addTicks(pasted.ticks);
+    editor.setTicks(
+      [...editor.ticks, ...pasted.ticks],
+      [...editor.markerKeys, ...remapMarkerKeys(keys, (tick) => tick + editor.cursorTick)],
+    );
     editor.setSelectedTicks(pasted.ticks);
     return true;
   }
@@ -92,25 +143,22 @@ export function createEditorActions(editor: EditorStore) {
       editor.setStatus('cutBeyondEnd', true);
       return false;
     }
-    const changed = editor.setTicks([
-      ...editor.ticks.filter((t) => !selected.includes(t)),
-      ...targets,
-    ]);
+    const destinations = new Map(selected.map((tick, index) => [tick, targets[index] ?? tick]));
+    const changed = editor.setTicks(
+      [...editor.ticks.filter((t) => !selected.includes(t)), ...targets],
+      remapMarkerKeys(editor.markerKeys, (tick) => destinations.get(tick) ?? tick),
+    );
     editor.setSelectedTicks(targets);
     return changed;
   }
   function moveSelection(delta: number): number {
     editor.cancelDraft();
     if (!Number.isInteger(delta)) return 0;
-    const selected = editor.selectedTicks.filter((t) => editor.ticks.includes(t));
-    if (delta > 0 && selected.some((t) => editor.tickBeyondEnd(t + delta))) return 0;
-    const applied = clampGroupDelta(selected, delta);
-    editor.setTicks([
-      ...editor.ticks.filter((t) => !selected.includes(t)),
-      ...selected.map((t) => t + applied),
-    ]);
-    editor.setSelectedTicks(selected.map((t) => t + applied));
-    return applied;
+    return moveMarkers(
+      editor,
+      editor.selectedTicks.filter((t) => editor.ticks.includes(t)),
+      delta,
+    );
   }
   function shiftAll(delta: number): boolean {
     editor.cancelDraft();
@@ -119,7 +167,10 @@ export function createEditorActions(editor: EditorStore) {
       (delta > 0 && editor.ticks.some((t) => editor.tickBeyondEnd(t + delta)))
     )
       return false;
-    return editor.setTicks(normalizeSelection(editor.ticks.map((t) => t + delta)));
+    return editor.setTicks(
+      normalizeSelection(editor.ticks.map((t) => t + delta)),
+      remapMarkerKeys(editor.markerKeys, (tick) => tick + delta),
+    );
   }
   function undo(): boolean {
     return editor.undo();
@@ -143,9 +194,17 @@ export function createEditorActions(editor: EditorStore) {
   function measureCopy(): void {
     editor.cancelDraft();
     const base = measureBase();
-    measureClipboard = new Uint8Array(MEASURE_TICKS);
-    for (const tick of editor.ticks)
-      if (tick >= base && tick < base + MEASURE_TICKS) measureClipboard[tick - base] = 1;
+    measureClipboard = {
+      offsets: editor.ticks
+        .filter((tick) => tick >= base && tick < base + MEASURE_TICKS)
+        .map((tick) => tick - base),
+      keys: remapMarkerKeys(
+        editor.markerKeys.filter(
+          (entry) => entry.tick >= base && entry.tick < base + MEASURE_TICKS,
+        ),
+        (tick) => tick - base,
+      ),
+    };
   }
   function measureCut(): void {
     measureCopy();
@@ -156,12 +215,17 @@ export function createEditorActions(editor: EditorStore) {
     editor.cancelDraft();
     if (!measureClipboard) return false;
     const measure = Math.floor(editor.cursorTick / MEASURE_TICKS);
-    for (let i = 0; i < measureClipboard.length; i++)
-      if (measureClipboard[i] && !editor.legalTick(measure * MEASURE_TICKS + i)) return false;
+    if (measureClipboard.offsets.some((tick) => !editor.legalTick(measure * MEASURE_TICKS + tick)))
+      return false;
     const base = measure * MEASURE_TICKS;
     const ticks = editor.ticks.filter((t) => t < base || t >= base + MEASURE_TICKS);
-    for (let i = 0; i < measureClipboard.length; i++) if (measureClipboard[i]) ticks.push(base + i);
-    return editor.setTicks(ticks);
+    ticks.push(...measureClipboard.offsets.map((tick) => base + tick));
+    return editor.setTicks(ticks, [
+      ...editor.markerKeys.filter(
+        (entry) => entry.tick < base || entry.tick >= base + MEASURE_TICKS,
+      ),
+      ...remapMarkerKeys(measureClipboard.keys, (tick) => tick + base),
+    ]);
   }
   function reset(): void {
     measureClipboard = null;
@@ -189,4 +253,3 @@ export function createEditorActions(editor: EditorStore) {
     reset,
   };
 }
-export type EditorActions = ReturnType<typeof createEditorActions>;

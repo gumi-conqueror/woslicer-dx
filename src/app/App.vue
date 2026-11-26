@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, shallowRef, useTemplateRef } from 'vue';
+import { computed, onMounted, onUnmounted, ref, shallowRef, useTemplateRef, watch } from 'vue';
+import { errorMessage } from '../core/messages';
 import { ElConfigProvider, ElMessageBox } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { pinia, localization } from './runtime';
@@ -8,7 +9,6 @@ import ApplicationMenu from './components/ApplicationMenu.vue';
 import WindowTitlebar from './components/WindowTitlebar.vue';
 import { getPlatform, getBuildIdentity } from '../platform';
 import type { BuildIdentity } from '../platform/contracts';
-import type { AppCommand } from './command-types';
 import { useEditorStore } from '../slicing/editor-store';
 import { useBmhelperStore } from '../bmhelper/store';
 import { createWorkspace, provideWorkspace } from '../workspace/workspace';
@@ -22,14 +22,22 @@ import StatusBar from './components/StatusBar.vue';
 import HelpDialog from './components/HelpDialog.vue';
 import AboutDialog from './components/AboutDialog.vue';
 import TroubleshootDialog from './components/TroubleshootDialog.vue';
-import { useInputControls, navigateDialog } from './use-input-controls';
-import { gamepadNavigation } from './gamepad-controls';
-import { GAMEPAD_SHORTCUTS } from './shortcuts';
+import { useInputControls, navigateDialog } from '../input/use-gamepad';
+import { editingControl, visibleDialog } from '../input/context';
+import { canRecord } from './menu';
+import { gamepadNavigation } from '../input/gamepad';
+import { GAMEPAD_SHORTCUTS } from '../input/bindings';
 import { openDataFolder } from '../platform/app-data';
+import { useInputState } from '../input/state';
+import { recordingCommandForGamepad } from '../input/recording';
+import YuanconDialog from './components/YuanconDialog.vue';
+import { useYuanconRecording } from '../input/yuancon/use-recording';
+import { audioFileFormat } from '../core/audio-formats';
 
 // Assembly: platform, stores, workspace and playback providers.
 const platform = getPlatform();
 const editor = useEditorStore(pinia);
+const input = useInputState(pinia);
 const bmhelper = useBmhelperStore(pinia);
 bmhelper.bindEditor(editor);
 const workspace = createWorkspace({
@@ -37,7 +45,6 @@ const workspace = createWorkspace({
   editor,
   confirmDiscardRecovery,
   confirmRelinkDifference,
-  confirmLegacyImport,
 });
 const loading = workspace.loading;
 const playback = createPlayback(editor);
@@ -50,8 +57,19 @@ const calibrating = ref(false);
 const aboutOpen = ref(false);
 const helpOpen = ref(false);
 const troubleshootOpen = ref(false);
+const yuanconOpen = ref(false);
 const applicationMenu = useTemplateRef<InstanceType<typeof ApplicationMenu>>('applicationMenu');
 const closing = ref(false);
+// Every app-owned dialog and the close lock: while one is open, app input does nothing.
+const modalOpen = computed(
+  () =>
+    calibrating.value ||
+    aboutOpen.value ||
+    helpOpen.value ||
+    troubleshootOpen.value ||
+    yuanconOpen.value ||
+    closing.value,
+);
 const dragActive = ref(false);
 const panelGeneration = ref(0);
 const identity = shallowRef<BuildIdentity | null>(null);
@@ -74,25 +92,35 @@ const commands = createCommands({
   onAbout: () => {
     aboutOpen.value = true;
   },
+  onToggleRecording: () => {
+    input.recording = !input.recording;
+  },
+  onConnectYuancon: () => {
+    yuanconOpen.value = true;
+  },
+  report,
 });
+watch(
+  () => editor.documentGeneration,
+  () => {
+    input.recording = false;
+  },
+  { flush: 'sync' },
+);
+watch(
+  () => !canRecord(editor),
+  (disabled) => {
+    if (disabled) input.recording = false;
+  },
+  { flush: 'sync' },
+);
 // Unmount guard, status reporting and command execution.
 let disposed = false;
 let stopAppearance: (() => void) | undefined;
 function report(error: unknown): void {
-  if (!disposed)
-    editor.setStatus(
-      'loadFailed',
-      { message: error instanceof Error ? error.message : String(error) },
-      true,
-    );
+  if (!disposed) editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
 }
-async function execute(command: AppCommand): Promise<void> {
-  try {
-    await commands.execute(command);
-  } catch (error: unknown) {
-    report(error);
-  }
-}
+const execute = commands.run;
 // Confirmation dialogs; the shared closing lock rejects reentry.
 // Shared boolean-confirmation protocol: one closing lock, one MessageBox call,
 // cancellation filtered from error reporting. Callers pass pre-translated text.
@@ -162,19 +190,6 @@ async function confirmRelinkDifference(difference: {
     cancelButtonText: t('chrome.relinkDifferenceCancel'),
   });
 }
-async function confirmLegacyImport(summary: {
-  name: string;
-  bpm: number;
-  shift: number;
-  markers: number;
-}): Promise<boolean> {
-  return confirmAction({
-    body: t('chrome.legacyImportBody', summary),
-    title: t('chrome.legacyImportTitle'),
-    confirmButtonText: t('chrome.legacyImportOk'),
-    cancelButtonText: t('chrome.legacyImportCancel'),
-  });
-}
 // Project open and import commands that require confirmation.
 async function openProject(): Promise<void> {
   if (await confirmProjectReplacement()) {
@@ -190,37 +205,43 @@ async function newProjectFromWos(): Promise<void> {
 }
 // Keyboard gating, calibration entry and tap offset.
 function keydown(event: KeyboardEvent): void {
-  if (
-    !calibrating.value &&
-    !aboutOpen.value &&
-    !helpOpen.value &&
-    !troubleshootOpen.value &&
-    !closing.value
-  )
-    commands.onKeyDown(event);
+  if (!modalOpen.value) commands.onKeyDown(event, input.recording);
 }
-useInputControls((control) => {
+function recordingActive(): boolean {
+  const focused = document.activeElement;
+  return (
+    input.recording &&
+    canRecord(editor) &&
+    !modalOpen.value &&
+    !applicationMenu.value?.isActive() &&
+    !editingControl(focused) &&
+    !focused?.closest('[role="dialog"]') &&
+    !visibleDialog()
+  );
+}
+const yuancon = useYuanconRecording({
+  active: recordingActive,
+  onCommand: (command, recordingInput) => {
+    void execute(command, recordingInput);
+  },
+});
+useInputControls((control, recordingInput) => {
   if (navigateDialog(control)) return;
-  if (
-    calibrating.value ||
-    aboutOpen.value ||
-    helpOpen.value ||
-    troubleshootOpen.value ||
-    closing.value
-  )
-    return;
+  if (modalOpen.value) return;
   const navigation = gamepadNavigation(control);
   if (navigation && applicationMenu.value?.navigate(navigation)) return;
   if (applicationMenu.value?.isActive()) return;
   // Text editing keeps its focus; menu/help remain reachable from a controller.
-  if (
-    control !== 'view' &&
-    document.activeElement?.closest('input,textarea,select,[contenteditable="true"]')
-  )
+  if (control !== 'view' && editingControl(document.activeElement)) return;
+  if (recordingActive()) {
+    const command = recordingCommandForGamepad(control);
+    if (command) void execute(command, recordingInput);
+    else if (control === 'view') void execute('help');
     return;
+  }
   const shortcut = GAMEPAD_SHORTCUTS.find((item) => item.control === control);
   if (shortcut) void execute(shortcut.command);
-});
+}, recordingActive);
 function calibrate(): void {
   if (!editor.source) {
     editor.setStatus('calibrationNeedsSource', true);
@@ -262,7 +283,7 @@ async function drop(event: DragEvent): Promise<void> {
   event.preventDefault();
   dragActive.value = false;
   const file = event.dataTransfer?.files[0];
-  if (file && /\.(wav|ogg|wosdx)$/i.test(file.name)) {
+  if (file && (audioFileFormat(file.name) || /\.wosdx$/i.test(file.name))) {
     if (/\.wosdx$/i.test(file.name) && !(await confirmProjectReplacement())) return;
     calibrating.value = false;
     await workspace.openDroppedFile(file);
@@ -281,6 +302,7 @@ onMounted(() => {
 });
 onUnmounted(() => {
   disposed = true;
+  input.recording = false;
   window.removeEventListener('keydown', keydown);
   stopAppearance?.();
   playback.dispose();
@@ -307,7 +329,7 @@ onUnmounted(() => {
       >
         <ApplicationMenu
           ref="applicationMenu"
-          :disabled="calibrating || aboutOpen || helpOpen || troubleshootOpen || closing"
+          :disabled="modalOpen"
           :desktop="platform.kind === 'tauri'"
           @command="execute"
         />
@@ -317,7 +339,7 @@ onUnmounted(() => {
         class="playback-strip"
         :inert="calibrating"
       >
-        <PlaybackControls />
+        <PlaybackControls @command="execute" />
       </div>
       <!-- The transport is global. The current editor owns one audio lane. -->
       <section class="workspace">
@@ -343,6 +365,10 @@ onUnmounted(() => {
         @apply="applyOffset"
       />
       <HelpDialog v-model="helpOpen" />
+      <YuanconDialog
+        v-model="yuanconOpen"
+        :connection="yuancon"
+      />
       <TroubleshootDialog
         v-model="troubleshootOpen"
         :identity="identity"

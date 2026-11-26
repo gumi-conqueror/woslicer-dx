@@ -1,20 +1,27 @@
-import type { DecodedWav } from '../core/wav';
+import type { SourceAudio } from '../core/audio/pcm';
 import { computed, markRaw, shallowRef, triggerRef } from 'vue';
 import { defineStore } from 'pinia';
 import { normalizeSelection } from '../core/markers';
+import { remapMarkerKeys, type MarkerKeys } from '../project/marker-keys';
 import { ProjectEditor } from '../project/editor';
-import { createEmptyProject, projectCapability } from '../project/codec';
-import type { ProjectDocument, ProjectFileV1, OutputRecipe } from '../project/schema';
-import { PROJECT_MAX_GAIN_DB, PROJECT_MIN_GAIN_DB } from '../project/schema';
+import { createEmptyProject, currentTrack } from '../project/codec';
+import type { ProjectDocument, ProjectFile, OutputRecipe } from '../project/schema';
+import { clampGainDb, FIELD_RANGES, inRange, type CueMode } from '../project/schema';
 import { gridStepTicks } from '../core/gridlines';
-import { MAX_TICKS, resolveBreakpointTick, tickToSampleExport } from '../core/timebase';
+import {
+  MAX_TICKS,
+  markerTickAllowed,
+  resolveBreakpointTick,
+  samplesPerTick,
+  tickToSampleExport,
+} from '../core/timebase';
 import { zoomAt as zoomView } from '../timeline/waveform/zoom';
 import { ampToDb, dbToAmp } from '../core/volume';
 import type { PeakCache } from '../core/peaks';
 import type { BandAnalysis, BandName } from '../core/bands';
 import type { FormatParams, StatusKey } from '../core/messages';
 
-export interface AudioSource extends DecodedWav {
+export interface AudioSource extends SourceAudio {
   name: string;
   reference: string | null;
   floatData: Float32Array[];
@@ -24,7 +31,6 @@ export type EditorPhase =
   | { kind: 'loading'; name: string }
   | { kind: 'ready' }
   | { kind: 'error'; message: string };
-export type CueMode = 'off' | 'cowbell' | 'triangle' | 'metronome';
 export interface StatusSegment {
   key: StatusKey;
   params?: FormatParams;
@@ -45,12 +51,14 @@ export const useEditorStore = defineStore('editor', () => {
   const documentGeneration = shallowRef(0);
   const isDirty = computed(() => project.value.isDirty);
   // Read-only projections for consumers of the existing slicing time base.
+  // Markers, processing and output settings belong to the track being edited.
+  const track = computed(() => currentTrack(document.value));
   const doc = computed(() =>
     Object.freeze({
       bpm: document.value.timing.bpm,
       shift: document.value.timing.shiftTicks,
-      fadeoutMs: document.value.slicing.fadeoutMs,
-      noisegateDb: document.value.slicing.noisegateDb,
+      fadeoutMs: track.value.slicing.fadeoutMs,
+      noisegateDb: track.value.slicing.noisegateDb,
     }),
   );
   const previewTicks = shallowRef<readonly number[] | null>(null);
@@ -60,8 +68,6 @@ export const useEditorStore = defineStore('editor', () => {
   const phase = shallowRef<EditorPhase>({ kind: 'empty' });
   const status = shallowRef<{ segments: StatusSegment[] }>({ segments: [{ key: 'statusEmpty' }] });
   const isError = shallowRef(false);
-  // Limited (read-only) projects: every document mutation funnels through transact/undo/redo.
-  const limited = shallowRef(false);
   // Host binding of the last opened audio, independent of the decoded source's lifetime.
   const lastFile = shallowRef<{ reference: string; name: string } | null>(null);
   const grid = shallowRef(8),
@@ -77,17 +83,10 @@ export const useEditorStore = defineStore('editor', () => {
   // Project global/track playback state is the single truth; these writable
   // projections keep the UI and command entry points stable. One user intent is
   // one transaction, so playback properties participate in undo and dirty.
-  function clampGainDb(value: number): number {
-    return Math.max(PROJECT_MIN_GAIN_DB, Math.min(PROJECT_MAX_GAIN_DB, value));
-  }
-  function applyGlobal(edit: (draft: ProjectFileV1) => void): void {
-    if (limited.value) return; // read-only projects expose playback controls as view state only
-    transact(edit);
-  }
+  const applyGlobal = (edit: (draft: ProjectFile) => void): void => void transact(edit);
   const trackPlayback = computed(() => {
-    const capability = projectCapability(document.value);
-    const track = capability.kind === 'single-track' ? document.value.tracks[0] : null;
-    return { gainDb: track?.gainDb ?? 0, muted: track?.muted ?? false, solo: track?.solo ?? false };
+    const { gainDb, muted, solo } = track.value;
+    return { gainDb, muted, solo };
   });
   // Fader previews affect monitoring immediately, without adding undo entries.
   const volumePreview = shallowRef<number | null>(null);
@@ -129,7 +128,7 @@ export const useEditorStore = defineStore('editor', () => {
   const playbackRate = computed({
     get: () => document.value.global.playbackRate,
     set: (value) => {
-      if (!Number.isFinite(value) || value < 0.25 || value > 1.5) return;
+      if (!inRange(value, FIELD_RANGES.playbackRate)) return;
       applyGlobal((draft) => {
         draft.global.playbackRate = value;
       });
@@ -143,14 +142,10 @@ export const useEditorStore = defineStore('editor', () => {
       }),
   });
   const followPlayhead = shallowRef(true);
-  const effectiveViews = computed(() => {
-    const capability = projectCapability(document.value);
-    const track = capability.kind === 'single-track' ? document.value.tracks[0] : null;
-    return {
-      rms: track?.views.rms ?? document.value.global.views.rms,
-      bands: track?.views.bands ?? document.value.global.views.bands,
-    };
-  });
+  const effectiveViews = computed(() => ({
+    rms: track.value.views.rms ?? document.value.global.views.rms,
+    bands: track.value.views.bands ?? document.value.global.views.bands,
+  }));
   const rmsVisible = computed({
     get: () => effectiveViews.value.rms,
     set: (value) =>
@@ -165,10 +160,10 @@ export const useEditorStore = defineStore('editor', () => {
         draft.global.views.bands = value;
       }),
   });
-  const noisegateEnabled = computed(() => document.value.slicing.noisegateEnabled);
-  const baseName = computed(() => document.value.output.baseName);
-  const clipStartNumber = computed(() => document.value.output.clipStartNumber);
-  const useFfNumbering = computed(() => document.value.output.useFfNumbering);
+  const noisegateEnabled = computed(() => track.value.slicing.noisegateEnabled);
+  const baseName = computed(() => track.value.output.baseName);
+  const clipStartNumber = computed(() => track.value.output.clipStartNumber);
+  const useFfNumbering = computed(() => track.value.output.useFfNumbering);
   const exportLock = shallowRef(false);
   const bandAnalysis = shallowRef<BandAnalysis | null>(null);
   const bandDetectBands = shallowRef<Record<BandName, boolean>>({
@@ -182,7 +177,8 @@ export const useEditorStore = defineStore('editor', () => {
     tapOffsetMs = shallowRef(0);
   const bandEstimate = shallowRef<number | null>(null),
     bandBusy = shallowRef(false);
-  const ticks = computed(() => document.value.slicing.markers);
+  const ticks = computed(() => track.value.slicing.markers);
+  const markerKeys = computed(() => track.value.slicing.markerKeys ?? []);
   const canUndo = computed(() => project.value.canUndo);
   const canRedo = computed(() => project.value.canRedo);
   function publish(): void {
@@ -208,11 +204,7 @@ export const useEditorStore = defineStore('editor', () => {
   function setPreviewTicks(value: readonly number[] | null): void {
     previewTicks.value = value === null ? null : Object.freeze([...value]);
   }
-  function transact<T>(edit: (draft: ProjectFileV1) => T) {
-    if (limited.value)
-      throw new Error(
-        'This project is read-only: a multi-track layout opened with limited support cannot be edited',
-      );
+  function transact<T>(edit: (draft: ProjectFile) => T) {
     cancelDraft();
     const result = project.value.transact(edit);
     if (result.changed) publish();
@@ -233,44 +225,49 @@ export const useEditorStore = defineStore('editor', () => {
   }
   function undo(): boolean {
     cancelDraft();
-    if (limited.value) return false;
     const changed = project.value.undo();
     if (changed) publish();
     return changed;
   }
   function redo(): boolean {
     cancelDraft();
-    if (limited.value) return false;
     const changed = project.value.redo();
     if (changed) publish();
     return changed;
   }
-  function setLimited(value: boolean): void {
-    limited.value = value;
-  }
   function setLastFile(value: { reference: string; name: string } | null): void {
     lastFile.value = value;
   }
-  function setTicks(value: readonly number[]): boolean {
+  function setTicks(value: readonly number[], keys: MarkerKeys = markerKeys.value): boolean {
     return transact((draft) => {
-      draft.slicing.markers = normalizeSelection(value);
+      currentTrack(draft).slicing.markers = normalizeSelection(value);
+      const retained = new Set(currentTrack(draft).slicing.markers);
+      currentTrack(draft).slicing.markerKeys = remapMarkerKeys(
+        keys.filter((entry) => retained.has(entry.tick)),
+        (tick) => tick,
+      );
     }).changed;
   }
   function addTicks(value: readonly number[]): number {
     return transact((draft) => {
-      const additions = normalizeSelection(value).filter((t) => !draft.slicing.markers.includes(t));
-      draft.slicing.markers = normalizeSelection([...draft.slicing.markers, ...additions]);
+      const additions = normalizeSelection(value).filter(
+        (t) => !currentTrack(draft).slicing.markers.includes(t),
+      );
+      currentTrack(draft).slicing.markers = normalizeSelection([
+        ...currentTrack(draft).slicing.markers,
+        ...additions,
+      ]);
       return additions.length;
     }).value;
   }
   function setOutputOptions(value: Partial<OutputRecipe>): void {
     transact((draft) => {
-      Object.assign(draft.output, value);
+      Object.assign(currentTrack(draft).output, value);
     });
   }
   function setNoisegateEnabled(value: boolean): void {
     transact((draft) => {
-      draft.slicing.noisegateEnabled = value;
+      currentTrack(draft).slicing.noisegateEnabled = value;
     });
   }
   function setStatus(
@@ -299,7 +296,14 @@ export const useEditorStore = defineStore('editor', () => {
     );
   }
   function legalTick(tick: number): boolean {
-    return Number.isInteger(tick) && tick >= 0 && tick < MAX_TICKS && !tickBeyondEnd(tick);
+    const audio = source.value;
+    return markerTickAllowed(
+      tick,
+      audio && {
+        base: { bpm: doc.value.bpm, shift: doc.value.shift, sampleRate: audio.sampleRate },
+        length: audio.length,
+      },
+    );
   }
   function setCursorTick(tick: number): void {
     if (Number.isFinite(tick))
@@ -319,7 +323,9 @@ export const useEditorStore = defineStore('editor', () => {
     return resolveBreakpointTick(tick, snap.value, gridStepTicks(grid.value), false);
   }
   function zoomAt(anchor: number, factor: number): void {
-    const frames = source.value ? (source.value.sampleRate * 5) / (doc.value.bpm * 4) : 500;
+    const frames = source.value
+      ? samplesPerTick({ bpm: doc.value.bpm, shift: 0, sampleRate: source.value.sampleRate })
+      : 500;
     const next = zoomView({ scale: pxPerTick.value, scroll: scrollTick.value }, anchor, factor, {
       min: 0.02,
       max: Math.max(600, 4 * frames),
@@ -360,37 +366,22 @@ export const useEditorStore = defineStore('editor', () => {
   }
   function setDocumentOptions(values: Partial<DocumentOptions>): void {
     transact((draft) => {
+      // Out-of-range values are ignored; the inputs already clamp what users type.
+      const { bpm, shift, fadeoutMs, noisegateDb } = values;
+      if (bpm !== undefined && inRange(bpm, FIELD_RANGES.bpm)) draft.timing.bpm = bpm;
+      if (shift !== undefined && inRange(shift, FIELD_RANGES.shiftTicks))
+        draft.timing.shiftTicks = shift;
       if (
-        values.bpm !== undefined &&
-        Number.isFinite(values.bpm) &&
-        values.bpm > 0 &&
-        values.bpm <= 10000
+        fadeoutMs !== undefined &&
+        Number.isInteger(fadeoutMs) &&
+        inRange(fadeoutMs, FIELD_RANGES.fadeoutMs)
       )
-        draft.timing.bpm = values.bpm;
-      if (
-        values.shift !== undefined &&
-        Number.isFinite(values.shift) &&
-        Math.abs(values.shift) <= 1e9
-      )
-        draft.timing.shiftTicks = values.shift;
-      if (
-        values.fadeoutMs !== undefined &&
-        Number.isInteger(values.fadeoutMs) &&
-        values.fadeoutMs >= 0 &&
-        values.fadeoutMs <= 60000
-      )
-        draft.slicing.fadeoutMs = values.fadeoutMs;
-      if (
-        values.noisegateDb !== undefined &&
-        Number.isFinite(values.noisegateDb) &&
-        values.noisegateDb >= -200 &&
-        values.noisegateDb <= 0
-      )
-        draft.slicing.noisegateDb = values.noisegateDb;
+        currentTrack(draft).slicing.fadeoutMs = fadeoutMs;
+      if (noisegateDb !== undefined && inRange(noisegateDb, FIELD_RANGES.noisegateDb))
+        currentTrack(draft).slicing.noisegateDb = noisegateDb;
     });
   }
   function reset(): void {
-    limited.value = false;
     lastFile.value = null;
     replaceDocument(createEmptyProject());
     setSource(null);
@@ -417,7 +408,6 @@ export const useEditorStore = defineStore('editor', () => {
     docRevision,
     documentGeneration,
     isDirty,
-    limited,
     lastFile,
     markSaved,
     previewTicks,
@@ -461,13 +451,13 @@ export const useEditorStore = defineStore('editor', () => {
     bandEstimate,
     bandBusy,
     ticks,
+    markerKeys,
     canUndo,
     canRedo,
     transact,
     replaceDocument,
     undo,
     redo,
-    setLimited,
     setLastFile,
     setTicks,
     addTicks,

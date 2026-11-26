@@ -3,9 +3,9 @@ import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch 
 import { useI18n } from 'vue-i18n';
 import { useEditorStore } from '../../slicing/editor-store';
 import { APPLICATION_MENU, menuCommandEnabled, type MenuCommand } from '../menu';
-import { shortcutLabel, gamepadShortcut } from '../shortcuts';
-import { useInputState } from '../input-state';
-import type { MenuNavigation } from '../gamepad-controls';
+import { shortcutLabel, gamepadShortcut } from '../../input/bindings';
+import { useInputState } from '../../input/state';
+import type { MenuNavigation } from '../../input/gamepad';
 import GamepadIcon from '../../ui/GamepadIcon.vue';
 import MnemonicLabel from './MnemonicLabel.vue';
 const props = defineProps<{ disabled?: boolean; desktop?: boolean }>();
@@ -263,10 +263,12 @@ defineExpose({ navigate, isActive: () => active.value >= 0 });
             v-if="input.device === 'gamepad'"
             class="menu-hint"
             ><GamepadIcon
-              v-if="gamepadShortcut(item.id)"
-              :control="gamepadShortcut(item.id) ?? 'a'"
+              v-if="gamepadShortcut(item.id, input.recording)"
+              :control="gamepadShortcut(item.id, input.recording) ?? 'a'"
           /></span>
-          <kbd v-else>{{ shortcutLabel(item.id) }}</kbd>
+          <kbd v-else-if="input.device === 'keyboard'">{{
+            shortcutLabel(item.id, input.recording)
+          }}</kbd>
         </button>
         <div
           v-if="input.device === 'gamepad'"

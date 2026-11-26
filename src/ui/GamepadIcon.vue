@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { GAMEPAD_CONTROLS, type GamepadControl } from '../app/gamepad-controls';
-const props = defineProps<{ control: GamepadControl }>();
-const label = computed(() => GAMEPAD_CONTROLS.find((item) => item.id === props.control)?.label);
+import { GAMEPAD_CONTROLS, GAMEPAD_ROTATIONS, type GamepadControl } from '../input/gamepad';
+const props = defineProps<{ control: GamepadControl; dpadOnly?: boolean }>();
+const label = computed(() => {
+  const text = [...GAMEPAD_CONTROLS, ...GAMEPAD_ROTATIONS].find(
+    (item) => item.id === props.control,
+  )?.label;
+  return props.dpadOnly ? text?.split(' / ')[0] : text;
+});
 const arrows = {
   up: 'm12 7-3 4h6Z',
   down: 'm12 17-3-4h6Z',
@@ -18,7 +23,27 @@ const arrows = {
     role="img"
     :aria-label="label"
   >
-    <template v-if="control in arrows">
+    <template v-if="control === 'ls-clockwise' || control === 'ls-counterclockwise'">
+      <path
+        :d="
+          control === 'ls-clockwise'
+            ? 'M20 10a8 8 0 1 0-2 9m3-14v6h-6'
+            : 'M4 10a8 8 0 1 1 2 9M3 5v6h6'
+        "
+        fill="none"
+        stroke="currentColor"
+      />
+      <text
+        x="12"
+        y="16"
+        text-anchor="middle"
+        font-size="9"
+        fill="currentColor"
+      >
+        LS
+      </text>
+    </template>
+    <template v-else-if="control in arrows">
       <path
         d="M8 3h8v5h5v8h-5v5H8v-5H3V8h5Z"
         fill="none"

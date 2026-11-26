@@ -12,7 +12,7 @@ $archive = "$destination/$($package.name)-$($package.version)-$env:RELEASE_PLATF
 $stage = Join-Path 'test-artifacts' ("portable-" + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $stage -Force | Out-Null
 Copy-Item -LiteralPath $executable -Destination $stage
-foreach ($name in @('LICENSE', 'NOTICE', 'build-info.json')) {
+foreach ($name in @('LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.txt', 'build-info.json')) {
   Copy-Item -LiteralPath "dist/app-tauri/$name" -Destination $stage -Recurse
 }
 $files = @(Get-ChildItem -LiteralPath $stage -Recurse -File)

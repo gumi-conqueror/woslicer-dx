@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url';
+import languages from './src/i18n/languages.json' with { type: 'json' };
 import { resolve } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -22,6 +23,22 @@ const tauriIpcCsp: Plugin = {
   },
 };
 
+/**
+ * Hosts and tools that request `/favicon.ico` directly get the app icon. The
+ * page itself links the hashed copies; the desktop icon is the one source.
+ */
+const siteIcon: Plugin = {
+  name: 'site-icon',
+  apply: 'build',
+  generateBundle() {
+    this.emitFile({
+      type: 'asset',
+      fileName: 'favicon.ico',
+      source: readFileSync(resolve(root, 'src-tauri/icons/icon.ico')),
+    });
+  },
+};
+
 export default defineConfig(async ({ command }) => {
   await buildFonts(root);
   if (command === 'serve') {
@@ -42,14 +59,15 @@ export default defineConfig(async ({ command }) => {
     plugins: [
       vue(),
       VueI18n({
-        include: ['en', 'zh', 'ja', 'ko'].map((language) =>
-          resolve(root, `src/i18n/${language}.json`),
-        ),
+        include: languages.languages
+          .map((entry) => entry.id)
+          .map((language) => resolve(root, `src/i18n/${language}.json`)),
         runtimeOnly: true,
         compositionOnly: true,
         dropMessageCompiler: true,
       }),
       tauriIpcCsp,
+      siteIcon,
     ],
     server: { host: '127.0.0.1', port: 1420, strictPort: true },
     build: {

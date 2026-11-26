@@ -1,20 +1,21 @@
 import type { z } from 'zod';
+import { markerTicks } from '@gumi-conqueror/wos-file';
+import { errorMessage } from '../core/messages';
+import { defaultBaseName } from '../core/slices';
 import { DEFAULT_CUE_DB, DEFAULT_PLAYBACK_DB } from '../core/volume';
 import { MAX_TICKS } from '../core/timebase';
 import {
+  byteLimitText,
   PROJECT_FILE_MAX_BYTES,
   PROJECT_FORMAT,
-  PROJECT_MAX_CLIPS,
   PROJECT_SCHEMA_VERSION,
   originHintKeys,
   projectHeaderSchema,
-  projectV1Schema,
-  type MediaAsset,
-  type ProjectCapability,
-  type ProjectDecodeResult,
+  projectSchema,
   type ProjectDocument,
-  type ProjectFileV1,
+  type ProjectFile,
   type ProjectParseResult,
+  type ProjectTrack,
 } from './schema';
 
 export class ProjectFormatError extends Error {
@@ -42,7 +43,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /** Compare with the stripped schema output, without maintaining a second field list. */
-function unknownFields(input: unknown, project: ProjectFileV1): string[] {
+function unknownFields(input: unknown, project: ProjectFile): string[] {
   const fields: string[] = [];
   function visit(raw: unknown, known: unknown, path: string): void {
     if (fields.length >= 16) return;
@@ -55,7 +56,7 @@ function unknownFields(input: unknown, project: ProjectFileV1): string[] {
     if (!isRecord(raw) || !isRecord(known)) return;
     for (const key of Object.keys(raw)) {
       if (fields.length >= 16) return;
-      // Both origin variants' fields were recognized by the original v1 reader.
+      // Both origin variants' fields are recognized.
       if (path.endsWith('.originHint') && originHintKeys.has(key)) continue;
       if (!Object.hasOwn(known, key)) fields.push(path ? path + '.' + key : key);
     }
@@ -67,197 +68,149 @@ function unknownFields(input: unknown, project: ProjectFileV1): string[] {
   return fields;
 }
 
-export function projectCapability(project: ProjectDocument): ProjectCapability {
-  const clipCount = project.tracks.reduce((sum, track) => sum + track.clips.length, 0);
-  if (project.tracks.length === 1 && clipCount === 0 && project.media.length === 0)
-    return { kind: 'empty' };
-  if (project.tracks.length !== 1 || clipCount !== 1)
-    return { kind: 'unsupported-arrangement', trackCount: project.tracks.length, clipCount };
+/**
+ * The track that the editor edits. Until the multi-track editor lands it is
+ * the only track; `requireEditableTracks` keeps other projects out of the editor.
+ */
+export function currentTrack<T extends ProjectDocument | ProjectFile>(
+  project: T,
+): T['tracks'][number] {
   const track = project.tracks[0];
-  const clip = track?.clips[0];
-  const media = project.media.find((item) => item.mediaId === clip?.mediaId);
-  if (
-    !track ||
-    !clip ||
-    !media ||
-    track.gainDb !== 0 ||
-    track.muted ||
-    track.solo ||
-    clip.timelineStartSeconds !== 0 ||
-    clip.sourceOffsetFrames !== 0 ||
-    media.framesPerChannel === null ||
-    clip.frameCount !== media.framesPerChannel
-  ) {
-    return { kind: 'unsupported-arrangement', trackCount: project.tracks.length, clipCount };
-  }
+  if (!track) throw new ProjectFormatError('Project has no track');
+  return track;
+}
+
+/**
+ * The editor edits projects with one track. The codec reads and writes any
+ * number; the workspace calls this where a document enters the editor.
+ */
+export function requireEditableTracks(project: ProjectDocument | ProjectFile): void {
+  if (project.tracks.length !== 1)
+    throw new ProjectFormatError(
+      `This project has ${project.tracks.length} tracks; this version edits projects with one track`,
+    );
+}
+
+/**
+ * Upgrades a version 1 file. Version 1 kept markers and output settings at
+ * the project level and described audio as clips. Only the two layouts that
+ * earlier releases could edit upgrade: no audio, or one track with one clip
+ * that covers its whole media file. Unknown fields are dropped.
+ */
+function upgradeV1(input: Record<string, unknown>): unknown {
+  const tracks = Array.isArray(input.tracks) ? input.tracks : [];
+  const media = Array.isArray(input.media) ? input.media : [];
+  const track: unknown = tracks[0];
+  if (tracks.length !== 1 || !isRecord(track))
+    throw new ProjectFormatError('This version 1 project has several tracks and cannot be opened');
+  const clips = Array.isArray(track.clips) ? track.clips : [];
+  const clip: unknown = clips[0];
+  let asset: unknown = null;
+  if (clips.length === 1 && isRecord(clip)) {
+    asset = media.find((item: unknown) => isRecord(item) && item.mediaId === clip.mediaId) ?? null;
+    const whole =
+      isRecord(asset) &&
+      clip.timelineStartSeconds === 0 &&
+      clip.sourceOffsetFrames === 0 &&
+      clip.frameCount === asset.framesPerChannel;
+    if (!whole)
+      throw new ProjectFormatError(
+        'This version 1 project uses trimmed or offset audio and cannot be opened',
+      );
+  } else if (clips.length !== 0 || media.length !== 0)
+    throw new ProjectFormatError('This version 1 project has several clips and cannot be opened');
+  const { clips: _clips, ...trackFields } = track;
   return {
-    kind: 'single-track',
-    trackId: track.trackId,
-    clipId: clip.clipId,
-    mediaId: media.mediaId,
+    format: input.format,
+    schemaVersion: PROJECT_SCHEMA_VERSION,
+    projectId: input.projectId,
+    name: input.name,
+    timing: input.timing,
+    global: input.global,
+    tracks: [{ ...trackFields, media: asset, slicing: input.slicing, output: input.output }],
+    bmhelper: input.bmhelper,
   };
+}
+
+function normalizeTrack(track: ProjectTrack): void {
+  // In-memory drafts may explicitly carry undefined; files omit absent hints.
+  const hint = track.media?.originHint;
+  if (hint?.kind === 'browser') {
+    if (hint.relativePathHint === undefined) delete hint.relativePathHint;
+    if (hint.lastModified === undefined) delete hint.lastModified;
+  }
+  const { slicing } = track;
+  if (new Set(slicing.markers).size !== slicing.markers.length)
+    throw new ProjectFormatError('slicing.markers contains duplicate ticks');
+  slicing.markers.sort((a, b) => a - b);
+  const markerTicks = new Set(slicing.markers);
+  const attributedTicks = new Set<number>();
+  for (const entry of slicing.markerKeys ?? []) {
+    if (!markerTicks.has(entry.tick) || attributedTicks.has(entry.tick))
+      throw new ProjectFormatError('slicing.markerKeys requires one entry per existing marker');
+    if (new Set(entry.keys).size !== entry.keys.length)
+      throw new ProjectFormatError('slicing.markerKeys contains duplicate keys');
+    attributedTicks.add(entry.tick);
+    entry.keys.sort((a, b) => a - b);
+  }
+  slicing.markerKeys?.sort((a, b) => a.tick - b.tick);
+  if (!slicing.markerKeys?.length) delete slicing.markerKeys;
 }
 
 export function parseProject(input: unknown): ProjectParseResult {
   const { schemaVersion: version } = parseStructure(projectHeaderSchema, input);
-  if (version !== PROJECT_SCHEMA_VERSION)
-    return { kind: 'unsupported-version', version, raw: input };
-  const project = parseStructure(projectV1Schema, input);
-  const extensions = unknownFields(input, project);
-
+  if (version > PROJECT_SCHEMA_VERSION) return { kind: 'unsupported-version', version, raw: input };
+  const upgraded = version === 1 && isRecord(input) ? upgradeV1(input) : input;
+  const project = parseStructure(projectSchema, upgraded);
+  // Version 1 fields that have no place in version 2 are dropped without a report.
+  const extensions = version === PROJECT_SCHEMA_VERSION ? unknownFields(input, project) : [];
   const ids = new Set<string>();
-  const addId = (id: string, label: string) => {
-    if (ids.has(id)) throw new ProjectFormatError('duplicate ' + label + ' id: ' + id);
-    ids.add(id);
-  };
-  for (const media of project.media) {
-    addId(media.mediaId, 'media');
-    // In-memory drafts may explicitly carry undefined; v1 omits absent hints.
-    const hint = media.originHint;
-    if (hint?.kind === 'browser') {
-      if (hint.relativePathHint === undefined) delete hint.relativePathHint;
-      if (hint.lastModified === undefined) delete hint.lastModified;
-    }
-  }
-  const mediaById = new Map(project.media.map((item) => [item.mediaId, item]));
-  let totalClips = 0;
   for (const track of project.tracks) {
-    addId(track.trackId, 'track');
-    totalClips += track.clips.length;
-    if (totalClips > PROJECT_MAX_CLIPS)
-      throw new ProjectFormatError('clip collection exceeds its limit');
-    for (const clip of track.clips) {
-      addId(clip.clipId, 'clip');
-      const asset = mediaById.get(clip.mediaId);
-      if (!asset)
-        throw new ProjectFormatError(
-          'clip ' + clip.clipId + ' refers to unknown media ' + clip.mediaId,
-        );
-      if (
-        asset.framesPerChannel !== null &&
-        clip.sourceOffsetFrames + clip.frameCount > asset.framesPerChannel
-      )
-        throw new ProjectFormatError('clip ' + clip.clipId + ' exceeds its media frame range');
-    }
+    if (ids.has(track.trackId))
+      throw new ProjectFormatError('duplicate track id: ' + track.trackId);
+    ids.add(track.trackId);
+    normalizeTrack(track);
   }
-  const markers = project.slicing.markers;
-  if (new Set(markers).size !== markers.length)
-    throw new ProjectFormatError('slicing.markers contains duplicate ticks');
-  markers.sort((a, b) => a - b);
-  return {
-    kind: 'supported',
-    project,
-    capability: projectCapability(project),
-    unknownFields: extensions,
-  };
+  return { kind: 'supported', project, unknownFields: extensions };
 }
 
-/** Encodes known, normalized v1 fields; use sourceBytes to preserve an unchanged file. */
+/** Encodes the known, normalized fields of the current version. */
 export function encodeProject(value: ProjectDocument): Uint8Array {
   const normalized = parseProject(value);
   if (normalized.kind !== 'supported')
     throw new ProjectFormatError('unsupported project schema cannot be written');
   const bytes = new TextEncoder().encode(JSON.stringify(normalized.project));
   if (bytes.byteLength > PROJECT_FILE_MAX_BYTES)
-    throw new ProjectFormatError('project exceeds the 64 MiB limit');
+    throw new ProjectFormatError(
+      `project exceeds the ${byteLimitText(PROJECT_FILE_MAX_BYTES)} limit`,
+    );
   return bytes;
 }
-export function decodeProject(bytes: Uint8Array): ProjectDecodeResult {
+export function decodeProject(bytes: Uint8Array): ProjectParseResult {
   if (bytes.byteLength > PROJECT_FILE_MAX_BYTES)
-    throw new ProjectFormatError('project exceeds the 64 MiB limit');
+    throw new ProjectFormatError(
+      `project exceeds the ${byteLimitText(PROJECT_FILE_MAX_BYTES)} limit`,
+    );
   let value: unknown;
   try {
     value = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
   } catch (error) {
-    throw new ProjectFormatError(
-      `project JSON is invalid: ${error instanceof Error ? error.message : String(error)}`,
-    );
+    throw new ProjectFormatError(`project JSON is invalid: ${errorMessage(error)}`);
   }
-  const parsed = parseProject(value);
-  // Construct a Uint8Array explicitly: Buffer.slice() would alias the caller's input.
-  return { ...parsed, sourceBytes: new Uint8Array(bytes) };
+  return parseProject(value);
 }
 
-export interface SingleTrackProjectInput {
-  projectId: string;
-  name: string;
-  mediaId: string;
-  media: MediaAsset;
-  timing?: ProjectFileV1['timing'];
-  slicing?: Partial<ProjectFileV1['slicing']>;
-  output?: Partial<ProjectFileV1['output']>;
-  global?: Partial<Omit<ProjectFileV1['global'], 'views'>> & {
-    views?: Partial<ProjectFileV1['global']['views']>;
-  };
-}
-export function createSingleTrackProject(input: SingleTrackProjectInput): ProjectFileV1 {
-  if (input.media.mediaId !== input.mediaId || input.media.framesPerChannel === null)
-    throw new ProjectFormatError(
-      'single-track projects require matching media with a known frame count',
-    );
-  const project = createEmptyProject(input.projectId, input.name);
-  return {
-    ...project,
-    timing: input.timing ?? project.timing,
-    slicing: { ...project.slicing, ...input.slicing },
-    output: {
-      ...project.output,
-      baseName: input.name.replace(/[^\w.-]/g, '_') || 'slice',
-      ...input.output,
-    },
-    global: {
-      ...project.global,
-      ...input.global,
-      views: { ...project.global.views, ...input.global?.views },
-    },
-    media: [input.media],
-    tracks: [
-      {
-        trackId: `${input.projectId}:track:1`,
-        name: input.name,
-        gainDb: 0,
-        muted: false,
-        solo: false,
-        views: { rms: null, bands: null, spectrum: 'reserved' },
-        clips: [
-          {
-            clipId: `${input.projectId}:track:1:clip:1`,
-            mediaId: input.mediaId,
-            timelineStartSeconds: 0,
-            sourceOffsetFrames: 0,
-            frameCount: input.media.framesPerChannel,
-          },
-        ],
-      },
-    ],
-    bmhelper: null,
-  };
-}
-
-/** An empty single-track document carries no invented media or clip. */
+/** A project with one track and no audio yet. */
 export function createEmptyProject(
   projectId: string = crypto.randomUUID(),
   name = 'Untitled',
-): ProjectFileV1 {
+): ProjectFile {
   return {
     format: PROJECT_FORMAT,
     schemaVersion: PROJECT_SCHEMA_VERSION,
     projectId,
     name,
     timing: { bpm: 120, shiftTicks: 0 },
-    slicing: {
-      fadeoutMs: 0,
-      noisegateDb: -48,
-      noisegateEnabled: true,
-      markers: [],
-      bandDetection: {
-        bands: { low: true, mid: true, high: true },
-        thresholdDb: 6,
-        minGapUnits: 1,
-        snap: true,
-      },
-    },
-    output: { baseName: 'slice', clipStartNumber: 1, useFfNumbering: false },
     global: {
       masterGainDb: DEFAULT_PLAYBACK_DB,
       masterMuted: false,
@@ -266,7 +219,6 @@ export function createEmptyProject(
       playbackRate: 1,
       views: { rms: false, bands: false, spectrum: 'reserved' },
     },
-    media: [],
     tracks: [
       {
         trackId: `${projectId}:track:1`,
@@ -275,48 +227,57 @@ export function createEmptyProject(
         muted: false,
         solo: false,
         views: { rms: null, bands: null, spectrum: 'reserved' },
-        clips: [],
+        media: null,
+        slicing: {
+          fadeoutMs: 0,
+          noisegateDb: -48,
+          noisegateEnabled: true,
+          markers: [],
+          bandDetection: {
+            bands: { low: true, mid: true, high: true },
+            thresholdDb: 6,
+            minGapUnits: 1,
+            snap: true,
+          },
+        },
+        output: { baseName: defaultBaseName(''), clipStartNumber: 1, useFfNumbering: false },
       },
     ],
     bmhelper: null,
   };
 }
+
+/** A new project with the timing, processing settings and markers of a .wos file. */
 export function projectFromWos(
   data: { bpm: number; shift: number; fadeoutMs: number; noisegateDb: number; markers: Uint8Array },
   name: string,
   projectId: string = crypto.randomUUID(),
-): ProjectFileV1 {
+): ProjectFile {
   if (data.markers.length !== MAX_TICKS)
     throw new ProjectFormatError('WOS marker map has an invalid length');
   const project = createEmptyProject(projectId, name);
-  return {
-    ...project,
-    timing: {
-      bpm: parseStructure(projectV1Schema.shape.timing.shape.bpm, data.bpm),
-      shiftTicks: parseStructure(projectV1Schema.shape.timing.shape.shiftTicks, data.shift),
-    },
-    slicing: {
-      ...project.slicing,
-      fadeoutMs: parseStructure(projectV1Schema.shape.slicing.shape.fadeoutMs, data.fadeoutMs),
-      noisegateDb: parseStructure(
-        projectV1Schema.shape.slicing.shape.noisegateDb,
-        data.noisegateDb,
-      ),
-      markers: Array.from(data.markers, (marker, tick) => (marker === 1 ? tick : -1)).filter(
-        (tick) => tick >= 0,
-      ),
-    },
+  const fields = projectSchema.shape.tracks.element.shape.slicing.shape;
+  project.timing = {
+    bpm: parseStructure(projectSchema.shape.timing.shape.bpm, data.bpm),
+    shiftTicks: parseStructure(projectSchema.shape.timing.shape.shiftTicks, data.shift),
   };
+  const { slicing } = currentTrack(project);
+  slicing.fadeoutMs = parseStructure(fields.fadeoutMs, data.fadeoutMs);
+  slicing.noisegateDb = parseStructure(fields.noisegateDb, data.noisegateDb);
+  slicing.markers = markerTicks(data.markers);
+  return project;
 }
 
+/** The .wos fields of the current track. */
 export function projectToWos(project: ProjectDocument) {
+  const { slicing } = currentTrack(project);
   const markers = new Uint8Array(MAX_TICKS);
-  for (const tick of project.slicing.markers) markers[tick] = 1;
+  for (const tick of slicing.markers) markers[tick] = 1;
   return {
     bpm: project.timing.bpm,
     shift: project.timing.shiftTicks,
-    fadeoutMs: project.slicing.fadeoutMs,
-    noisegateDb: project.slicing.noisegateDb,
+    fadeoutMs: slicing.fadeoutMs,
+    noisegateDb: slicing.noisegateDb,
     markers,
   };
 }

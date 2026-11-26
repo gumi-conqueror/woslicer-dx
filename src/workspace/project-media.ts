@@ -1,14 +1,15 @@
-import { parseProject, ProjectFormatError, projectCapability } from '../project/codec';
-import type { MediaAsset, ProjectDocument, ProjectFileV1 } from '../project/schema';
+import { currentTrack, parseProject, ProjectFormatError } from '../project/codec';
+import type { MediaAsset, ProjectDocument, ProjectFile, ProjectTrack } from '../project/schema';
 import type { OpenedFile } from '../platform/contracts';
 import type { DecodedAudio } from '../audio/audio-jobs';
+import { audioFileFormat } from '../core/audio-formats';
+import { defaultBaseName } from '../core/slices';
+import { portableStem } from '../platform/file-names';
 
 /** Portable metadata includes media identity but never a host grant. */
 export async function identifyAudio(file: OpenedFile) {
-  const extension = file.name.split('.').pop()?.toLowerCase();
-  if (extension !== 'wav' && extension !== 'ogg')
-    throw new ProjectFormatError('Unsupported audio extension');
-  const format: MediaAsset['format'] = extension;
+  const format = audioFileFormat(file.name);
+  if (!format) throw new ProjectFormatError('Unsupported audio extension');
   const byteLength = file.bytes.byteLength;
   // Hash before transferring the original buffer to the decoding worker.
   const hash = await crypto.subtle.digest('SHA-256', new Uint8Array(file.bytes));
@@ -20,14 +21,12 @@ export async function identifyAudio(file: OpenedFile) {
   };
   return { format, byteLength, integrity };
 }
-export function activeMedia(document: ProjectDocument): ProjectDocument['media'][number] | null {
-  const capability = projectCapability(document);
-  return capability.kind === 'single-track'
-    ? (document.media.find((media) => media.mediaId === capability.mediaId) ?? null)
-    : null;
+/** The audio file of the track being edited, or null before audio is chosen. */
+export function activeMedia(document: ProjectDocument): ProjectDocument['tracks'][number]['media'] {
+  return currentTrack(document).media;
 }
 export function matchesProjectAudio(
-  asset: ProjectDocument['media'][number],
+  asset: NonNullable<ProjectDocument['tracks'][number]['media']>,
   identity: Awaited<ReturnType<typeof identifyAudio>>,
   decoded: DecodedAudio,
 ): boolean {
@@ -41,57 +40,65 @@ export function matchesProjectAudio(
     (asset.integrity === null || asset.integrity.digest === identity.integrity.digest)
   );
 }
+type Identity = Awaited<ReturnType<typeof identifyAudio>>;
+
+function mediaAsset(
+  mediaId: string,
+  file: OpenedFile,
+  identity: Identity,
+  decoded: DecodedAudio,
+): MediaAsset {
+  const { source } = decoded;
+  return {
+    mediaId,
+    name: file.name,
+    ...identity,
+    sampleRateHz: source.sampleRate,
+    channels: source.channels,
+    framesPerChannel: source.length,
+    originHint: file.absolutePath ? { kind: 'desktop', pathHint: file.absolutePath } : null,
+  };
+}
+
+/** The document with new audio on its track. A new name also renames the project and its slices. */
 export function projectWithAudio(
   document: ProjectDocument,
   file: OpenedFile,
-  identity: Awaited<ReturnType<typeof identifyAudio>>,
+  identity: Identity,
   decoded: DecodedAudio,
   preserveBaseName: boolean,
-): ProjectFileV1 {
+): ProjectFile {
   const parsed = parseProject(document);
-  if (parsed.kind !== 'supported' || parsed.capability.kind === 'unsupported-arrangement')
-    throw new ProjectFormatError('This arrangement cannot be edited in the single-track workspace');
-  const project = parsed.project;
-  const track = project.tracks[0];
-  if (!track) throw new ProjectFormatError('Missing project track');
-  const mediaId = crypto.randomUUID();
-  const name = file.name.replace(/\.(wav|ogg)$/i, '');
-  const { source } = decoded;
-  project.media = [
-    {
-      mediaId,
-      name: file.name,
-      ...identity,
-      sampleRateHz: source.sampleRate,
-      channels: source.channels,
-      framesPerChannel: source.length,
-      originHint: file.absolutePath ? { kind: 'desktop', pathHint: file.absolutePath } : null,
-    },
-  ];
-  track.clips = [
-    {
-      clipId: crypto.randomUUID(),
-      mediaId,
-      timelineStartSeconds: 0,
-      sourceOffsetFrames: 0,
-      frameCount: source.length,
-    },
-  ];
+  if (parsed.kind !== 'supported') throw new ProjectFormatError('Unsupported project version');
+  const { project } = parsed;
+  const track = currentTrack(project);
+  track.media = mediaAsset(crypto.randomUUID(), file, identity, decoded);
   if (!preserveBaseName) {
+    const name = file.name.replace(/\.[^.]+$/, '');
     project.name = name;
-    project.output.baseName = name.replace(/[^\w.-]/g, '_') || 'slice';
+    track.output.baseName = defaultBaseName(name);
   }
   return project;
 }
 
+/**
+ * Records a relinked file on its track: the new path always, and the new
+ * file identity when the user accepted a different file.
+ */
+export function relinkMedia(
+  track: ProjectTrack,
+  file: OpenedFile,
+  identity: Identity,
+  decoded: DecodedAudio,
+  different: boolean,
+): void {
+  const { media } = track;
+  if (!media) return;
+  if (different) track.media = mediaAsset(media.mediaId, file, identity, decoded);
+  else
+    media.originHint = file.absolutePath ? { kind: 'desktop', pathHint: file.absolutePath } : null;
+}
+
 export function projectFileName(name: string): string {
-  const stem =
-    name
-      .replace(/\.wosdx$/i, '')
-      // Control characters are intentionally matched: they must never survive into a project file name.
-      // eslint-disable-next-line no-control-regex
-      .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_')
-      .replace(/[. ]+$/g, '')
-      .slice(0, 60) || 'project';
-  return `${/^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)/i.test(stem) ? '_' : ''}${stem}.wosdx`;
+  return `${portableStem(name.replace(/\.wosdx$/i, ''), 'project', 60)}.wosdx`;
 }

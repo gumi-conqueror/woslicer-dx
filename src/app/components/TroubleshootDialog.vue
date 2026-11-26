@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import { errorMessage } from '../../core/messages';
 import { ElButton, ElDialog } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { getPlatform } from '../../platform';
 import type { BuildIdentity } from '../../platform/contracts';
 import { appDataFolders, openDataFolder, type AppDataFolder } from '../../platform/app-data';
-import { useInputState } from '../input-state';
+import { useInputState } from '../../input/state';
 import UninstallGuide from './UninstallGuide.vue';
 const open = defineModel<boolean>({ required: true });
 const props = defineProps<{ identity: BuildIdentity | null }>();
@@ -20,7 +21,7 @@ async function run(action: () => Promise<void>): Promise<void> {
   try {
     await action();
   } catch (error: unknown) {
-    message.value = error instanceof Error ? error.message : String(error);
+    message.value = errorMessage(error);
   }
 }
 async function refresh(): Promise<void> {

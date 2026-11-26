@@ -39,11 +39,6 @@ export function aggregatePeaks(
   }
   return { min, max };
 }
-export function scalePeakByGain(peak: Peak, gain: number): Peak {
-  if (gain === 1 || !Number.isFinite(gain)) return peak;
-  const clamp = (v: number): number => Math.max(-1, Math.min(1, v));
-  return { min: clamp(peak.min * Math.abs(gain)), max: clamp(peak.max * Math.abs(gain)) };
-}
 export function peakRect(
   x: number,
   width: number,

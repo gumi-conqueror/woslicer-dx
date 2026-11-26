@@ -1,3 +1,8 @@
+/**
+ * Two-character base-36 definition numbers, 00 through ZZ.
+ * `extended` uses all 1296 numbers. `restricted` (FF mode) keeps both digits
+ * in 0–F, so numbers stay valid two-digit hexadecimal.
+ */
 export type NumberingMode = 'extended' | 'restricted';
 export function validId(id: number): number {
   if (!Number.isInteger(id) || id < 0 || id >= 1296)
@@ -6,10 +11,6 @@ export function validId(id: number): number {
 }
 export function formatId(id: number): string {
   return validId(id).toString(36).toUpperCase().padStart(2, '0');
-}
-export function parseId(text: string): number {
-  if (!/^[0-9A-Z]{2}$/.test(text)) throw new RangeError('Expected two uppercase base-36 digits');
-  return parseInt(text, 36);
 }
 const wrap = (n: number, size: number): number => ((n % size) + size) % size;
 export function stepId(id: number, delta: number, mode: NumberingMode): number {
@@ -35,9 +36,10 @@ export function stepId(id: number, delta: number, mode: NumberingMode): number {
   const next = wrap(high * 16 + low + (delta % 256), 256);
   return Math.floor(next / 16) * 36 + (next % 16);
 }
-export function markerNextId(id: number, restricted: boolean): number {
+/** The next marker clip number. Restricted numbering skips low digits G–Z. */
+export function markerNextId(id: number, mode: NumberingMode): number {
   validId(id);
-  return wrap(id + (restricted && id % 36 === 15 ? 21 : 1), 1296);
+  return wrap(id + (mode === 'restricted' && id % 36 === 15 ? 21 : 1), 1296);
 }
 export function renumber(ids: readonly number[], first: number, mode: NumberingMode): number[] {
   validId(first);

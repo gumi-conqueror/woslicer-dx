@@ -2,16 +2,24 @@
 import { computed, ref } from 'vue';
 import { ElButton, ElDialog } from 'element-plus';
 import { useI18n } from 'vue-i18n';
-import { SHORTCUTS, CALIBRATION_TAP, CANCEL, formatBindings, gamepadShortcut } from '../shortcuts';
-import { GAMEPAD_MENU_SHORTCUTS } from '../gamepad-controls';
+import {
+  SHORTCUTS,
+  CALIBRATION_TAP,
+  CANCEL,
+  formatBindings,
+  gamepadShortcut,
+  SHORTCUT_GROUPS,
+} from '../../input/bindings';
+import { GAMEPAD_MENU_SHORTCUTS } from '../../input/gamepad';
 import { APPLICATION_MENU } from '../menu';
 import GamepadIcon from '../../ui/GamepadIcon.vue';
 import UninstallGuide from './UninstallGuide.vue';
+import RecordingGuide from './RecordingGuide.vue';
 const open = defineModel<boolean>({ required: true });
 const { t } = useI18n();
-const groups = ['project', 'edit', 'playback', 'navigation', 'output'] as const;
+const groups = SHORTCUT_GROUPS;
 // This choice belongs to the guide. Actual input activity must never change it.
-const guideDevice = ref<'keyboard' | 'gamepad'>('keyboard');
+const guideDevice = ref<'keyboard' | 'gamepad' | 'yuancon'>('keyboard');
 const sections = computed(() =>
   groups
     .map((group) => ({
@@ -19,7 +27,8 @@ const sections = computed(() =>
       shortcuts: SHORTCUTS.filter(
         (item) =>
           item.group === group &&
-          (guideDevice.value === 'keyboard' || gamepadShortcut(item.command)),
+          (guideDevice.value === 'keyboard' ||
+            (guideDevice.value === 'gamepad' && gamepadShortcut(item.command))),
       ),
     }))
     .filter((section) => section.shortcuts.length),
@@ -55,9 +64,16 @@ const sections = computed(() =>
           @click="guideDevice = 'gamepad'"
           >{{ t('input.xbox') }}</ElButton
         >
+        <ElButton
+          :aria-pressed="guideDevice === 'yuancon'"
+          :type="guideDevice === 'yuancon' ? 'primary' : 'default'"
+          @click="guideDevice = 'yuancon'"
+          >{{ t('input.yuancon') }}</ElButton
+        >
       </div>
       <h3>{{ t('help.workflow') }}</h3>
       <p>{{ t('help.workflowBody') }}</p>
+      <p>{{ t('help.audioFormats') }}</p>
       <h3>{{ t('help.workspace') }}</h3>
       <p>{{ t('help.workspaceBody') }}</p>
       <template v-if="guideDevice === 'keyboard'">
@@ -74,7 +90,7 @@ const sections = computed(() =>
           >
         </div>
       </template>
-      <template v-else>
+      <template v-else-if="guideDevice === 'gamepad'">
         <h3>{{ t('input.xbox') }}</h3>
         <p>{{ t('input.gamepadNotice') }}</p>
         <p>{{ t('input.gamepadScope') }}</p>
@@ -92,6 +108,7 @@ const sections = computed(() =>
           <GamepadIcon control="lt" /><GamepadIcon control="rt" />{{ t('input.scrollHelp') }}
         </p>
       </template>
+      <RecordingGuide :device="guideDevice" />
       <section
         v-for="section in sections"
         :key="section.group"

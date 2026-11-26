@@ -1,11 +1,14 @@
 import { effectScope, inject, provide, watch, type InjectionKey } from 'vue';
 import type { EditorStore } from '../slicing/editor-store';
-import { renderSlice } from '../core/slicer';
+import { renderSlice } from '../core/audio/slice';
+import { sliceRanges } from '../core/slices';
+import { FULL_SCALE } from '../core/audio/pcm';
 import { sliceIndexAtOrBefore } from '../core/markers';
-import { tickToSampleExport } from '../core/timebase';
+import { sampleToTick } from '../core/timebase';
 import { DEFAULT_PLAYBACK_RATE, PLAYBACK_RATES, advanceSamples } from '../core/rate';
 import { findCueCrossing } from '../core/cuecursor';
 import { createCueSynth } from './cue';
+import { createInputTimeline } from './input-timeline';
 
 export interface Playback {
   play(): void;
@@ -14,6 +17,7 @@ export interface Playback {
   togglePlayPause(): void;
   seekSample(sample: number): void;
   currentSample(): number;
+  positionAt(time: number): { sample: number; playing: boolean } | null;
   setRate(rate: number): void;
   previewSlice(previous?: boolean): void;
   getAudioContext(): AudioContext;
@@ -27,6 +31,7 @@ export function createPlayback(editor: EditorStore): Playback {
   master.connect(context.destination);
   const cue = createCueSynth(context);
   const scope = effectScope(true);
+  const inputTimeline = createInputTimeline();
   let buffer: AudioBuffer | null = null;
   let track: AudioBufferSourceNode | null = null;
   let preview: AudioBufferSourceNode | null = null;
@@ -37,9 +42,15 @@ export function createPlayback(editor: EditorStore): Playback {
   let activeRate = editor.playbackRate;
   let lastCueTick = 0;
 
-  function sampleToTick(sample: number): number {
+  function tickAtSample(sample: number): number {
     const source = editor.source;
-    return source ? (sample * 4 * editor.doc.bpm) / (source.sampleRate * 5) - editor.doc.shift : 0;
+    return source
+      ? sampleToTick(sample, {
+          bpm: editor.doc.bpm,
+          shift: editor.doc.shift,
+          sampleRate: source.sampleRate,
+        })
+      : 0;
   }
   function release(node: AudioBufferSourceNode | null): void {
     if (!node) return;
@@ -51,19 +62,30 @@ export function createPlayback(editor: EditorStore): Playback {
     }
     node.disconnect();
   }
-  function currentSample(): number {
+  function elapsedSample(): number {
     if (!track || !editor.source) return editor.playheadSample;
-    return Math.min(
-      editor.source.length,
-      advanceSamples(
-        anchorSample,
-        context.currentTime - anchorTime,
-        activeRate,
-        editor.source.sampleRate,
-      ),
+    return advanceSamples(
+      anchorSample,
+      context.currentTime - anchorTime,
+      activeRate,
+      editor.source.sampleRate,
+    );
+  }
+  function currentSample(): number {
+    return Math.min(editor.source?.length ?? 0, elapsedSample());
+  }
+  function remember(previousSample: number): void {
+    inputTimeline.record(
+      performance.now(),
+      previousSample,
+      currentSample(),
+      track && context.state !== 'suspended'
+        ? (activeRate * (editor.source?.sampleRate ?? 0)) / 1000
+        : 0,
     );
   }
   function stop(): void {
+    const previous = elapsedSample();
     const sample = currentSample();
     cancelAnimationFrame(frame);
     frame = 0;
@@ -74,11 +96,12 @@ export function createPlayback(editor: EditorStore): Playback {
     cue.silence();
     editor.setPlayheadSample(sample);
     editor.setPlaying(false);
+    remember(previous);
   }
   function tick(): void {
     if (disposed || !track || !editor.source) return;
     const sample = currentSample();
-    const tickPosition = sampleToTick(sample);
+    const tickPosition = tickAtSample(sample);
     const index = findCueCrossing(editor.ticks, lastCueTick, tickPosition);
     lastCueTick = tickPosition;
     if (index >= 0) {
@@ -88,9 +111,14 @@ export function createPlayback(editor: EditorStore): Playback {
     frame = requestAnimationFrame(tick);
   }
   function resume(node: AudioBufferSourceNode): void {
-    void context.resume().catch(() => {
-      if (!disposed && (track === node || preview === node)) stop();
-    });
+    void context
+      .resume()
+      .then(() => {
+        if (!disposed && track === node) remember(currentSample());
+      })
+      .catch(() => {
+        if (!disposed && (track === node || preview === node)) stop();
+      });
   }
   function play(): void {
     if (disposed || track || !buffer || !editor.source || buffer.length === 0) return;
@@ -104,7 +132,7 @@ export function createPlayback(editor: EditorStore): Playback {
     node.connect(master);
     anchorSample = editor.playheadSample;
     anchorTime = context.currentTime;
-    lastCueTick = sampleToTick(anchorSample);
+    lastCueTick = tickAtSample(anchorSample);
     track = node;
     node.onended = () => {
       if (track !== node) return;
@@ -114,6 +142,7 @@ export function createPlayback(editor: EditorStore): Playback {
     resume(node);
     node.start(0, anchorSample / buffer.sampleRate);
     editor.setPlaying(true);
+    remember(anchorSample);
     tick();
   }
   function pause(): void {
@@ -123,7 +152,9 @@ export function createPlayback(editor: EditorStore): Playback {
     if (disposed || !editor.source || !Number.isFinite(sample)) return;
     const playing = track !== null;
     stop();
+    const previous = editor.playheadSample;
     editor.setPlayheadSample(Math.floor(sample));
+    remember(previous);
     if (playing && editor.playheadSample < editor.source.length) play();
   }
   function setRate(rate: number): void {
@@ -134,19 +165,24 @@ export function createPlayback(editor: EditorStore): Playback {
     const source = editor.source;
     if (disposed || !source) return;
     const base = { bpm: editor.doc.bpm, shift: editor.doc.shift, sampleRate: source.sampleRate };
-    const ticks = editor.ticks.filter((tick) => tickToSampleExport(tick, base) <= source.length);
-    if (!ticks.length) {
+    const { ranges } = sliceRanges(editor.ticks, base, source.length);
+    if (!ranges.length) {
       editor.setStatus('noMarkersToPreview');
       return;
     }
-    let index = Math.max(0, sliceIndexAtOrBefore(ticks, editor.cursorTick));
+    let index = Math.max(
+      0,
+      sliceIndexAtOrBefore(
+        ranges.map((range) => range.tick),
+        editor.cursorTick,
+      ),
+    );
     if (previous) index = Math.max(0, index - 1);
-    const first = ticks[index];
-    if (first === undefined) return;
-    const next = ticks[index + 1];
+    const range = ranges[index];
+    if (range === undefined) return;
     const rendered = renderSlice(source, {
-      start: tickToSampleExport(first, base),
-      end: next === undefined ? source.length : tickToSampleExport(next, base),
+      start: range.start,
+      end: range.end,
       fadeoutMs: editor.doc.fadeoutMs,
       noisegateDb: editor.noisegateEnabled ? editor.doc.noisegateDb : 0,
     });
@@ -156,14 +192,14 @@ export function createPlayback(editor: EditorStore): Playback {
     }
     stop();
     const previewBuffer = context.createBuffer(
-      rendered.channelsData.length,
+      rendered.channels.length,
       rendered.length,
       rendered.sampleRate,
     );
-    rendered.channelsData.forEach((channel, index) => {
+    rendered.channels.forEach((channel, index) => {
       const output = previewBuffer.getChannelData(index);
       channel.forEach((sample, frame) => {
-        output[frame] = sample / 32768;
+        output[frame] = sample / FULL_SCALE;
       });
     });
     const node = context.createBufferSource();
@@ -178,7 +214,10 @@ export function createPlayback(editor: EditorStore): Playback {
     };
     resume(node);
     node.start();
-    editor.setStatus('previewSlice', { slice: String(index).padStart(3, '0'), tick: first });
+    editor.setStatus('previewSlice', {
+      slice: String(range.index).padStart(3, '0'),
+      tick: range.tick,
+    });
   }
   scope.run(() => {
     watch(
@@ -193,6 +232,8 @@ export function createPlayback(editor: EditorStore): Playback {
           });
         }
         editor.setPlayheadSample(0);
+        inputTimeline.reset();
+        remember(0);
       },
       { immediate: true, flush: 'sync' },
     );
@@ -211,10 +252,12 @@ export function createPlayback(editor: EditorStore): Playback {
     watch(
       () => editor.playbackRate,
       (value) => {
+        const previous = elapsedSample();
         anchorSample = currentSample();
         anchorTime = context.currentTime;
         activeRate = value;
         if (track) track.playbackRate.value = value;
+        remember(previous);
       },
       { flush: 'sync' },
     );
@@ -223,7 +266,7 @@ export function createPlayback(editor: EditorStore): Playback {
     watch(
       () => `${editor.doc.bpm}|${editor.doc.shift}|${editor.ticks.join(',')}`,
       () => {
-        lastCueTick = sampleToTick(currentSample());
+        lastCueTick = tickAtSample(currentSample());
       },
     );
   });
@@ -233,6 +276,16 @@ export function createPlayback(editor: EditorStore): Playback {
     stop,
     seekSample,
     currentSample,
+    positionAt(time) {
+      if (!editor.source) return null;
+      const position = inputTimeline.at(time, { time: performance.now(), sample: elapsedSample() });
+      return (
+        position && {
+          sample: Math.floor(Math.min(editor.source.length, Math.max(0, position.sample))),
+          playing: position.playing,
+        }
+      );
+    },
     setRate,
     previewSlice,
     togglePlayPause(): void {

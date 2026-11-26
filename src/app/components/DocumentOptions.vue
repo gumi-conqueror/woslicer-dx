@@ -4,7 +4,7 @@ import { ElCheckbox, ElInputNumber, ElOption, ElSelect } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { GRID_DENSITIES } from '../../core/gridlines';
 import { useEditorStore } from '../../slicing/editor-store';
-import { FADE_INPUT_LIMITS, GATE_INPUT_LIMITS } from '../../slicing/control-limits';
+import { FIELD_RANGES } from '../../project/schema';
 const editor = useEditorStore();
 const { t } = useI18n();
 // Form edits go through document transactions so they participate in undo.
@@ -80,8 +80,8 @@ function setGrid(value: unknown): void {
       }}<ElInputNumber
         v-model="fade"
         :aria-label="t('chrome.fadeLabel')"
-        :min="FADE_INPUT_LIMITS.min"
-        :max="FADE_INPUT_LIMITS.max"
+        :min="FIELD_RANGES.fadeoutMs.min"
+        :max="FIELD_RANGES.fadeoutMs.max"
         :step="1"
         :precision="0"
         :controls="false"
@@ -92,8 +92,8 @@ function setGrid(value: unknown): void {
       }}<ElInputNumber
         v-model="gate"
         :aria-label="t('chrome.gateLabel')"
-        :min="GATE_INPUT_LIMITS.min"
-        :max="GATE_INPUT_LIMITS.max"
+        :min="FIELD_RANGES.noisegateDb.min"
+        :max="FIELD_RANGES.noisegateDb.max"
         :step="1"
         :controls="false"
         size="small"

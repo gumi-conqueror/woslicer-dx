@@ -1,5 +1,5 @@
 import { parseProject, ProjectFormatError } from './codec';
-import type { ProjectDocument, ProjectFileV1 } from './schema';
+import type { ProjectDocument, ProjectFile } from './schema';
 
 const HISTORY_LIMIT = 200;
 
@@ -13,7 +13,7 @@ function equal(left: ProjectDocument, right: ProjectDocument): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
-function freeze(document: ProjectFileV1): ProjectFileV1 {
+function freeze(document: ProjectFile): ProjectFile {
   function visit(value: unknown): void {
     if (value === null || typeof value !== 'object' || Object.isFrozen(value)) return;
     for (const child of Object.values(value)) visit(child);
@@ -25,10 +25,10 @@ function freeze(document: ProjectFileV1): ProjectFileV1 {
 
 /** Owns the one editable ProjectDocument and its bounded transaction history. */
 export class ProjectEditor {
-  private documentValue: ProjectFileV1;
-  private savedValue: ProjectFileV1;
-  private undoHistory: ProjectFileV1[] = [];
-  private redoHistory: ProjectFileV1[] = [];
+  private documentValue: ProjectFile;
+  private savedValue: ProjectFile;
+  private undoHistory: ProjectFile[] = [];
+  private redoHistory: ProjectFile[] = [];
   private revisionValue = 0;
   private savedRevisionValue = 0;
 
@@ -59,7 +59,7 @@ export class ProjectEditor {
     return this.redoHistory.length > 0;
   }
 
-  transact<T>(edit: (draft: ProjectFileV1) => T): ProjectTransactionResult<T> {
+  transact<T>(edit: (draft: ProjectFile) => T): ProjectTransactionResult<T> {
     const before = this.documentValue;
     const draft = structuredClone(before);
     const value = edit(draft);

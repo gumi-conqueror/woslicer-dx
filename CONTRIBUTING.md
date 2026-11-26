@@ -1,29 +1,42 @@
 # Contributing
 
+Start with the [development guide](docs/DEVELOPMENT.md) to run a checkout and execute checks.
+The [architecture map](docs/ARCHITECTURE.md) identifies feature owners and shared code.
+The [documentation index](docs/README.md) links the file-format and CI references.
+
+## Compatibility and scope
+
+- Preserve the fixed `.wos` and original BMHelper beta 4′ `.bmh` formats.
+- Keep audio and project data local. Bundle runtime assets and preserve the browser CSP and Tauri permission boundaries.
+- Use the existing command and editing paths so changes retain undo, recovery and input behavior.
+- Describe the user-visible result and validation in the PR. State any platform or hardware checks that were not run.
+
+[AGENTS.md](AGENTS.md) contains the full repository constraints. The same compatibility rules apply to human and agent-assisted changes.
+
 ## Branches and pull requests
 
-The GitHub default branch is `dev`. It is the integration branch for contributions. The `main` branch supplies releases.
+`dev` is the default integration branch. `main` supplies release builds.
+External contributors start from `dev` and target `dev`, using any source branch name.
 
-| Work | Start from | Merge route |
+| Maintainer work | Start from | Route |
 | --- | --- | --- |
-| Hotfix | `main` | `hotfix/*` → `main` → `dev` |
-| Feature | `dev` | `feature/*` → `dev` → `main` |
+| Feature or routine fix | `dev` | `feature/*` → `dev` → `main` |
+| Urgent release fix | `main` | `hotfix/*` → `main`, then `main` → `dev` |
 
-For a hotfix, open a PR against `main`. After that PR merges, merge `main` into `dev` through a separate PR.
-Use this route for CI and release maintenance that must reach `main` before the next feature release.
+Open a separate release PR from `dev` to `main` when the changes are ready for release.
+For a hotfix, first target `main`, then synchronize `dev` through a separate PR.
+Check the PR base when using an older fork or compare URL. Maintainers correct external PR targets manually.
 
-For a feature, open a PR against `dev`. Merge `dev` into `main` through a release PR when the changes are ready.
+Use concise Conventional Commit messages: `genre(module): imperative summary`.
+Before requesting review, run `npm run check`, `npm test` and the relevant UI or native checks in the development guide.
+CI checks Quality, Web and Windows x64 by default. Additional desktop targets require an all-platform run.
+Opening a PR does not publish packages or deploy the website.
 
-## External contributions
+## Documentation
 
-Start external contributions from `dev`. Open the PR against this repository's `dev` branch, including when an agent prepares the contribution.
-External contributors can use any source branch name. New PRs default to `dev`. Check the base when you use an older fork or compare link.
+Update instructions and behavior references affected by the change. Keep setup steps reproducible from a new checkout.
+Use repository paths and public links instead of local machine paths or conversation references.
+Root READMEs use English, Chinese, Japanese and Korean. Technical documents use English. Changelogs use English and Chinese.
 
-Maintainers manually change existing external PRs to target `dev` when necessary. No workflow automatically changes their target branches.
-
-## Checks and review
-
-Follow the compatibility and product constraints in [AGENTS.md](AGENTS.md).
-Use the [development guide](docs/DEVELOPMENT.md) for setup and validation.
-Describe the observable change and the checks you ran in the PR.
+For agent-assisted contributions, [Project skills](docs/SKILLS.md) describes the optional instructions.
 Agents need explicit authorization before pushing, merging or publishing.

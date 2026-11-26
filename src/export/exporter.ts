@@ -1,4 +1,6 @@
-import { tickToSampleExport } from '../core/timebase';
+import { sliceFileName, sliceRanges } from '../core/slices';
+import { errorMessage } from '../core/messages';
+import { portableStem } from '../platform/file-names';
 import type { Platform, OutputFile } from '../platform/contracts';
 import type { AudioEngine } from '../audio/audio-jobs';
 import type { EditorStore } from '../slicing/editor-store';
@@ -18,7 +20,6 @@ export function createExporter(
       editor.setStatus('nothingToExportNoSource', true);
       return;
     }
-    const sourceLength = source.length;
     const renderSlice = worker.slice.bind(worker);
     const ticks = s.ticks;
     if (!ticks.length) {
@@ -29,25 +30,23 @@ export function createExporter(
     const base = { bpm: s.doc.bpm, shift: s.doc.shift, sampleRate: source.sampleRate };
     const fadeoutMs = s.doc.fadeoutMs;
     const noisegateDb = s.noisegateEnabled ? s.doc.noisegateDb : 0;
-    // The sanitizer intentionally targets control characters to keep exported names portable.
-    // eslint-disable-next-line no-control-regex
-    const baseName = s.baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_') || 'slice';
-    let skipped = 0;
+    const baseName = portableStem(s.baseName, 'slice');
+    const { ranges, skipped } = sliceRanges(ticks, base, source.length);
     function assertCurrent(): void {
       if (generation() !== version) throw new DOMException('Export cancelled', 'AbortError');
     }
     async function fileAt(index: number): Promise<OutputFile | null> {
       assertCurrent();
-      const start = tickToSampleExport(ticks[index], base);
-      if (start > sourceLength) {
-        skipped++;
-        return null;
-      }
-      const end =
-        index + 1 < ticks.length ? tickToSampleExport(ticks[index + 1], base) : sourceLength;
-      const bytes = await renderSlice({ start, end, fadeoutMs, noisegateDb });
+      const range = ranges.find((item) => item.index === index);
+      if (!range) return null;
+      const bytes = await renderSlice({
+        start: range.start,
+        end: range.end,
+        fadeoutMs,
+        noisegateDb,
+      });
       assertCurrent();
-      return { name: `${baseName}_${String(index).padStart(3, '0')}.wav`, bytes };
+      return { name: sliceFileName(baseName, index), bytes };
     }
     editor.exportLock = true;
     editor.setStatus('exportingSlices', { count: single ? 1 : ticks.length });
@@ -62,8 +61,8 @@ export function createExporter(
         }
       } else {
         async function* files(): AsyncGenerator<OutputFile> {
-          for (let i = 0; i < ticks.length; i++) {
-            const file = await fileAt(i);
+          for (const range of ranges) {
+            const file = await fileAt(range.index);
             if (file) yield file;
           }
         }
@@ -79,11 +78,7 @@ export function createExporter(
       }
     } catch (error) {
       if (generation() === version)
-        editor.setStatus(
-          'exportFailed',
-          { message: error instanceof Error ? error.message : String(error) },
-          true,
-        );
+        editor.setStatus('exportFailed', { message: errorMessage(error) }, true);
     } finally {
       if (generation() === version) editor.exportLock = false;
     }

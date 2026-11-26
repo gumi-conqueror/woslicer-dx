@@ -8,10 +8,20 @@ import {
 } from '../core/timebase';
 import { formatRate, stepPlaybackRate } from '../core/rate';
 import type { AppCommand } from './command-types';
-import { commandForKey } from './shortcuts';
+import { commandForKey } from '../input/bindings';
+import {
+  recordingCommandForKey,
+  RECORDING_KEYS,
+  RECORDING_SEEK_SECONDS,
+  eventCode,
+  type RecordingInput,
+} from '../input/recording';
 import type { EditorStore } from '../slicing/editor-store';
+import { FIELD_RANGES } from '../project/schema';
 import type { Workspace } from '../workspace/workspace';
 import type { Playback } from '../playback';
+import { canRecord } from './menu';
+import { keyOwnedByControl, visibleDialog } from '../input/context';
 
 interface CommandOptions {
   editor: EditorStore;
@@ -23,8 +33,12 @@ interface CommandOptions {
   onTroubleshoot?: () => void | Promise<void>;
   onOpenDataFolder?: () => void | Promise<void>;
   onCalibrate: () => void | Promise<void>;
-  onOpenProject?: () => void | Promise<void>;
-  onNewProjectFromWos?: () => void | Promise<void>;
+  onToggleRecording?: () => void;
+  onConnectYuancon?: () => void;
+  onOpenProject: () => void | Promise<void>;
+  onNewProjectFromWos: () => void | Promise<void>;
+  /** Shows a command failure; the menu, shortcuts and controllers all report through it. */
+  report: (error: unknown) => void;
 }
 
 export function createCommands({
@@ -37,12 +51,30 @@ export function createCommands({
   onTroubleshoot,
   onOpenDataFolder,
   onCalibrate,
-  onOpenProject = () => workspace.openProject(),
-  onNewProjectFromWos = () => workspace.newProjectFromWos(),
+  onToggleRecording,
+  onConnectYuancon,
+  onOpenProject,
+  onNewProjectFromWos,
+  report,
 }: CommandOptions) {
   const { actions } = workspace;
-  async function execute(command: AppCommand): Promise<void> {
+  async function execute(command: AppCommand, input?: RecordingInput): Promise<void> {
     switch (command) {
+      case 'toggle-recording':
+        if (canRecord(editor)) onToggleRecording?.();
+        return;
+      case 'connect-yuancon':
+        onConnectYuancon?.();
+        return;
+      case 'recording-tap':
+        placeBreakpoint(false, 'playhead', input);
+        return;
+      case 'seek-backward':
+        seekBy(-RECORDING_SEEK_SECONDS);
+        return;
+      case 'seek-forward':
+        seekBy(RECORDING_SEEK_SECONDS);
+        return;
       case 'open-project':
         await onOpenProject();
         return;
@@ -57,8 +89,6 @@ export function createCommands({
         return workspace.openAudio();
       case 'import-wos':
         return workspace.importWosSettings();
-      case 'import-legacy':
-        return workspace.importLegacyRecovery();
       case 'export-wos':
         return workspace.saveWos();
       case 'export-slice':
@@ -196,18 +226,48 @@ export function createCommands({
       }
     }
   }
-  function placeBreakpoint(bypassSnap = false): void {
+  /** Moves the playhead by whole seconds within the source; the cursor follows it. */
+  function seekBy(seconds: number): void {
+    const source = editor.source;
+    if (!source) return;
+    const sample = Math.max(
+      0,
+      Math.min(source.length, playback.currentSample() + seconds * source.sampleRate),
+    );
+    playback.seekSample(sample);
+    editor.setCursorTick(
+      sampleToTickNearest(sample, {
+        bpm: editor.doc.bpm,
+        shift: editor.doc.shift,
+        sampleRate: source.sampleRate,
+      }),
+    );
+  }
+  function placeBreakpoint(
+    bypassSnap = false,
+    position: 'cursor' | 'playhead' = 'cursor',
+    input?: RecordingInput,
+  ): void {
     const source = editor.source;
     if (!source) {
       editor.setStatus('loadBeforeBreakPoint', true);
       return;
     }
     const base = { bpm: editor.doc.bpm, shift: editor.doc.shift, sampleRate: source.sampleRate };
+    const captured =
+      input?.time === undefined
+        ? { sample: playback.currentSample(), playing: editor.playing }
+        : playback.positionAt(input.time);
+    if (!captured) return;
     const sample = Math.max(
       0,
-      playback.currentSample() - latencySamples(editor.tapOffsetMs, source.sampleRate),
+      captured.sample -
+        (captured.playing ? latencySamples(editor.tapOffsetMs, source.sampleRate) : 0),
     );
-    const rawTick = editor.playing ? sampleToTickNearest(sample, base) : editor.cursorTick;
+    const rawTick =
+      editor.playing || position === 'playhead'
+        ? sampleToTickNearest(sample, base)
+        : editor.cursorTick;
     const tick = resolveBreakpointTick(
       rawTick,
       editor.snap,
@@ -219,8 +279,9 @@ export function createCommands({
       return;
     }
     editor.setCursorTick(tick);
-    if (!editor.playing) playback.seekSample(tickToSampleExport(tick, base));
-    if (actions.setMarker(tick, true)) editor.setStatus('breakPointAtTick', { tick });
+    if (!editor.playing && position === 'cursor')
+      playback.seekSample(tickToSampleExport(tick, base));
+    if (actions.setMarker(tick, true, input?.keys)) editor.setStatus('breakPointAtTick', { tick });
     else
       editor.setStatus('breakPointAlreadyAtTick', {
         measure: Math.floor(tick / MEASURE_TICKS) + 1,
@@ -248,43 +309,40 @@ export function createCommands({
   }
   function changeClipNumber(direction: -1 | 1): void {
     editor.setOutputOptions({
-      clipStartNumber: Math.max(0, Math.min(9999, editor.clipStartNumber + direction)),
+      clipStartNumber: Math.max(
+        FIELD_RANGES.clipStartNumber.min,
+        Math.min(FIELD_RANGES.clipStartNumber.max, editor.clipStartNumber + direction),
+      ),
     });
     editor.setStatus('clipStartNumber', { number: editor.clipStartNumber });
   }
-  async function run(command: AppCommand): Promise<void> {
+  /** Runs a command and reports a failure instead of throwing it. */
+  async function run(command: AppCommand, input?: RecordingInput): Promise<void> {
     try {
-      await execute(command);
+      await execute(command, input);
     } catch (error: unknown) {
-      editor.setStatus(
-        'loadFailed',
-        { message: error instanceof Error ? error.message : String(error) },
-        true,
-      );
+      report(error);
     }
   }
-  function onKeyDown(event: KeyboardEvent): void {
+  function onKeyDown(event: KeyboardEvent, recording = false): void {
     if (event.defaultPrevented || event.isComposing || event.key === 'Process') return;
-    const target = event.target;
-    if (
-      target instanceof Element &&
-      (target.closest(
-        'input,textarea,select,[contenteditable="true"],[role="dialog"],[role="listbox"],[role="slider"],[role="tablist"]',
-      ) ||
-        ((event.key === ' ' || event.key === 'Enter') && target.closest('button,[role="button"]')))
-    )
-      return;
-    if (
-      typeof document !== 'undefined' &&
-      Array.from(document.querySelectorAll('[role="dialog"]')).some(
-        (dialog) => dialog.getClientRects().length > 0,
-      )
-    )
-      return;
-    const command = commandForKey(event);
+    if (keyOwnedByControl(event.target, event.key) || visibleDialog()) return;
+    const recordingCommand = recording ? recordingCommandForKey(event) : undefined;
+    const command = recordingCommand ?? commandForKey(event);
     if (!command) return;
     event.preventDefault();
-    void run(command);
+    if (
+      recordingCommand &&
+      event.repeat &&
+      command !== 'seek-backward' &&
+      command !== 'seek-forward'
+    )
+      return;
+    const key =
+      command === 'recording-tap'
+        ? RECORDING_KEYS.find((binding) => binding.keyboard === eventCode(event))?.key
+        : undefined;
+    void run(command, key === undefined ? undefined : { keys: [key], time: event.timeStamp });
   }
-  return { execute, onKeyDown, placeBreakpoint, stepRate };
+  return { execute, run, onKeyDown, placeBreakpoint, stepRate };
 }

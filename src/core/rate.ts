@@ -52,17 +52,3 @@ export function advanceSamples(
 ): number {
   return startOffset + elapsedSeconds * rate * sampleRate;
 }
-
-/**
- * Playhead sample position at the moment of a rate change. The transport sets
- * startOffset to this value and startedAt to ctx.currentTime before applying
- * the new rate, which makes currentSample() continuous across the switch.
- */
-export function reanchorSample(
-  startOffset: number,
-  elapsedSeconds: number,
-  oldRate: number,
-  sampleRate: number,
-): number {
-  return advanceSamples(startOffset, elapsedSeconds, oldRate, sampleRate);
-}

@@ -1,4 +1,4 @@
-import type { NumberingMode } from '../formats/numbering.js';
+import { validId, type NumberingMode } from '../formats/numbering.js';
 import type { SourceNote, Sound, SortKey } from './sound-groups.js';
 import { chronological, groupSounds, sortSounds } from './sound-groups.js';
 import { assignDefinitions } from './definition-assignment.js';
@@ -31,13 +31,15 @@ export function defaultSettings(resolution: number): ArrangementSettings {
     sourceCopy: false,
   };
 }
-export function beatsToTicks(beats: number, resolution: number): number {
-  if (!Number.isFinite(beats) || beats < 0 || !Number.isFinite(resolution) || resolution <= 0)
-    throw new RangeError('Invalid beat input');
-  return Math.trunc(beats * resolution);
-}
+/**
+ * Groups and places the source notes, then assigns definition numbers.
+ * This is the only entry point: it validates the notes and settings once,
+ * and the steps below receive notes in chronological order.
+ */
 export function arrange(notes: readonly SourceNote[], settings: ArrangementSettings) {
-  defaultSettings(settings.resolution);
+  if (!Number.isFinite(settings.resolution) || settings.resolution <= 0)
+    throw new RangeError('Invalid resolution');
+  validId(settings.firstDefinition);
   for (const value of [
     settings.headMargin,
     settings.spacing,
@@ -72,13 +74,6 @@ export function arrange(notes: readonly SourceNote[], settings: ArrangementSetti
   }
   return {
     sounds,
-    ...assignDefinitions(
-      ordered,
-      sounds,
-      settings.sharing,
-      settings.freeGap,
-      settings.firstDefinition,
-      settings.numbering,
-    ),
+    ...assignDefinitions(ordered, sounds, settings),
   };
 }

@@ -1,10 +1,19 @@
 import { shallowRef } from 'vue';
 import type { EditorStore } from '../slicing/editor-store';
-import { clampGroupDelta } from '../core/markers';
 import { markerTicks } from '@gumi-conqueror/wos-file';
 import { gridStepTicks } from '../core/gridlines';
 import { MAX_TICKS, resolveBreakpointTick } from '../core/timebase';
 import type { Ghost } from './render';
+import { groupMoveDelta, moveMarkers } from '../slicing/editor-actions';
+
+/** CSS pixels: a press this close to a marker grabs it. */
+const HIT_RADIUS_PX = 10;
+/** CSS pixels: the eraser removes markers this close to the pointer path. */
+const ERASE_RADIUS_PX = 8;
+/** CSS pixels: a press becomes a paint stroke after this much movement. */
+const DRAG_START_PX = 3;
+/** CSS pixels: free (unsnapped) painting adds a marker after this much movement. */
+const FREEHAND_STEP_PX = 2;
 
 export interface TimelinePointer {
   x: number;
@@ -69,7 +78,7 @@ export function createTimelineGestures(editor: EditorStore) {
   function near(x: number): number | undefined {
     const target = tickAt(x);
     let nearest: number | undefined,
-      distance = 10 / editor.pxPerTick;
+      distance = HIT_RADIUS_PX / editor.pxPerTick;
     for (const tick of editor.ticks)
       if (Math.abs(tick - target) <= distance) {
         nearest = tick;
@@ -96,7 +105,7 @@ export function createTimelineGestures(editor: EditorStore) {
     } else paint(to, changed, draft);
   }
   function erase(first: number, last: number, draft: Uint8Array): number {
-    const radius = 8 / editor.pxPerTick;
+    const radius = ERASE_RADIUS_PX / editor.pxPerTick;
     const hits = markerTicks(draft).filter(
       (tick) => tick >= Math.min(first, last) - radius && tick <= Math.max(first, last) + radius,
     );
@@ -106,11 +115,6 @@ export function createTimelineGestures(editor: EditorStore) {
   }
   function begin(point: TimelinePointer): void {
     cancel();
-    // Panning stays available for read-only inspection; every editing gesture is refused.
-    if (point.button !== 1 && editor.limited) {
-      editor.setStatus('limitedReadOnly', true);
-      return;
-    }
     if (point.button === 1) {
       gesture = { kind: 'pan', anchorX: point.x, scroll: editor.scrollTick };
       cursor.value = 'grabbing';
@@ -194,11 +198,13 @@ export function createTimelineGestures(editor: EditorStore) {
       case 'pending':
       case 'paint': {
         if (current.kind === 'pending') {
-          if (Math.hypot(point.x - current.anchor.x, point.y - current.anchor.y) < 3) break;
+          if (Math.hypot(point.x - current.anchor.x, point.y - current.anchor.y) < DRAG_START_PX)
+            break;
           current.kind = 'paint';
           paint(current.anchorTick, current.changed, current.bitmap);
         }
-        if ((!editor.snap || point.altKey) && Math.abs(point.x - current.lastX) < 2) break;
+        if ((!editor.snap || point.altKey) && Math.abs(point.x - current.lastX) < FREEHAND_STEP_PX)
+          break;
         const tick = paintTick(point);
         paintSegment(current.lastTick, tick, point, current.changed, current.bitmap);
         current.lastTick = tick;
@@ -225,22 +231,10 @@ export function createTimelineGestures(editor: EditorStore) {
           editor.snap && !point.altKey && cell > 0
             ? Math.round(raw / cell) * cell
             : Math.round(raw);
-        let delta = clampGroupDelta(current.ticks, requested);
-        if (editor.source && current.ticks.length) {
-          // Use the same integer export boundary as marker placement (EOF is legal).
-          let low = 0,
-            high = MAX_TICKS - 1;
-          while (low < high) {
-            const middle = Math.ceil((low + high) / 2);
-            if (editor.tickBeyondEnd(middle)) high = middle - 1;
-            else low = middle;
-          }
-          delta = Math.max(
-            -Math.min(...current.ticks),
-            Math.min(delta, low - Math.max(...current.ticks)),
-          );
-        }
-        ghost.value = { ticks: current.ticks, delta };
+        ghost.value = {
+          ticks: current.ticks,
+          delta: groupMoveDelta(editor, current.ticks, requested),
+        };
         break;
       }
     }
@@ -295,16 +289,9 @@ export function createTimelineGestures(editor: EditorStore) {
         break;
       }
       case 'move': {
-        const delta = ghost.value?.delta ?? 0;
-        if (delta) {
-          const applied = clampGroupDelta(current.ticks, delta);
-          editor.setTicks([
-            ...editor.ticks.filter((t) => !current.ticks.includes(t)),
-            ...current.ticks.map((t) => t + applied),
-          ]);
-          editor.setSelectedTicks(current.ticks.map((tick) => tick + applied));
+        const applied = moveMarkers(editor, current.ticks, ghost.value?.delta ?? 0);
+        if (applied)
           editor.setStatus('movedMarkersBy', { count: current.ticks.length, delta: applied });
-        }
         break;
       }
       case 'idle':

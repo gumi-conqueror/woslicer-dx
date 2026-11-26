@@ -31,6 +31,10 @@ fn main() {
     .expect("bundle build identity");
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(
         tauri_build::AppManifest::new().commands(&[
+            "input_clock",
+            "yuancon_devices",
+            "yuancon_connect",
+            "yuancon_disconnect",
             "open_about_link",
             "app_data_folders",
             "open_data_folder",
@@ -52,7 +56,6 @@ fn main() {
             "read_session",
             "write_session",
             "clear_session",
-            "import_legacy_session",
             "set_theme",
             "build_identity",
         ]),
