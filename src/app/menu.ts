@@ -33,9 +33,9 @@ export const APPLICATION_MENU = [
       { id: 'redo', key: 'menu.redo', mnemonic: 'r' },
       { id: 'select-all', key: 'menu.selectAll', mnemonic: 'a' },
       { id: 'clear-markers', key: 'menu.clearMarkers', mnemonic: 'd' },
-      { id: 'select-copy', key: 'menu.copySelection', mnemonic: 'c' },
-      { id: 'select-cut', key: 'menu.cutSelection', mnemonic: 't' },
-      { id: 'select-paste', key: 'menu.pasteSelection', mnemonic: 'p' },
+      { id: 'copy-selection', key: 'menu.copySelection', mnemonic: 'c' },
+      { id: 'cut-selection', key: 'menu.cutSelection', mnemonic: 't' },
+      { id: 'paste-selection', key: 'menu.pasteSelection', mnemonic: 'p' },
     ],
   },
   {
@@ -102,7 +102,7 @@ export function menuCommandEnabled(id: MenuCommand, editor: MenuEditorState): bo
     case 'open-audio':
     case 'import-wos':
     case 'export-wos':
-    case 'select-paste':
+    case 'paste-selection':
       return true;
     case 'relink-audio':
       return currentTrack(editor.document).media !== null;
@@ -114,11 +114,11 @@ export function menuCommandEnabled(id: MenuCommand, editor: MenuEditorState): bo
     case 'redo':
       return editor.canRedo;
     case 'select-all':
-    case 'select-copy':
+    case 'copy-selection':
       return editor.ticks.length > 0;
     case 'clear-markers':
       return editor.ticks.length > 0;
-    case 'select-cut':
+    case 'cut-selection':
       return editor.selectedTicks.length > 0;
     default: {
       const exhaustive: never = id;

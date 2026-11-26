@@ -15,8 +15,8 @@ describe('shared keyboard bindings', () => {
     expect(match('s')).toBe('clip-number-up');
     expect(match('s', { altKey: true })).toBeUndefined();
     expect(match('ArrowLeft', { shiftKey: true })).toBe('cursor-left-tick');
-    expect(match('Enter', { altKey: true })).toBe('place-breakpoint-free');
-    expect(match('Enter')).toBe('place-breakpoint');
+    expect(match('Enter', { altKey: true })).toBe('place-marker-free');
+    expect(match('Enter')).toBe('place-marker');
     expect(match('+', { shiftKey: true })).toBe('zoom-in');
     expect(match('z', { isComposing: true })).toBeUndefined();
     expect(shortcutLabel('save-project')).toBe('Ctrl/Cmd+S');

@@ -103,13 +103,13 @@ export function createCommands({
       case 'redo':
         editor.setStatus(actions.redo() ? 'redo' : 'nothingToRedo');
         return;
-      case 'select-copy':
+      case 'copy-selection':
         actions.copySelection();
         return;
-      case 'select-cut':
+      case 'cut-selection':
         actions.cutSelection();
         return;
-      case 'select-paste':
+      case 'paste-selection':
         actions.pasteSelection();
         return;
       case 'select-all':
@@ -159,10 +159,10 @@ export function createCommands({
       case 'grid-up':
         stepGrid(1);
         return;
-      case 'bmse-out':
+      case 'copy-bmse':
         await workspace.bmseOut();
         return;
-      case 'bmse-in':
+      case 'paste-bmse':
         await workspace.bmseIn();
         return;
       case 'clear-selection':
@@ -181,10 +181,10 @@ export function createCommands({
       case 'toggle-marker':
         actions.toggleMarker();
         return;
-      case 'place-breakpoint-free':
+      case 'place-marker-free':
         placeBreakpoint(true);
         return;
-      case 'place-breakpoint':
+      case 'place-marker':
         placeBreakpoint(false);
         return;
       case 'rate-down':
@@ -193,10 +193,10 @@ export function createCommands({
       case 'rate-up':
         stepRate(1);
         return;
-      case 'shift-all-minus':
+      case 'shift-markers-earlier':
         actions.shiftAll(-1);
         return;
-      case 'shift-all-plus':
+      case 'shift-markers-later':
         actions.shiftAll(1);
         return;
       case 'measure-paste':
@@ -214,10 +214,10 @@ export function createCommands({
       case 'cursor-right-grid':
         editor.setCursorTick(editor.cursorTick + gridStepTicks(editor.grid));
         return;
-      case 'cursor-up-measure':
+      case 'cursor-previous-measure':
         editor.setCursorTick(editor.cursorTick - MEASURE_TICKS);
         return;
-      case 'cursor-down-measure':
+      case 'cursor-next-measure':
         editor.setCursorTick(editor.cursorTick + MEASURE_TICKS);
         return;
       default: {

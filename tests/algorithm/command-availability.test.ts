@@ -59,12 +59,12 @@ const table: ReadonlyArray<readonly [MenuCommand, MenuEditorState, boolean]> = [
   // Selection helpers need markers.
   ['select-all', withSource, true],
   ['select-all', state(), false],
-  ['select-copy', withSource, true],
+  ['copy-selection', withSource, true],
   ['clear-markers', withSource, true],
   ['clear-markers', state(), false],
-  ['select-cut', state({ ticks: [12], selectedTicks: [12] }), true],
-  ['select-cut', state(), false],
-  ['select-paste', state(), true],
+  ['cut-selection', state({ ticks: [12], selectedTicks: [12] }), true],
+  ['cut-selection', state(), false],
+  ['paste-selection', state(), true],
 ];
 
 describe('menu availability rules', () => {
