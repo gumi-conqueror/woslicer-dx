@@ -1,11 +1,10 @@
 import { shallowRef } from 'vue';
 import type { EditorStore } from '../slicing/editor-store';
-import { clampGroupDelta } from '../core/markers';
-import { remapMarkerKeys } from '../project/marker-keys';
 import { markerTicks } from '@gumi-conqueror/wos-file';
 import { gridStepTicks } from '../core/gridlines';
 import { MAX_TICKS, resolveBreakpointTick } from '../core/timebase';
 import type { Ghost } from './render';
+import { groupMoveDelta, moveMarkers } from '../slicing/editor-actions';
 
 /** CSS pixels: a press this close to a marker grabs it. */
 const HIT_RADIUS_PX = 10;
@@ -232,22 +231,10 @@ export function createTimelineGestures(editor: EditorStore) {
           editor.snap && !point.altKey && cell > 0
             ? Math.round(raw / cell) * cell
             : Math.round(raw);
-        let delta = clampGroupDelta(current.ticks, requested);
-        if (editor.source && current.ticks.length) {
-          // Use the same integer export boundary as marker placement (EOF is legal).
-          let low = 0,
-            high = MAX_TICKS - 1;
-          while (low < high) {
-            const middle = Math.ceil((low + high) / 2);
-            if (editor.tickBeyondEnd(middle)) high = middle - 1;
-            else low = middle;
-          }
-          delta = Math.max(
-            -Math.min(...current.ticks),
-            Math.min(delta, low - Math.max(...current.ticks)),
-          );
-        }
-        ghost.value = { ticks: current.ticks, delta };
+        ghost.value = {
+          ticks: current.ticks,
+          delta: groupMoveDelta(editor, current.ticks, requested),
+        };
         break;
       }
     }
@@ -302,21 +289,9 @@ export function createTimelineGestures(editor: EditorStore) {
         break;
       }
       case 'move': {
-        const delta = ghost.value?.delta ?? 0;
-        if (delta) {
-          const applied = clampGroupDelta(current.ticks, delta);
-          editor.setTicks(
-            [
-              ...editor.ticks.filter((t) => !current.ticks.includes(t)),
-              ...current.ticks.map((t) => t + applied),
-            ],
-            remapMarkerKeys(editor.markerKeys, (tick) =>
-              current.ticks.includes(tick) ? tick + applied : tick,
-            ),
-          );
-          editor.setSelectedTicks(current.ticks.map((tick) => tick + applied));
+        const applied = moveMarkers(editor, current.ticks, ghost.value?.delta ?? 0);
+        if (applied)
           editor.setStatus('movedMarkersBy', { count: current.ticks.length, delta: applied });
-        }
         break;
       }
       case 'idle':

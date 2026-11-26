@@ -11,6 +11,42 @@ import type { EditorStore } from './editor-store';
 import type { MarkerKey } from '../project/schema';
 import { remapMarkerKeys, type MarkerKeys } from '../project/marker-keys';
 
+/**
+ * The delta that a group of markers can move by: as close to `delta` as the
+ * marker map and, with audio, the last legal tick allow. The group keeps its spacing.
+ */
+export function groupMoveDelta(
+  editor: EditorStore,
+  ticks: readonly number[],
+  delta: number,
+): number {
+  let applied = clampGroupDelta(ticks, delta);
+  if (editor.source && ticks.length) {
+    // The same integer export boundary as marker placement (the source end is legal).
+    let low = 0,
+      high = MAX_TICKS - 1;
+    while (low < high) {
+      const middle = Math.ceil((low + high) / 2);
+      if (editor.tickBeyondEnd(middle)) high = middle - 1;
+      else low = middle;
+    }
+    applied = Math.max(-Math.min(...ticks), Math.min(applied, low - Math.max(...ticks)));
+  }
+  return applied;
+}
+
+/** Moves `ticks` by `delta` in one undo step; their key attributes and selection move with them. */
+export function moveMarkers(editor: EditorStore, ticks: readonly number[], delta: number): number {
+  const applied = groupMoveDelta(editor, ticks, delta);
+  if (!applied) return 0;
+  editor.setTicks(
+    [...editor.ticks.filter((t) => !ticks.includes(t)), ...ticks.map((t) => t + applied)],
+    remapMarkerKeys(editor.markerKeys, (tick) => (ticks.includes(tick) ? tick + applied : tick)),
+  );
+  editor.setSelectedTicks(ticks.map((t) => t + applied));
+  return applied;
+}
+
 export function createEditorActions(editor: EditorStore) {
   let measureClipboard: { offsets: number[]; keys: MarkerKeys } | null = null;
   let selectionClipboard: { offsets: number[]; origin: number; keys: MarkerKeys } | null = null;
@@ -118,17 +154,11 @@ export function createEditorActions(editor: EditorStore) {
   function moveSelection(delta: number): number {
     editor.cancelDraft();
     if (!Number.isInteger(delta)) return 0;
-    const selected = editor.selectedTicks.filter((t) => editor.ticks.includes(t));
-    if (delta > 0 && selected.some((t) => editor.tickBeyondEnd(t + delta))) return 0;
-    const applied = clampGroupDelta(selected, delta);
-    editor.setTicks(
-      [...editor.ticks.filter((t) => !selected.includes(t)), ...selected.map((t) => t + applied)],
-      remapMarkerKeys(editor.markerKeys, (tick) =>
-        selected.includes(tick) ? tick + applied : tick,
-      ),
+    return moveMarkers(
+      editor,
+      editor.selectedTicks.filter((t) => editor.ticks.includes(t)),
+      delta,
     );
-    editor.setSelectedTicks(selected.map((t) => t + applied));
-    return applied;
   }
   function shiftAll(delta: number): boolean {
     editor.cancelDraft();

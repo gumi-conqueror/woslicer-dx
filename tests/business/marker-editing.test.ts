@@ -72,3 +72,13 @@ it('rejects entire quantize/paste groups beyond EOF without altering undo histor
   workspace.actions.undo();
   expect(editor.ticks).toEqual([]);
 });
+
+it('moves selected markers by command no further than the source end', async () => {
+  const f = setup();
+  // 48000 frames at 120 BPM: 500 frames per tick, so tick 96 is the source end.
+  await f.workspace.loadAudio(audioFile());
+  f.editor.setTicks([0, 90]);
+  f.editor.setSelectedTicks([0, 90]);
+  expect(f.workspace.actions.moveSelection(10)).toBe(6);
+  expect(f.editor.ticks).toEqual([6, 96]);
+});
