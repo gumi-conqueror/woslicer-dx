@@ -4,10 +4,11 @@ import { MAX_TICKS, MEASURE_TICKS } from '../core/timebase';
 import type { EditorStore } from '../slicing/editor-store';
 
 /**
- * Recovery data version. A record of another version is kept unchanged and
- * reported; the app never reinterprets it.
+ * Recovery data version. Version 3 records (2.0 alphas with one track) are
+ * read as well. A record of any other version is kept unchanged and reported;
+ * the app never reinterprets it.
  */
-export const SESSION_VERSION = 3;
+export const SESSION_VERSION = 4;
 
 type Read<T> = (value: unknown, project: ProjectDocument) => T | undefined;
 const flag: Read<boolean> = (value) => (typeof value === 'boolean' ? value : undefined);
@@ -67,15 +68,27 @@ export interface EditorSession {
   version: typeof SESSION_VERSION;
   dirty: boolean;
   project: ProjectDocument;
-  lastFile: { reference: string; name: string } | null;
+  currentTrackId: string | null;
+  /** Host bindings of each track's last opened audio, by track id. */
+  files: Readonly<Record<string, { reference: string; name: string }>>;
   state: SavedState;
+}
+type FileBinding = { reference: string; name: string };
+function fileBinding(value: unknown): FileBinding | null {
+  return object(value) &&
+    typeof value.reference === 'string' &&
+    value.reference.length > 0 &&
+    value.reference.length < 4096 &&
+    typeof value.name === 'string'
+    ? { reference: value.reference, name: value.name }
+    : null;
 }
 
 function object(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/** Reads a version 3 record; returns null when it is not one. */
+/** Reads a version 3 or 4 record; returns null when it is not one. */
 function parseEditorSession(input: Record<string, unknown>): EditorSession | null {
   let project: ProjectDocument;
   try {
@@ -95,20 +108,28 @@ function parseEditorSession(input: Record<string, unknown>): EditorSession | nul
       if (value !== undefined) state[group][field] = value;
     }
   }
-  const file = input.lastFile;
-  const lastFile =
-    object(file) &&
-    typeof file.reference === 'string' &&
-    file.reference.length > 0 &&
-    file.reference.length < 4096 &&
-    typeof file.name === 'string'
-      ? { reference: file.reference, name: file.name }
+  const trackIds = new Set(project.tracks.map((track) => track.trackId));
+  const files: Record<string, FileBinding> = {};
+  if (input.version === 3) {
+    // Version 3 projects had one track and one audio binding.
+    const binding = fileBinding(input.lastFile);
+    const first = project.tracks[0];
+    if (binding && first) files[first.trackId] = binding;
+  } else if (object(input.files))
+    for (const [trackId, value] of Object.entries(input.files)) {
+      const binding = fileBinding(value);
+      if (binding && trackIds.has(trackId)) files[trackId] = binding;
+    }
+  const currentTrackId =
+    typeof input.currentTrackId === 'string' && trackIds.has(input.currentTrackId)
+      ? input.currentTrackId
       : null;
   return {
     version: SESSION_VERSION,
     dirty: typeof input.dirty === 'boolean' ? input.dirty : true,
     project,
-    lastFile,
+    currentTrackId,
+    files,
     state,
   };
 }
@@ -134,7 +155,10 @@ export function readEditorSession(input: unknown): SessionReadResult {
       (input.version === undefined && ('doc' in input || 'project' in input)))
   )
     return { kind: 'earlier', raw: input };
-  const session = object(input) && version === SESSION_VERSION ? parseEditorSession(input) : null;
+  const session =
+    object(input) && (version === SESSION_VERSION || version === 3)
+      ? parseEditorSession(input)
+      : null;
   return session ? { kind: 'restored', session } : { kind: 'invalid', raw: input };
 }
 
@@ -149,14 +173,20 @@ export function captureEditorSession(editor: EditorStore): EditorSession {
     version: SESSION_VERSION,
     dirty: editor.isDirty,
     project: editor.document,
-    lastFile: editor.lastFile,
+    currentTrackId: editor.track.trackId,
+    files: Object.fromEntries(
+      [...editor.sessions].flatMap(([trackId, session]) =>
+        session.lastFile ? [[trackId, session.lastFile]] : [],
+      ),
+    ),
     state,
   };
 }
 
 export function restoreEditorSession(editor: EditorStore, session: EditorSession): void {
   editor.replaceDocument(session.project, { saved: !session.dirty });
+  if (session.currentTrackId) editor.selectTrack(session.currentTrackId);
   for (const values of Object.values(session.state)) Object.assign(editor, values);
-  editor.setLastFile(session.lastFile);
+  for (const [trackId, file] of Object.entries(session.files)) editor.setLastFile(file, trackId);
   editor.setSelectedTicks(editor.selectedTicks);
 }

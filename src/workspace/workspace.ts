@@ -347,6 +347,7 @@ export function createWorkspace(options: WorkspaceOptions) {
       throw new Error(`Unsupported project version: ${parsed.version}`);
     replaceWorkspace(parsed.project);
     const media = editor.track.media;
+    const projectReference = file.reference;
     if (parsed.unknownFields.length)
       editor.setStatus([
         {
@@ -359,21 +360,26 @@ export function createWorkspace(options: WorkspaceOptions) {
       editor.setStatus(media ? 'projectMediaMissing' : 'projectOpened', {
         name: media?.name ?? file.name,
       });
-    if (media && file.reference && media.originHint?.kind === 'desktop') {
-      const request = beginOpening({ stage: 'reading', name: media.name, mediaId: media.mediaId }),
+    if (!projectReference) return;
+    // The desktop app reopens each track's audio next to the project, one after another.
+    for (const track of editor.document.tracks) {
+      const asset = track.media;
+      if (asset?.originHint?.kind !== 'desktop') continue;
+      const request = beginOpening({
+          stage: 'reading',
+          name: asset.name,
+          mediaId: asset.mediaId,
+          trackId: track.trackId,
+        }),
         documentGeneration = editor.documentGeneration;
       try {
-        const audio = await platform.openProjectMedia(file.reference, media.mediaId);
-        if (
-          audio &&
-          !disposed &&
-          request === opening &&
-          documentGeneration === editor.documentGeneration
-        )
-          await loadAudio(audio, true);
+        const audio = await platform.openProjectMedia(projectReference, asset.mediaId);
+        if (disposed || request !== opening || documentGeneration !== editor.documentGeneration)
+          return;
+        if (audio) await loadAudio(audio, true, { trackId: track.trackId });
       } catch {
         if (!disposed && request === opening)
-          editor.setStatus('projectMediaMissing', { name: media.name }, true);
+          editor.setStatus('projectMediaMissing', { name: asset.name }, true);
       } finally {
         finishOpening(request);
       }
@@ -445,19 +451,23 @@ export function createWorkspace(options: WorkspaceOptions) {
       finishOpening(request);
     }
   }
-  async function reopen(reference: string, preserveBaseName = false): Promise<void> {
-    const request = beginOpening({
-        stage: 'reading',
-        name: editor.track.media?.name ?? editor.lastFile?.name,
-      }),
+  async function reopen(
+    reference: string,
+    preserveBaseName = false,
+    trackId = editor.track.trackId,
+  ): Promise<void> {
+    const name =
+      currentTrack(editor.document, trackId).media?.name ??
+      editor.sessions.get(trackId)?.lastFile?.name;
+    const request = beginOpening({ stage: 'reading', name, trackId }),
       documentGeneration = editor.documentGeneration;
     try {
       const file = await platform.reopenFile(reference);
       if (!disposed && request === opening && documentGeneration === editor.documentGeneration)
-        await loadAudio(file, preserveBaseName);
+        await loadAudio(file, preserveBaseName, { trackId });
     } catch {
       if (!disposed && request === opening)
-        editor.setStatus('lastFileMissing', { name: editor.track.media?.name ?? reference }, true);
+        editor.setStatus('lastFileMissing', { name: name ?? reference }, true);
     } finally {
       finishOpening(request);
     }
@@ -574,7 +584,11 @@ export function createWorkspace(options: WorkspaceOptions) {
       if (outcome.kind === 'restored') {
         restoreEditorSession(editor, outcome.session);
         actions.reset();
-        if (outcome.session.lastFile) await reopen(outcome.session.lastFile.reference, true);
+        const restoredGeneration = editor.documentGeneration;
+        for (const [trackId, file] of Object.entries(outcome.session.files)) {
+          if (disposed || editor.documentGeneration !== restoredGeneration) return;
+          await reopen(file.reference, true, trackId);
+        }
         return;
       }
       // Earlier, damaged, future and unreadable records stay preserved; recovery writes stay paused.

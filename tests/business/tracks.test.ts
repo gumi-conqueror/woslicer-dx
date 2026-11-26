@@ -68,3 +68,26 @@ it('renames a track and ignores a blank name', () => {
   f.workspace.actions.undo();
   expect(f.editor.track.name).toBe('Untitled');
 });
+
+it('restores every track and its audio from recovery data', async () => {
+  const f = setup();
+  const kick = audioFile('kick.wav'),
+    snare = audioFile('snare.wav', 24000);
+  await f.workspace.loadAudio(kick);
+  f.opened = snare;
+  await f.run('add-track');
+  await f.workspace.flushSession();
+  const restored = setup();
+  restored.session = f.session;
+  const files = new Map([kick, snare].map((file) => [file.reference, file]));
+  restored.platform.reopenFile = (reference) => {
+    const file = files.get(reference);
+    return file ? Promise.resolve(file) : Promise.reject(new Error('missing'));
+  };
+  await restored.workspace.restoreSession();
+  expect(restored.editor.document.tracks.map((track) => track.name)).toEqual(['kick', 'snare']);
+  expect(restored.editor.track.name).toBe('snare');
+  expect(restored.editor.source?.length).toBe(24000);
+  restored.editor.selectTrack(restored.editor.document.tracks[0]?.trackId ?? '');
+  expect(restored.editor.source?.length).toBe(48000);
+});

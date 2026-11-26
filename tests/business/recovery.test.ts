@@ -11,7 +11,7 @@ it('restores versioned sessions and custom export prefix without persisting drop
   f.workspace.actions.setMarker(20);
   await f.workspace.flushSession();
   const session = f.session;
-  expect(parseEditorSession(session)?.version).toBe(3);
+  expect(parseEditorSession(session)?.version).toBe(4);
   const restored = setup();
   restored.session = session;
   restored.opened = file;
@@ -22,7 +22,7 @@ it('restores versioned sessions and custom export prefix without persisting drop
   expect(restored.editor.canUndo).toBe(false);
   expect(restored.editor.canRedo).toBe(false);
   await f.workspace.loadAudio({ ...file, reference: null });
-  expect(captureEditorSession(f.editor).lastFile).toBeNull();
+  expect(captureEditorSession(f.editor).files).toEqual({});
   expect(JSON.stringify(captureEditorSession(f.editor))).not.toContain('floatData');
 });
 
@@ -75,9 +75,9 @@ it('keeps the last-file binding when reopening fails so the next archive still c
   f.editor.setDocumentOptions({ bpm: 150 });
   await f.workspace.flushSession();
   const snapshot = f.session;
-  expect(parseEditorSession(snapshot)?.lastFile).toEqual({
-    reference: file.reference,
-    name: 'tone',
+  const trackId = f.editor.track.trackId;
+  expect(parseEditorSession(snapshot)?.files).toEqual({
+    [trackId]: { reference: file.reference, name: 'tone' },
   });
   const restored = setup();
   restored.session = JSON.parse(JSON.stringify(snapshot));
@@ -88,9 +88,8 @@ it('keeps the last-file binding when reopening fails so the next archive still c
   expect(restored.editor.doc.bpm).toBe(150);
   restored.editor.setTicks([1]);
   await restored.workspace.flushSession();
-  expect(parseEditorSession(restored.session)?.lastFile).toEqual({
-    reference: file.reference,
-    name: 'tone',
+  expect(parseEditorSession(restored.session)?.files).toEqual({
+    [trackId]: { reference: file.reference, name: 'tone' },
   });
 });
 
@@ -320,8 +319,15 @@ it('classifies recovery reads as absent, restored, damaged or future without rei
   const restored = readEditorSession(JSON.parse(JSON.stringify(valid)));
   expect(restored.kind).toBe('restored');
   if (restored.kind === 'restored') expect(restored.session.project).toEqual(valid.project);
-  const future = { version: 4, note: 'newer' };
-  expect(readEditorSession(future)).toEqual({ kind: 'future', raw: future, version: 4 });
+  const future = { version: 5, note: 'newer' };
+  expect(readEditorSession(future)).toEqual({ kind: 'future', raw: future, version: 5 });
+  // Version 3 records from single-track alphas bind their audio to the first track.
+  const { files: _files, currentTrackId: _current, ...rest } = valid;
+  const v3 = { ...rest, version: 3, lastFile: { reference: '/audio/a.wav', name: 'a' } };
+  const upgraded = readEditorSession(JSON.parse(JSON.stringify(v3)));
+  expect(upgraded.kind === 'restored' && upgraded.session.files).toEqual({
+    [valid.project.tracks[0]?.trackId ?? '']: { reference: '/audio/a.wav', name: 'a' },
+  });
   for (const earlier of [{ version: 1, doc: {} }, { version: 2, project: {} }, { doc: {} }])
     expect(readEditorSession(earlier)).toEqual({ kind: 'earlier', raw: earlier });
   const track = valid.project.tracks[0];
