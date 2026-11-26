@@ -207,7 +207,18 @@
     "directionDown": "下",
     "directionDownLeft": "左下",
     "directionLeft": "左",
-    "directionUpLeft": "左上"
+    "directionUpLeft": "左上",
+    "inputSettingsHint": "変更はすぐに反映され、この端末に保存。各モードで 1 つのキーは 1 つのコマンドだけを実行し、新しい割り当ては元のコマンドからそのキーを外す。",
+    "layerEdit": "編集",
+    "restoreAllBindings": "すべて初期設定に戻す",
+    "recordBinding": "記録",
+    "clearBinding": "解除",
+    "restoreBinding": "初期値",
+    "unbound": "（なし）",
+    "pressKey": "使用するキーを押す。Esc で取消。",
+    "pressControl": "使用するコントローラーのボタンを押す。Menu で取消。",
+    "keyReserved": "このキーはメニューとダイアログ用。別のキーを押す。",
+    "inputSettingsTitle": "入力設定"
   },
   "status": {
     "projectOpened": "プロジェクトを開いた：{name}",
@@ -388,7 +399,7 @@
     "addTrack": "オーディオトラックを追加…",
     "removeTrack": "現在のトラックを削除",
     "exportAllTracks": "全トラックの区間を書き出す…",
-    "wheelSettings": "コマンドホイール設定…"
+    "inputSettings": "入力設定…"
   },
   "dialogs": {
     "loadAudio": "音声を開く",

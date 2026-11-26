@@ -207,7 +207,18 @@
     "directionDown": "下",
     "directionDownLeft": "左下",
     "directionLeft": "左",
-    "directionUpLeft": "左上"
+    "directionUpLeft": "左上",
+    "inputSettingsHint": "修改立即生效，保存在本机。同一模式下一个按键只对应一条命令：新绑定会从原命令上移走这个按键。",
+    "layerEdit": "编辑",
+    "restoreAllBindings": "全部恢复默认",
+    "recordBinding": "录入",
+    "clearBinding": "清除",
+    "restoreBinding": "默认",
+    "unbound": "（无）",
+    "pressKey": "按下要使用的按键，Esc 取消。",
+    "pressControl": "按下要使用的手柄按键，Menu 取消。",
+    "keyReserved": "这个按键保留给菜单和对话框，请换一个。",
+    "inputSettingsTitle": "输入设置"
   },
   "status": {
     "projectOpened": "已打开工程：{name}",
@@ -388,7 +399,7 @@
     "addTrack": "添加音轨…",
     "removeTrack": "删除当前音轨",
     "exportAllTracks": "导出全部音轨的切片…",
-    "wheelSettings": "命令轮盘设置…"
+    "inputSettings": "输入设置…"
   },
   "dialogs": {
     "loadAudio": "打开音频",

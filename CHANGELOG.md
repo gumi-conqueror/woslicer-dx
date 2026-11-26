@@ -6,7 +6,7 @@
 
 ### Added
 
-- **Tools → Command wheel settings** chooses the command of each wheel direction, with up to four wheels. The layout stays on this device.
+- **Tools → Input settings** changes keyboard and controller bindings for editing and recording, and the commands of the wheel (up to four wheels). Settings stay on this device. A new binding takes the key away from its previous command.
 
 ## 2.0.0-alpha.6 — 2026-11-27
 

@@ -33,7 +33,8 @@ import GamepadHints from './components/GamepadHints.vue';
 import { openDataFolder } from '../platform/app-data';
 import { useInputState } from '../input/state';
 import YuanconDialog from './components/YuanconDialog.vue';
-import WheelSettingsDialog from './components/WheelSettingsDialog.vue';
+import InputSettingsDialog from './components/InputSettingsDialog.vue';
+import { reservedControl, useBindingOverrides } from '../input/binding-overrides';
 import { useYuanconRecording } from '../input/yuancon/use-recording';
 import { audioFileFormat } from '../core/audio-formats';
 
@@ -61,7 +62,7 @@ const aboutOpen = ref(false);
 const helpOpen = ref(false);
 const troubleshootOpen = ref(false);
 const yuanconOpen = ref(false);
-const wheelSettingsOpen = ref(false);
+const inputSettingsOpen = ref(false);
 const applicationMenu = useTemplateRef<InstanceType<typeof ApplicationMenu>>('applicationMenu');
 const closing = ref(false);
 // Every app-owned dialog and the close lock: while one is open, app input does nothing.
@@ -72,7 +73,7 @@ const modalOpen = computed(
     helpOpen.value ||
     troubleshootOpen.value ||
     yuanconOpen.value ||
-    wheelSettingsOpen.value ||
+    inputSettingsOpen.value ||
     closing.value,
 );
 const dragActive = ref(false);
@@ -104,8 +105,8 @@ const commands = createCommands({
     connectYuancon: () => {
       yuanconOpen.value = true;
     },
-    wheelSettings: () => {
-      wheelSettingsOpen.value = true;
+    inputSettings: () => {
+      inputSettingsOpen.value = true;
     },
     openWheel: () => {
       // Opened without a held control, the wheel stays open like after a tap.
@@ -260,7 +261,19 @@ const yuancon = useYuanconRecording({
     void execute(command, recordingInput);
   },
 });
+const bindingOverrides = useBindingOverrides(pinia);
 useInputControls(({ events, pointing, time }) => {
+  // While a controller binding is recorded, its next press is the new binding; Menu cancels.
+  const capture = bindingOverrides.capture;
+  if (capture?.device === 'gamepad') {
+    const press = events.find((event) => event.phase === 'press');
+    if (press) {
+      if (!reservedControl(press.control))
+        bindingOverrides.assign(capture.row, 'gamepad', press.control);
+      bindingOverrides.capture = null;
+    }
+    return;
+  }
   const context = inputContext();
   if (context === 'wheel') wheel.pointController(pointing);
   for (const action of routeGamepad(events, context, time)) {
@@ -398,7 +411,7 @@ onUnmounted(() => {
         v-model="yuanconOpen"
         :connection="yuancon"
       />
-      <WheelSettingsDialog v-model="wheelSettingsOpen" />
+      <InputSettingsDialog v-model="inputSettingsOpen" />
       <TroubleshootDialog
         v-model="troubleshootOpen"
         :identity="identity"

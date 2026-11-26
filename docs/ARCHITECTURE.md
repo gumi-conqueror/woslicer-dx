@@ -48,6 +48,7 @@ Each fact below has one owner. Change the fact there; other code reads it.
 | Supported audio formats | [`src/core/audio-formats.ts`](../src/core/audio-formats.ts); `src-tauri/src/files.rs` repeats the extensions and a consistency test compares them |
 | Commands, their labels and availability | `COMMANDS` in [`src/app/commands.ts`](../src/app/commands.ts) |
 | Default key, controller and YuanCon bindings | `BINDINGS` in [`src/input/bindings.ts`](../src/input/bindings.ts) |
+| The user's binding changes (local preference) and the one-control-one-command rule | [`src/input/binding-overrides.ts`](../src/input/binding-overrides.ts) |
 | Fixed controller navigation | `UI_NAVIGATION` in [`src/input/gamepad.ts`](../src/input/gamepad.ts) |
 | Controller thresholds and repeat timing | top of [`src/input/gamepad.ts`](../src/input/gamepad.ts) |
 | Command wheel travel and size; default slots | [`src/input/wheel.ts`](../src/input/wheel.ts), [`use-wheel.ts`](../src/input/use-wheel.ts) |

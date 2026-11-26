@@ -207,7 +207,18 @@
     "directionDown": "Down",
     "directionDownLeft": "Down left",
     "directionLeft": "Left",
-    "directionUpLeft": "Up left"
+    "directionUpLeft": "Up left",
+    "inputSettingsHint": "Changes apply at once and stay on this device. In each mode one key runs one command: a new binding takes the key away from its previous command.",
+    "layerEdit": "Editing",
+    "restoreAllBindings": "Restore all defaults",
+    "recordBinding": "Record",
+    "clearBinding": "Clear",
+    "restoreBinding": "Default",
+    "unbound": "(None)",
+    "pressKey": "Press the key to use. Esc cancels.",
+    "pressControl": "Press the controller button to use. Menu cancels.",
+    "keyReserved": "This key is reserved for menus and dialogs. Press another key.",
+    "inputSettingsTitle": "Input settings"
   },
   "status": {
     "projectOpened": "Opened project: {name}",
@@ -388,7 +399,7 @@
     "addTrack": "Add audio track…",
     "removeTrack": "Remove current track",
     "exportAllTracks": "Export slices of all tracks…",
-    "wheelSettings": "Command wheel settings…"
+    "inputSettings": "Input settings…"
   },
   "dialogs": {
     "loadAudio": "Open audio",

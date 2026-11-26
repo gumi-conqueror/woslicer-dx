@@ -207,7 +207,18 @@
     "directionDown": "아래",
     "directionDownLeft": "왼쪽 아래",
     "directionLeft": "왼쪽",
-    "directionUpLeft": "왼쪽 위"
+    "directionUpLeft": "왼쪽 위",
+    "inputSettingsHint": "변경 사항은 즉시 적용되며 이 기기에 저장. 각 모드에서 키 하나는 명령 하나만 실행하며, 새 할당은 이전 명령에서 그 키를 제거.",
+    "layerEdit": "편집",
+    "restoreAllBindings": "모두 기본값으로",
+    "recordBinding": "기록",
+    "clearBinding": "해제",
+    "restoreBinding": "기본값",
+    "unbound": "(없음)",
+    "pressKey": "사용할 키 입력. Esc로 취소.",
+    "pressControl": "사용할 컨트롤러 버튼 입력. Menu로 취소.",
+    "keyReserved": "메뉴와 대화 상자용 예약 키. 다른 키 입력.",
+    "inputSettingsTitle": "입력 설정"
   },
   "status": {
     "projectOpened": "프로젝트 열기 완료: {name}",
@@ -388,7 +399,7 @@
     "addTrack": "오디오 트랙 추가…",
     "removeTrack": "현재 트랙 삭제",
     "exportAllTracks": "모든 트랙의 구간 내보내기…",
-    "wheelSettings": "명령 휠 설정…"
+    "inputSettings": "입력 설정…"
   },
   "dialogs": {
     "loadAudio": "음원 열기",
