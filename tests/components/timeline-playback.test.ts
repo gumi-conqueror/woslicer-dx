@@ -4,7 +4,7 @@ import { useEditorStore, type CueMode } from '../../src/slicing/editor-store';
 import { createPlayback, type Playback } from '../../src/playback';
 import { renderSlice } from '../../src/core/audio/slice';
 import { createCommands } from '../../src/app/commands';
-import { setupWorkspace, audioFile } from '../app/workspace-fixture';
+import { createTestApp, audioFile } from '../support/app';
 
 class AudioNodeDouble {
   connect = vi.fn();
@@ -123,7 +123,7 @@ describe('Pinia playback lifetime and audio clock', () => {
   it('places queued input before rate, pause and seek boundaries at its captured position', async () => {
     let now = 1000;
     vi.spyOn(performance, 'now').mockImplementation(() => now);
-    const { editor, workspace } = setupWorkspace();
+    const { editor, workspace } = createTestApp();
     await workspace.loadAudio(audioFile('queued.wav', 480000));
     const playback = createPlayback(editor);
     owners.push(playback);
@@ -167,7 +167,7 @@ describe('Pinia playback lifetime and audio clock', () => {
     expect(playback.positionAt(1500)).toBeNull();
   });
   it('records at the playhead and seeks fixed seconds without changing playback state', async () => {
-    const { editor, workspace } = setupWorkspace();
+    const { editor, workspace } = createTestApp();
     await workspace.loadAudio(audioFile('recording.wav', 480000));
     const playback = createPlayback(editor);
     owners.push(playback);

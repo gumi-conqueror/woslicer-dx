@@ -2,7 +2,7 @@ import { wavBytesDepth, writeWavHeader } from '../fixtures';
 import { flushPromises, mount } from '@vue/test-utils';
 import { expect, it, vi } from 'vitest';
 import { setupI18n } from '../../src/i18n/setup';
-import { fixture, audioFile } from '../app/workspace-fixture';
+import { fixture, audioFile } from '../support/app';
 import { workspaceKey } from '../../src/workspace/workspace';
 import { encodeProject } from '../../src/project/codec';
 import SourceInfo from '../../src/app/components/SourceInfo.vue';

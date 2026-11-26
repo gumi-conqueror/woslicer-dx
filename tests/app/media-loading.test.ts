@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { audioFile, fixture, processorEngine } from './workspace-fixture';
+import { audioFile, fixture, processorEngine } from '../support/app';
 import { captureEditorSession } from '../../src/workspace/session';
 import { encodeProject } from '../../src/project/codec';
 

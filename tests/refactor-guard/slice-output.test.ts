@@ -4,7 +4,7 @@
 import { createHash } from 'node:crypto';
 import { expect, test } from 'vitest';
 import { wavFile } from '../support/audio';
-import { setupWorkspace } from '../app/workspace-fixture';
+import { createTestApp } from '../support/app';
 
 const pcm = (frames: number, phase: number) =>
   Int16Array.from({ length: frames }, (_, i) =>
@@ -95,7 +95,7 @@ const expected: Record<string, string[]> = {
 };
 
 test.each(cases)('exported slice bytes are unchanged: $name', async (c) => {
-  const f = setupWorkspace();
+  const f = createTestApp();
   await f.workspace.loadAudio(c.file());
   f.editor.setDocumentOptions({
     fadeoutMs: c.fade,

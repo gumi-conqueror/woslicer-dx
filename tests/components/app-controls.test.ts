@@ -20,7 +20,7 @@ import { APP_COMMANDS } from '../../src/app/command-types';
 import { createI18n } from 'vue-i18n';
 import en from '../../src/i18n/en.json';
 import { workspaceKey } from '../../src/workspace/workspace';
-import { fixture } from '../app/workspace-fixture';
+import { fixture } from '../support/app';
 import BMHelperPanel from '../../src/bmhelper/BMHelperPanel.vue';
 import { creditLinks } from '../../src/platform/about-links';
 import * as platformApi from '../../src/platform';

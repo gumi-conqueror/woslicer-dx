@@ -9,7 +9,7 @@ import DetectionPanel from '../../src/detection/DetectionPanel.vue';
 import DocumentOptions from '../../src/app/components/DocumentOptions.vue';
 import { createEmptyProject } from '../../src/project/codec';
 import { workspaceKey } from '../../src/workspace/workspace';
-import { fixture, audioFile } from '../app/workspace-fixture';
+import { fixture, audioFile } from '../support/app';
 
 const fixtures: ReturnType<typeof fixture>[] = [];
 const wrappers: VueWrapper[] = [];

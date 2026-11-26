@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { audioFile, setupWorkspace as setup, processorEngine } from './workspace-fixture';
+import { audioFile, createTestApp as setup, processorEngine } from '../support/app';
 import { createEmptyProject, decodeProject, encodeProject } from '../../src/project/codec';
 import type { DecodedAudio } from '../../src/audio/audio-jobs';
 import { captureEditorSession } from '../../src/workspace/session';

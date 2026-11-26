@@ -2,15 +2,55 @@ import { createPinia, disposePinia } from 'pinia';
 import { createAudioProcessor, type AudioEngine } from '../../src/audio/audio-jobs';
 import { useEditorStore } from '../../src/slicing/editor-store';
 import { createWorkspace, type WorkspaceOptions } from '../../src/workspace/workspace';
-import { wavFile } from '../support/audio';
+import { wavFile } from './audio';
 import type { Platform, OpenedFile, OutputFile } from '../../src/platform/contracts';
 import { onTestFinished } from 'vitest';
+import { createCommands } from '../../src/app/commands';
+import type { Playback } from '../../src/playback';
 
-/** Own the workspace lifetime within the current test. */
-export function setupWorkspace(createEngine = processorEngine) {
-  const workspace = fixture(createEngine);
-  onTestFinished(() => workspace.dispose());
-  return workspace;
+/**
+ * Business test driver: the real store, workspace, commands and DSP, with
+ * doubles only at the platform, audio output and Worker transport boundaries.
+ * The driver owns its lifetime within the current test.
+ */
+export function createTestApp(createEngine = processorEngine) {
+  const app = fixture(createEngine);
+  onTestFinished(() => app.dispose());
+  const playback = silentPlayback();
+  const commands = createCommands({
+    editor: app.editor,
+    workspace: app.workspace,
+    playback,
+    onClose() {},
+    onAbout() {},
+    onHelp() {},
+    onCalibrate() {},
+  });
+  return Object.assign(app, {
+    playback,
+    commands,
+    /** Runs a command as the menu, a shortcut or a controller would. */
+    run: commands.execute,
+  });
+}
+
+/** Playback for tests that do not listen: every transport call does nothing. */
+export function silentPlayback(): Playback {
+  return {
+    play() {},
+    pause() {},
+    stop() {},
+    togglePlayPause() {},
+    seekSample() {},
+    currentSample: () => 0,
+    positionAt: () => ({ sample: 0, playing: false }),
+    setRate() {},
+    previewSlice() {},
+    getAudioContext() {
+      throw new Error('Audio output is not used in this test');
+    },
+    dispose() {},
+  };
 }
 
 /** Tests use the real DSP dispatcher, replacing only the unavailable browser Worker transport. */
