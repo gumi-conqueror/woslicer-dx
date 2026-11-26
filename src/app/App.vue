@@ -45,7 +45,6 @@ const workspace = createWorkspace({
   editor,
   confirmDiscardRecovery,
   confirmRelinkDifference,
-  confirmLegacyImport,
 });
 const loading = workspace.loading;
 const playback = createPlayback(editor);
@@ -189,19 +188,6 @@ async function confirmRelinkDifference(difference: {
     title: t('chrome.relinkDifferenceTitle'),
     confirmButtonText: t('chrome.relinkDifferenceOk'),
     cancelButtonText: t('chrome.relinkDifferenceCancel'),
-  });
-}
-async function confirmLegacyImport(summary: {
-  name: string;
-  bpm: number;
-  shift: number;
-  markers: number;
-}): Promise<boolean> {
-  return confirmAction({
-    body: t('chrome.legacyImportBody', summary),
-    title: t('chrome.legacyImportTitle'),
-    confirmButtonText: t('chrome.legacyImportOk'),
-    cancelButtonText: t('chrome.legacyImportCancel'),
   });
 }
 // Project open and import commands that require confirmation.

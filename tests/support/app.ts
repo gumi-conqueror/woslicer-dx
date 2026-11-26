@@ -5,6 +5,7 @@ import { createWorkspace, type WorkspaceOptions } from '../../src/workspace/work
 import { wavFile } from './audio';
 import type { Platform, OpenedFile, OutputFile } from '../../src/platform/contracts';
 import { onTestFinished } from 'vitest';
+import { readEditorSession } from '../../src/workspace/session';
 import { createCommands } from '../../src/app/commands';
 import { errorMessage } from '../../src/core/messages';
 import type { Playback } from '../../src/playback';
@@ -156,15 +157,11 @@ export function fixture(createEngine = processorEngine) {
       session = null;
       return Promise.resolve();
     },
-    importLegacySession() {
-      return Promise.resolve(null);
-    },
     async setTheme() {},
   };
   const confirmOptions: {
     confirmDiscardRecovery?: WorkspaceOptions['confirmDiscardRecovery'];
     confirmRelinkDifference?: WorkspaceOptions['confirmRelinkDifference'];
-    confirmLegacyImport?: WorkspaceOptions['confirmLegacyImport'];
   } = {};
   const workspace = createWorkspace({
     editor,
@@ -173,7 +170,6 @@ export function fixture(createEngine = processorEngine) {
     confirmDiscardRecovery: (block) => confirmOptions.confirmDiscardRecovery?.(block) ?? false,
     confirmRelinkDifference: (difference) =>
       confirmOptions.confirmRelinkDifference?.(difference) ?? false,
-    confirmLegacyImport: (summary) => confirmOptions.confirmLegacyImport?.(summary) ?? false,
   });
   return {
     pinia,
@@ -197,4 +193,10 @@ export function fixture(createEngine = processorEngine) {
       disposePinia(pinia);
     },
   };
+}
+
+/** The recovery record as the workspace reads it back, or null when it does not read back. */
+export function restoredSession(raw: unknown) {
+  const read = readEditorSession(raw);
+  return read.kind === 'restored' ? read.session : null;
 }

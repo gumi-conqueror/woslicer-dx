@@ -38,7 +38,6 @@
     "allow-read-session",
     "allow-write-session",
     "allow-clear-session",
-    "allow-import-legacy-session",
     "allow-set-theme",
     "allow-build-identity"
   ]

@@ -50,7 +50,6 @@ const table: ReadonlyArray<readonly [MenuCommand, MenuEditorState, boolean]> = [
   ['open-audio', limited, false],
   ['open-audio', withSource, true],
   ['import-wos', limited, false],
-  ['import-legacy', limited, false],
   ['export-wos', limited, false],
   // Relink needs media and an editable project.
   ['relink-audio', state(), false],

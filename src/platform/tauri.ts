@@ -122,9 +122,6 @@ export function createTauriPlatform(): Platform {
     async clearSession() {
       await invoke('clear_session');
     },
-    async importLegacySession() {
-      return importTauriLegacySession();
-    },
     async setTheme(mode) {
       await invoke('set_theme', { mode });
     },
@@ -136,7 +133,4 @@ export async function getTauriBuildIdentity(): Promise<unknown> {
 }
 export async function openTauriAboutLink(link: AboutLink): Promise<void> {
   await invoke('open_about_link', { link });
-}
-export async function importTauriLegacySession(): Promise<unknown> {
-  return invoke<unknown>('import_legacy_session');
 }

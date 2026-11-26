@@ -1,11 +1,6 @@
 import { Zip, ZipPassThrough } from 'fflate';
 import { isPortableFileName } from './file-names';
-import {
-  byteLimitText,
-  MEDIA_FILE_MAX_BYTES,
-  PROJECT_FILE_MAX_BYTES,
-  SESSION_FILE_MAX_BYTES,
-} from '../project/schema';
+import { byteLimitText, MEDIA_FILE_MAX_BYTES, PROJECT_FILE_MAX_BYTES } from '../project/schema';
 import type { FileKind, OpenedFile, OutputFile, Platform } from './contracts';
 import { AUDIO_EXTENSIONS } from '../core/audio-formats';
 
@@ -279,9 +274,6 @@ export function createBrowserPlatform(): Platform {
       localStorage.removeItem(SESSION_KEY);
       return Promise.resolve();
     },
-    async importLegacySession() {
-      return importBrowserLegacySession();
-    },
     setTheme(mode) {
       document.documentElement.style.colorScheme = mode;
       return Promise.resolve();
@@ -291,13 +283,4 @@ export function createBrowserPlatform(): Platform {
 
 export function getBrowserBuildIdentity(): unknown {
   return __BUILD_IDENTITY__;
-}
-
-export async function importBrowserLegacySession(): Promise<unknown> {
-  const file = await pickFile('.json');
-  if (file === null) return null;
-  if (file.size > SESSION_FILE_MAX_BYTES)
-    throw new Error(`Session exceeds ${byteLimitText(SESSION_FILE_MAX_BYTES)}`);
-  const value: unknown = JSON.parse(await file.text());
-  return value;
 }

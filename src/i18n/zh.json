@@ -178,10 +178,6 @@
     "relinkDifferenceBody": "“{selected}”与“{current}”不匹配。使用后将替换工程音频，可撤销。",
     "relinkDifferenceOk": "使用此音频",
     "relinkDifferenceCancel": "保留当前音频",
-    "legacyImportTitle": "导入旧版恢复数据？",
-    "legacyImportBody": "“{name}”：{markers} 个切点，BPM {bpm}，偏移 {shift}。导入将替换当前工作。",
-    "legacyImportOk": "导入恢复数据",
-    "legacyImportCancel": "取消",
     "aboutDetail": "离线 BMS 音频切片工具。\n兼容 .wos 和原版 .bmh 格式。",
     "aboutProjectLink": "GitHub 项目",
     "aboutProjectUnavailable": "此构建未提供项目链接。",
@@ -329,8 +325,7 @@
     "limitedSaveUnavailable": "无法保存恢复的工程，需先打开原文件。",
     "sessionRestoredLimited": "已恢复只读多轨工程。保存需先打开原文件，仍无法编辑。",
     "importedWosSettings": "已导入 .wos 设置：{file}（BPM {bpm}，偏移 {shift}），可一步撤销。",
-    "projectUnknownFields": "包含 {count} 个不支持的字段，保存时仅保留支持的工程数据。",
-    "legacyImported": "已导入旧版恢复数据：{markers} 个切点（BPM {bpm}）"
+    "projectUnknownFields": "包含 {count} 个不支持的字段，保存时仅保留支持的工程数据。"
   },
   "menu": {
     "file": "文件",
@@ -365,7 +360,6 @@
     "zoomOut": "缩小",
     "about": "关于",
     "newProjectWos": "从 .wos 新建工程……",
-    "importLegacy": "导入旧版恢复数据……",
     "tools": "工具",
     "guide": "使用帮助与快捷键",
     "troubleshoot": "故障排查",

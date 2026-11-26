@@ -48,7 +48,6 @@ function createPlatform() {
     readSession: vi.fn(() => Promise.resolve(null)),
     writeSession: vi.fn(async () => {}),
     clearSession: vi.fn(async () => {}),
-    importLegacySession: vi.fn(() => Promise.resolve(null)),
     setTheme: vi.fn(async () => {}),
   } satisfies Platform;
 }

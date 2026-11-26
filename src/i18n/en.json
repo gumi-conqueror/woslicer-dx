@@ -178,10 +178,6 @@
     "relinkDifferenceBody": "“{selected}” does not match “{current}”. Using it replaces the project audio. You can undo this change.",
     "relinkDifferenceOk": "Use this audio",
     "relinkDifferenceCancel": "Keep current audio",
-    "legacyImportTitle": "Import legacy recovery data?",
-    "legacyImportBody": "“{name}”: {markers} markers, BPM {bpm}, shift {shift}. Importing replaces the current work.",
-    "legacyImportOk": "Import recovery data",
-    "legacyImportCancel": "Cancel",
     "aboutDetail": "Offline BMS audio slicer.\nSupports .wos and original .bmh formats.",
     "aboutProjectLink": "Project on GitHub",
     "aboutProjectUnavailable": "No project link in this build.",
@@ -329,8 +325,7 @@
     "limitedSaveUnavailable": "Cannot save this recovered project. Open the original file to save it.",
     "sessionRestoredLimited": "Restored a read-only multi-track project. Open the original file to save it. Editing remains disabled.",
     "importedWosSettings": "Imported .wos settings: {file} (BPM {bpm}, shift {shift}). Undo in one step.",
-    "projectUnknownFields": "Unsupported fields: {count}. Saving keeps only supported project data.",
-    "legacyImported": "Imported legacy recovery data: {markers} markers, BPM {bpm}"
+    "projectUnknownFields": "Unsupported fields: {count}. Saving keeps only supported project data."
   },
   "menu": {
     "file": "File",
@@ -365,7 +360,6 @@
     "zoomOut": "Zoom out",
     "about": "About",
     "newProjectWos": "New project from .wos…",
-    "importLegacy": "Import legacy recovery data…",
     "tools": "Tools",
     "guide": "User guide and shortcuts",
     "troubleshoot": "Troubleshoot",

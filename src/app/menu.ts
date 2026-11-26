@@ -18,7 +18,6 @@ export const APPLICATION_MENU = [
       { id: 'open-audio', key: 'menu.openAudio', mnemonic: 'a' },
       { id: 'new-project-wos', key: 'menu.newProjectWos', mnemonic: 'n' },
       { id: 'import-wos', key: 'menu.importWos', mnemonic: 'i' },
-      { id: 'import-legacy', key: 'menu.importLegacy', mnemonic: 'l' },
       { id: 'export-wos', key: 'menu.exportWos', mnemonic: 'w' },
       { id: 'close-project', key: 'chrome.close', mnemonic: 'c' },
       { id: 'export-slice', key: 'menu.exportSlice', mnemonic: 'e' },
@@ -101,7 +100,6 @@ export function menuCommandEnabled(id: MenuCommand, editor: MenuEditorState): bo
       return editor.source !== null;
     case 'open-audio':
     case 'import-wos':
-    case 'import-legacy':
     case 'export-wos':
       return !editor.limited;
     case 'relink-audio':

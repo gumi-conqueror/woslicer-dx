@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearMocks, mockIPC } from '@tauri-apps/api/mocks';
 import { unzipSync } from 'fflate';
-import { createBrowserPlatform, importBrowserLegacySession } from '../../src/platform/browser';
+import { createBrowserPlatform } from '../../src/platform/browser';
 import { createTauriPlatform, openTauriAboutLink } from '../../src/platform/tauri';
 import { getBuildIdentity, getPlatform, platform } from '../../src/platform/index';
 import type { OutputFile } from '../../src/platform/contracts';
@@ -109,22 +109,6 @@ describe('browser host capabilities', () => {
       bytes: new Uint8Array([0, 255, 128]),
       reference: null,
     });
-  });
-  it('imports legacy JSON only through explicit file selection', async () => {
-    const imported = importBrowserLegacySession();
-    const envelope = {
-      version: 1,
-      session: { path: 'C:/untrusted.wav' },
-      preferences: { theme: null, language: 'ja' },
-    };
-    const transfer = new DataTransfer();
-    transfer.items.add(new File([JSON.stringify(envelope)], 'legacy-session-v1.json'));
-    pickerInput().files = transfer.files;
-    pickerInput().dispatchEvent(new Event('change'));
-    expect(await imported).toEqual(envelope);
-    await expect(createBrowserPlatform().reopenFile('C:/untrusted.wav')).rejects.toThrow(
-      'selected again',
-    );
   });
   it('does not consume export files when a save picker is cancelled', async () => {
     Object.defineProperty(window, 'showSaveFilePicker', {

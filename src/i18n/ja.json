@@ -178,10 +178,6 @@
     "relinkDifferenceBody": "選択した「{selected}」は現在の音源「{current}」と一致しない。使用すると音源を置き換える。変更は 1 回の操作で元に戻せる。",
     "relinkDifferenceOk": "この音源を使用",
     "relinkDifferenceCancel": "現在の音源を維持",
-    "legacyImportTitle": "旧版の復元データを読み込み",
-    "legacyImportBody": "「{name}」：BPM {bpm}、位置補正 {shift}、分割点 {markers} 個。読み込むと現在の作業内容を置き換える。",
-    "legacyImportOk": "読み込み",
-    "legacyImportCancel": "キャンセル",
     "aboutDetail": "BMS 向けオフライン音声分割ツール。\n.wos と原版 .bmh 形式に対応。",
     "aboutProjectLink": "GitHub プロジェクト",
     "aboutProjectUnavailable": "このビルドにはプロジェクトのリンクなし。",
@@ -329,8 +325,7 @@
     "limitedSaveUnavailable": "復元データから開いたため保存不可。保存には元のファイルを開く必要あり。",
     "sessionRestoredLimited": "複数トラックのプロジェクトを読み取り専用で復元。保存には元のファイルを開く必要あり。編集は引き続き無効。",
     "importedWosSettings": ".wos 設定を読み込み：{file}（BPM {bpm}、位置補正 {shift}）。1 回の操作で元に戻せる。",
-    "projectUnknownFields": "未対応の項目 {count} 個あり。保存時は対応するデータのみ保持。",
-    "legacyImported": "旧版の復元データを読み込み：BPM {bpm}、分割点 {markers} 個"
+    "projectUnknownFields": "未対応の項目 {count} 個あり。保存時は対応するデータのみ保持。"
   },
   "menu": {
     "file": "ファイル",
@@ -365,7 +360,6 @@
     "zoomOut": "縮小",
     "about": "バージョン情報",
     "newProjectWos": ".wos から新規プロジェクト…",
-    "importLegacy": "旧版の復元データを読み込み…",
     "tools": "ツール",
     "guide": "使い方とショートカット",
     "troubleshoot": "問題の解決",

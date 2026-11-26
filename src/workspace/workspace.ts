@@ -26,12 +26,7 @@ import type { AudioEngine } from '../audio/audio-jobs';
 import { createExporter } from '../export/exporter';
 import { createDetection } from '../detection/detection';
 import { createSessionPersistence } from './persistence';
-import {
-  convertLegacySession,
-  readEditorSession,
-  restoreEditorSession,
-  type SessionReadResult,
-} from './session';
+import { readEditorSession, restoreEditorSession, type SessionReadResult } from './session';
 
 export type RecoveryBlock =
   | { kind: 'invalid' }
@@ -41,19 +36,12 @@ export interface RelinkDifference {
   current: string;
   selected: string;
 }
-export interface LegacySummary {
-  name: string;
-  bpm: number;
-  shift: number;
-  markers: number;
-}
 export interface WorkspaceOptions {
   platform: Platform;
   editor: EditorStore;
   createEngine?: () => AudioEngine;
   confirmDiscardRecovery?: (block: RecoveryBlock) => Promise<boolean>;
   confirmRelinkDifference?: (difference: RelinkDifference) => Promise<boolean>;
-  confirmLegacyImport?: (summary: LegacySummary) => Promise<boolean>;
 }
 export interface LoadingActivity {
   stage: 'restoring' | 'opening' | 'reading' | 'verifying' | 'decoding';
@@ -454,42 +442,6 @@ export function createWorkspace(options: WorkspaceOptions) {
       if (!disposed) editor.setStatus('wosLoadFailed', { message: errorMessage(error) }, true);
     }
   }
-  /** Explicit migration of a picked legacy recovery file; the stored path stays an unauthorized hint. */
-  async function importLegacyRecovery(): Promise<void> {
-    if (!requireEditable()) return;
-    if (recoveryBlock && !(await releaseRecoveryBlock())) return;
-    const revision = editor.docRevision,
-      request = beginOpening();
-    try {
-      const raw = await platform.importLegacySession();
-      if (!raw || disposed || request !== opening || revision !== editor.docRevision) return;
-      const converted = convertLegacySession(raw);
-      if (converted.kind !== 'converted')
-        throw new Error('The selected file is not a legacy recovery session');
-      const { session } = converted;
-      const summary: LegacySummary = {
-        name: session.project.name,
-        bpm: session.project.timing.bpm,
-        shift: session.project.timing.shiftTicks,
-        markers: session.project.slicing.markers.length,
-      };
-      const confirm = options.confirmLegacyImport;
-      if (confirm && !(await confirm(summary))) return;
-      if (disposed || request !== opening || revision !== editor.docRevision) return;
-      beginOpening();
-      invalidate();
-      limitedFile = null;
-      editor.setLimited(false);
-      restoreEditorSession(editor, session);
-      actions.reset();
-      editor.setSource(null);
-      editor.setPhase({ kind: 'empty' });
-      editor.setStatus('legacyImported', { markers: summary.markers, bpm: summary.bpm });
-    } catch (error) {
-      if (!disposed && request === opening)
-        editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
-    }
-  }
   /** Replaces the whole workspace with a fresh project that only carries the WOS timing. */
   async function newProjectFromWos(): Promise<void> {
     if (!requireEditable()) return;
@@ -659,7 +611,6 @@ export function createWorkspace(options: WorkspaceOptions) {
     reopen,
     importWosSettings,
     newProjectFromWos,
-    importLegacyRecovery,
     saveWos,
     reset,
     restoreSession,

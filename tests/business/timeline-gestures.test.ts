@@ -1,6 +1,6 @@
 import { expect, it, vi } from 'vitest';
 import { createTestApp as setup } from '../support/app';
-import { parseEditorSession } from '../../src/workspace/session';
+import { restoredSession as parseEditorSession } from '../support/app';
 import { createEmptyProject, encodeProject } from '../../src/project/codec';
 import { createTimelineGestures } from '../../src/timeline/gestures';
 

@@ -23,8 +23,8 @@ afterEach(() => {
 describe('marker editing actions', () => {
   it('merges chords, persists them through recovery, and restores deletion with undo', async () => {
     const { editor, actions } = fixture();
-    const { captureEditorSession, parseEditorSession } =
-      await import('../../src/workspace/session');
+    const { captureEditorSession } = await import('../../src/workspace/session');
+    const { restoredSession: parseEditorSession } = await import('../support/app');
     actions.setMarker(24, true, [1, 3]);
     actions.setMarker(24, true, [3, 5]);
     expect(editor.markerKeys).toEqual([{ tick: 24, keys: [1, 3, 5] }]);

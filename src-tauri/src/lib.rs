@@ -94,7 +94,6 @@ pub fn run() {
             session::read_session,
             session::write_session,
             session::clear_session,
-            session::import_legacy_session,
             set_theme,
             build_identity,
         ])

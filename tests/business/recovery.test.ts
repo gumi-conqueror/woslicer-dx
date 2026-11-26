@@ -1,10 +1,7 @@
 import { expect, it, vi } from 'vitest';
 import { createTestApp as setup, audioFile } from '../support/app';
-import {
-  captureEditorSession,
-  parseEditorSession,
-  readEditorSession,
-} from '../../src/workspace/session';
+import { captureEditorSession, readEditorSession } from '../../src/workspace/session';
+import { restoredSession as parseEditorSession } from '../support/app';
 
 it('restores versioned sessions and custom export prefix without persisting dropped bytes', async () => {
   const f = setup(),
@@ -14,7 +11,7 @@ it('restores versioned sessions and custom export prefix without persisting drop
   f.workspace.actions.setMarker(20);
   await f.workspace.flushSession();
   const session = f.session;
-  expect(parseEditorSession(session)?.version).toBe(2);
+  expect(parseEditorSession(session)?.version).toBe(3);
   const restored = setup();
   restored.session = session;
   restored.opened = file;
@@ -42,48 +39,26 @@ it('rejects unsupported session versions and invalid numeric document inputs', (
       project: { ...s.project, slicing: { ...s.project.slicing, markers: [0, 0, -1] } },
     }),
   ).toBeNull();
-  const parsed = parseEditorSession({
-    version: 1,
-    options: { grid: 7, volume: 999 },
-    doc: { bpm: 120, shift: 0, fadeoutMs: 0, noisegateDb: -48, markers: [0, 0, -1, 3.2, 49152] },
-  });
-  expect(parsed?.project.slicing.markers).toEqual([0]);
-  expect(parsed?.options.grid).toBeUndefined();
-  expect(parsed?.options.volume).toBeUndefined();
+  const parsed = parseEditorSession({ ...s, state: { view: { grid: 7, snap: false } } });
+  expect(parsed?.state.view.grid).toBeUndefined();
+  expect(parsed?.state.view.snap).toBe(false);
 });
 
-it.each([undefined, 1])(
-  'migrates legacy recovery version %s without granting access to its path',
-  async (version) => {
-    const f = setup();
-    f.session = {
-      version,
-      doc: { bpm: 145, shift: 2, fadeoutMs: 20, noisegateDb: -52, markers: [12, 36] },
-      options: {
-        volume: 0.2,
-        baseName: 'legacy',
-        clipStartNumber: 16,
-        useFfNumbering: true,
-        noisegateEnabled: false,
-      },
-      lastFile: { path: 'C:/untrusted/audio.wav', name: 'audio.wav' },
-    };
-    const reopen = vi.spyOn(f.platform, 'reopenFile');
-    await f.workspace.restoreSession();
-    expect(f.editor.doc).toEqual({ bpm: 145, shift: 2, fadeoutMs: 20, noisegateDb: -52 });
-    expect(f.editor.document.output).toEqual({
-      baseName: 'legacy',
-      clipStartNumber: 16,
-      useFfNumbering: true,
-    });
-    expect(f.editor.noisegateEnabled).toBe(false);
-    expect(f.editor.volume).toBeCloseTo(0.2, 12);
-    expect(f.editor.ticks).toEqual([12, 36]);
-    expect(f.editor.canUndo).toBe(false);
-    expect(reopen).not.toHaveBeenCalled();
-    expect(f.editor.document.media).toEqual([]);
-  },
-);
+it('keeps recovery data of an earlier version unchanged instead of reading it', async () => {
+  const f = setup();
+  const earlier = {
+    version: 2,
+    dirty: true,
+    options: {},
+    project: captureEditorSession(f.editor).project,
+  };
+  f.session = earlier;
+  await f.workspace.restoreSession();
+  expect(f.editor.status.segments[0]?.key).toBe('sessionRecoverInvalid');
+  f.workspace.actions.setMarker(5);
+  await f.workspace.flushSession();
+  expect(f.session).toBe(earlier);
+});
 
 it('keeps the last-file binding when reopening fails so the next archive still carries it', async () => {
   const f = setup();
@@ -330,59 +305,6 @@ it('surfaces a failing final write from dispose instead of reporting success', a
   );
 });
 
-it('imports a legacy recovery file only after explicit confirmation without honoring its path', async () => {
-  const f = setup();
-  f.confirmOptions.confirmLegacyImport = (summary) => {
-    expect(summary).toMatchObject({ bpm: 145, shift: 2, markers: 2, name: 'Untitled' });
-    return Promise.resolve(true);
-  };
-  f.platform.importLegacySession = () =>
-    Promise.resolve({
-      version: 1,
-      session: {
-        doc: { bpm: 145, shift: 2, fadeoutMs: 20, noisegateDb: -52, markers: [12, 36] },
-        options: { volume: 0.2, baseName: 'legacy' },
-        lastFile: { path: 'C:/private/audio.wav', name: 'audio.wav' },
-      },
-    });
-  const reopen = vi.spyOn(f.platform, 'reopenFile');
-  await f.workspace.importLegacyRecovery();
-  expect(f.editor.doc).toEqual({ bpm: 145, shift: 2, fadeoutMs: 20, noisegateDb: -52 });
-  expect(f.editor.document.output).toEqual({
-    baseName: 'legacy',
-    clipStartNumber: 1,
-    useFfNumbering: false,
-  });
-  expect(f.editor.ticks).toEqual([12, 36]);
-  expect(f.editor.canUndo).toBe(false);
-  expect(f.editor.volume).toBeCloseTo(0.2, 12);
-  expect(reopen).not.toHaveBeenCalled();
-  await f.workspace.flushSession();
-  const archived = parseEditorSession(f.session);
-  expect(archived?.lastFile).toBeNull();
-  expect(archived?.project.slicing.markers).toEqual([12, 36]);
-});
-
-it('declines a legacy import or rejects non-legacy files without touching the workspace', async () => {
-  const f = setup();
-  f.platform.importLegacySession = () => Promise.resolve({ hello: 'world' });
-  await f.workspace.importLegacyRecovery();
-  expect(f.editor.isError).toBe(true);
-  const document = f.editor.document;
-  f.platform.importLegacySession = () =>
-    Promise.resolve({
-      version: 1,
-      session: {
-        doc: { bpm: 90, shift: 0, fadeoutMs: 0, noisegateDb: -48, markers: [3] },
-        options: {},
-      },
-    });
-  f.confirmOptions.confirmLegacyImport = () => Promise.resolve(false);
-  await f.workspace.importLegacyRecovery();
-  expect(f.editor.document).toBe(document);
-  expect(f.editor.canUndo).toBe(false);
-});
-
 it('classifies recovery reads as absent, restored, damaged or future without reinterpretation', () => {
   expect(readEditorSession(null)).toEqual({ kind: 'absent' });
   expect(readEditorSession(undefined)).toEqual({ kind: 'absent' });
@@ -392,9 +314,9 @@ it('classifies recovery reads as absent, restored, damaged or future without rei
   const restored = readEditorSession(JSON.parse(JSON.stringify(valid)));
   expect(restored.kind).toBe('restored');
   if (restored.kind === 'restored') expect(restored.session.project).toEqual(valid.project);
-  const future = { version: 3, note: 'newer' };
-  expect(readEditorSession(future)).toEqual({ kind: 'future', raw: future, version: 3 });
-  const damaged = { version: 2, project: { timing: { bpm: 0, shiftTicks: 0 } } };
+  const future = { version: 4, note: 'newer' };
+  expect(readEditorSession(future)).toEqual({ kind: 'future', raw: future, version: 4 });
+  const damaged = { version: 3, project: { timing: { bpm: 0, shiftTicks: 0 } } };
   const read = readEditorSession(damaged);
   expect(read.kind).toBe('invalid');
   if (read.kind === 'invalid') expect(read.raw).toBe(damaged);
@@ -402,7 +324,7 @@ it('classifies recovery reads as absent, restored, damaged or future without rei
 
 it('keeps a damaged recovery record unchanged and pauses recovery writes', async () => {
   const f = setup();
-  const raw = { version: 2, project: { timing: { bpm: 0, shiftTicks: 0 } } };
+  const raw = { version: 3, project: { timing: { bpm: 0, shiftTicks: 0 } } };
   f.session = raw;
   await f.workspace.restoreSession();
   expect(f.editor.status.segments.some((segment) => segment.key === 'sessionRecoverInvalid')).toBe(
@@ -451,7 +373,7 @@ it('keeps recovery paused when the recovery record cannot be read', async () => 
 
 it('opens content over a blocked record only after explicit confirmation', async () => {
   const f = setup();
-  const raw = { version: 2, project: { timing: { bpm: 0, shiftTicks: 0 } } };
+  const raw = { version: 3, project: { timing: { bpm: 0, shiftTicks: 0 } } };
   f.session = raw;
   await f.workspace.restoreSession();
   const openFile = vi.spyOn(f.platform, 'openFile');
@@ -473,7 +395,7 @@ it('opens content over a blocked record only after explicit confirmation', async
 
 it('lets an explicit close discard a blocked record and resume archiving', async () => {
   const f = setup();
-  const raw = { version: 2, project: { timing: { bpm: 0, shiftTicks: 0 } } };
+  const raw = { version: 3, project: { timing: { bpm: 0, shiftTicks: 0 } } };
   f.session = raw;
   await f.workspace.restoreSession();
   const confirm = vi.fn(() => Promise.resolve(false));

@@ -89,8 +89,6 @@ export function createCommands({
         return workspace.openAudio();
       case 'import-wos':
         return workspace.importWosSettings();
-      case 'import-legacy':
-        return workspace.importLegacyRecovery();
       case 'export-wos':
         return workspace.saveWos();
       case 'export-slice':

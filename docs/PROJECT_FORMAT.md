@@ -195,6 +195,10 @@ The app cannot save these projects because recovery lacks the original bytes.
 Portable projects must not contain Tauri UUIDs, picker tokens, Blob URLs,
 `FileSystemHandle` objects, PCM buffers or machine-specific window state.
 The recovery session stores the active media's host reference separately as `lastFile`.
+Recovery data has its own version (3), separate from the project format. It stores the project, `dirty`, `lastFile`
+and editor state grouped by owner: `state.view`, `state.detection` and `state.calibration`.
+`src/workspace/session.ts` lists the saved fields. The app keeps a record of any other version unchanged,
+reports it, and asks before it replaces the record. Version 3 does not read records from 1.2 and earlier.
 Decode failures must not delete bindings. Desktop paths must not become browser references.
 
 Desktop media stores its absolute native path in `originHint.pathHint`.

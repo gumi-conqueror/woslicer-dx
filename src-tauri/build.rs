@@ -56,7 +56,6 @@ fn main() {
             "read_session",
             "write_session",
             "clear_session",
-            "import_legacy_session",
             "set_theme",
             "build_identity",
         ]),
