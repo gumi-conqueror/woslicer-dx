@@ -1,8 +1,8 @@
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { analyzeBands, BandAnalysis } from '../src/core/bands.js';
-import { detectBandCuts, detectRiseOnsets } from '../src/core/banddetect.js';
-import { TimeBase } from '../src/core/timebase.js';
+import { analyzeBands, BandAnalysis } from '../../src/core/bands.js';
+import { detectBandCuts, detectRiseOnsets } from '../../src/core/banddetect.js';
+import { TimeBase } from '../../src/core/timebase.js';
 
 const SR = 48000;
 

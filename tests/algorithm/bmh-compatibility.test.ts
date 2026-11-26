@@ -1,8 +1,8 @@
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { readBmh, writeBmh, type BmhNameChange } from '@gumi-conqueror/bmh-file';
-import { createDivision, defaultDivisionSetting } from '../src/core/bmhelper.js';
+import { createDivision, defaultDivisionSetting } from '../../src/core/bmhelper.js';
 const original = new Uint8Array(readFileSync('tests/fixtures/bmh/original.bmh'));
 
 test('preserves pitch, controller lanes and multiple divisions verified by the original program', () => {

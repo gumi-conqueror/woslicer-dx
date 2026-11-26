@@ -1,12 +1,14 @@
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import {
   analyzeTaps,
   beatIntervalMs,
-  beatTimesMs,
   latencySamples,
   DEFAULT_CALIBRATION_BEATS,
-} from '../src/core/calibration.js';
+} from '../../src/core/calibration.js';
+
+// 16 reference beats at 120 BPM: one every 500 ms.
+const BEATS_120 = Array.from({ length: 16 }, (_, i) => i * 500);
 
 test('beat interval follows the BPM (quarter notes)', () => {
   assert.equal(beatIntervalMs(120), 500);
@@ -16,7 +18,7 @@ test('beat interval follows the BPM (quarter notes)', () => {
 });
 
 test('16 beat reference times start at 0 and step by the interval', () => {
-  const beats = beatTimesMs(120);
+  const beats = BEATS_120;
   assert.equal(beats.length, DEFAULT_CALIBRATION_BEATS);
   assert.equal(beats[0], 0);
   assert.equal(beats[1], 500);
@@ -24,7 +26,7 @@ test('16 beat reference times start at 0 and step by the interval', () => {
 });
 
 test('median offset is measured from taps that land late', () => {
-  const beats = beatTimesMs(120);
+  const beats = BEATS_120;
   const taps = beats.map((b) => b + 25);
   const result = analyzeTaps(taps, beats);
   assert.equal(result.matched, 16);
@@ -34,7 +36,7 @@ test('median offset is measured from taps that land late', () => {
 });
 
 test('median is robust against individual early and late taps', () => {
-  const beats = beatTimesMs(120);
+  const beats = BEATS_120;
   const taps = [beats[0] + 20, beats[1] - 10, beats[2] + 30, beats[3] + 20];
   const result = analyzeTaps(taps, beats);
   assert.equal(result.matched, 4);
@@ -51,7 +53,7 @@ test('taps further than half a beat from every reference are ignored', () => {
 });
 
 test('no taps yields a zeroed result instead of NaN', () => {
-  const result = analyzeTaps([], beatTimesMs(120));
+  const result = analyzeTaps([], BEATS_120);
   assert.equal(result.total, 0);
   assert.equal(result.matched, 0);
   assert.equal(result.medianMs, 0);

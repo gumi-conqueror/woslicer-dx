@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import {
   GRID_DENSITIES,
@@ -7,8 +7,8 @@ import {
   gridLineTicks,
   gridStepTicks,
   measureLabelStep,
-} from '../src/core/gridlines.js';
-import { MAX_TICKS, MEASURE_TICKS } from '../src/core/timebase.js';
+} from '../../src/core/gridlines.js';
+import { MAX_TICKS, MEASURE_TICKS } from '../../src/core/timebase.js';
 
 test('grid lines sit only on exact grid multiples of the view range', () => {
   const lines = gridLineTicks(0, MEASURE_TICKS * 2, 8, 6);

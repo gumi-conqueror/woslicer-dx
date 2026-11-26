@@ -9,7 +9,7 @@ import EditorToolbar from '../../src/app/components/EditorToolbar.vue';
 import WorkspacePanels from '../../src/app/components/WorkspacePanels.vue';
 import AboutDialog from '../../src/app/components/AboutDialog.vue';
 import ApplicationMenu from '../../src/app/components/ApplicationMenu.vue';
-import { APPLICATION_MENU, isMenuCommand, menuCommandEnabled } from '../../src/app/menu';
+import { APPLICATION_MENU, menuCommandEnabled } from '../../src/app/menu';
 import { setupI18n } from '../../src/i18n/setup';
 import { useEditorStore } from '../../src/slicing/editor-store';
 import { useBmhelperStore } from '../../src/bmhelper/store';
@@ -119,7 +119,6 @@ describe('application controls', () => {
       const groups = APPLICATION_MENU;
       const menuCommands = groups.flatMap((group) => group.commands.map((item) => item.id));
       expect(new Set(menuCommands).size).toBe(menuCommands.length);
-      expect(menuCommands.every(isMenuCommand)).toBe(true);
       expect(menuCommands.every((command) => APP_COMMANDS.includes(command))).toBe(true);
       expect(wrapper.find('[role="menubar"]').exists()).toBe(true);
       const translate = instance.localization.i18n.global.t;

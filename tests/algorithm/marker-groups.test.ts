@@ -1,13 +1,23 @@
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
+import { sliceIndexAtOrBefore } from '../../src/core/markers.js';
+
+test('sliceIndexAtOrBefore finds the slice under the cursor (P preview)', () => {
+  const ticks = [384, 408, 7944];
+  assert.equal(sliceIndexAtOrBefore(ticks, 500), 1);
+  assert.equal(sliceIndexAtOrBefore(ticks, 384), 0);
+  assert.equal(sliceIndexAtOrBefore(ticks, 383), -1);
+  assert.equal(sliceIndexAtOrBefore(ticks, 49151), 2);
+});
+
 import {
   clampGroupDelta,
   normalizeSelection,
   offsetsToTargets,
   resolvePaste,
   selectionToOffsets,
-} from '../src/core/markers.js';
-import { MAX_TICKS } from '../src/core/timebase.js';
+} from '../../src/core/markers.js';
+import { MAX_TICKS } from '../../src/core/timebase.js';
 
 test('selectionToOffsets uses the smallest tick as origin', () => {
   assert.deepEqual(selectionToOffsets([300, 100, 250]), [0, 150, 200]);

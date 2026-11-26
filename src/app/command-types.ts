@@ -33,7 +33,3 @@ export const APP_COMMANDS = [
 ] as const;
 
 export type AppCommand = (typeof APP_COMMANDS)[number];
-
-export function isAppCommand(value: unknown): value is AppCommand {
-  return typeof value === 'string' && APP_COMMANDS.some((command) => command === value);
-}

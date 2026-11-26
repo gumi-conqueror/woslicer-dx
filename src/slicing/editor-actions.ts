@@ -223,4 +223,3 @@ export function createEditorActions(editor: EditorStore) {
     reset,
   };
 }
-export type EditorActions = ReturnType<typeof createEditorActions>;

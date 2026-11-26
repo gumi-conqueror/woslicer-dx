@@ -22,12 +22,6 @@ export function beatIntervalMs(bpm: number): number {
   return 60000 / bpm;
 }
 
-/** Reference beat times relative to the first beat (0, interval, 2*interval, ...). */
-export function beatTimesMs(bpm: number, beats = DEFAULT_CALIBRATION_BEATS): number[] {
-  const interval = beatIntervalMs(bpm);
-  return Array.from({ length: beats }, (_, i) => i * interval);
-}
-
 export interface CalibrationResult {
   /** Number of taps recorded. */
   total: number;

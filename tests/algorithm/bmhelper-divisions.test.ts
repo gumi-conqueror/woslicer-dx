@@ -1,11 +1,11 @@
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import {
   inspectSmf,
   readSmfSequence,
   writeSmfSequence,
   SmfFormatError,
-} from '../src/core/formats/smf.js';
+} from '../../src/core/formats/smf.js';
 import { type MidiSequence } from '@gumi-conqueror/bmh-file';
 import {
   bmsSequenceClipboard,
@@ -16,8 +16,8 @@ import {
   transposeDefinitions,
   wavDefinitionText,
   type DivisionSetting,
-} from '../src/core/bmhelper.js';
-import { formatId, stepId } from '../src/core/formats/numbering.js';
+} from '../../src/core/bmhelper.js';
+import { formatId, stepId } from '../../src/core/formats/numbering.js';
 import { type Division } from '@gumi-conqueror/bmh-file';
 import { readBmh, writeBmh } from '@gumi-conqueror/bmh-file';
 

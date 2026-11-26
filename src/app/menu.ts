@@ -72,10 +72,6 @@ export const MENU_COMMANDS = APPLICATION_MENU.flatMap((group) =>
   group.commands.map((item) => item.id),
 );
 
-export function isMenuCommand(value: unknown): value is MenuCommand {
-  return typeof value === 'string' && MENU_COMMANDS.some((command) => command === value);
-}
-
 /**
  * Menu availability reflects the workspace guards; commands also validate at
  * their mutation boundary because shortcuts and toolbars bypass this menu.

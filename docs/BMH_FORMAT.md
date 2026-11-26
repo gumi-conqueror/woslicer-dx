@@ -13,5 +13,5 @@ BMH import and export use the original Windows BMHelper beta 4′ layout and CP9
 - [`tests/fixtures/bmh/README.md`](../tests/fixtures/bmh/README.md) records fixture provenance, hashes and reproduction steps.
 - [`src/project/bmhelper.ts`](../src/project/bmhelper.ts) defines the structured DX representation. See [Project format](PROJECT_FORMAT.md#bmhelper-data) for its storage rules.
 
-Run `npm run test:core` for application compatibility tests and `npm run test:components` for editor integration tests.
+Run `npm run test:units` for application compatibility and editor integration tests.
 The checked-in fixtures run without the original executable. Use the identified original executable only when regenerating reference fixtures.

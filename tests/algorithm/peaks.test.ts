@@ -1,6 +1,6 @@
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { buildPeakCache, peakRange } from '../src/core/peaks.js';
+import { buildPeakCache, peakRange } from '../../src/core/peaks.js';
 
 test('a constant signal yields RMS equal to its value at every level', () => {
   const value = 8000;

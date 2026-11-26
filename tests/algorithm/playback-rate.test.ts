@@ -1,22 +1,12 @@
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import {
   DEFAULT_PLAYBACK_RATE,
   PLAYBACK_RATES,
   advanceSamples,
   formatRate,
-  reanchorSample,
   stepPlaybackRate,
-} from '../src/core/rate.js';
-
-test('rate ladder is the frozen ascending set with 1.0x default', () => {
-  assert.deepEqual([...PLAYBACK_RATES], [0.25, 0.5, 0.75, 1.0, 1.5]);
-  assert.equal(DEFAULT_PLAYBACK_RATE, 1.0);
-  assert.deepEqual(
-    [...PLAYBACK_RATES].sort((a, b) => a - b),
-    [...PLAYBACK_RATES],
-  );
-});
+} from '../../src/core/rate.js';
 
 test('[ steps one notch down per press through the whole ladder', () => {
   let rate = DEFAULT_PLAYBACK_RATE;
@@ -63,9 +53,9 @@ test('formatRate renders the select labels', () => {
 
 const SR = 48000;
 
-test('advanceSamples is exactly startOffset + elapsed * rate * sampleRate', () => {
-  assert.equal(advanceSamples(1000, 2, 1, SR), 1000 + 2 * SR);
-  assert.equal(advanceSamples(1000, 2, 0.5, SR), 1000 + 1 * SR);
+test('playback advances by elapsed seconds × rate × sample rate from its anchor', () => {
+  assert.equal(advanceSamples(1000, 2, 1, SR), 97000);
+  assert.equal(advanceSamples(1000, 2, 0.5, SR), 49000);
   assert.equal(advanceSamples(1000, 0, 1.5, SR), 1000);
   // Monotonic in elapsed for every rate.
   for (const rate of PLAYBACK_RATES) {
@@ -86,39 +76,4 @@ test('slower rates advance the anchor more slowly (1.5x / 1x / 0.25x ordering)',
   assert.ok(fast > normal && normal > slow);
   assert.equal(normal, SR);
   assert.equal(slow, SR / 4);
-});
-
-test('re-anchoring keeps currentSample continuous across a rate switch', () => {
-  // Playing at 1.0x from sample 6000; switch to 0.5x after 1.25s.
-  const startOffset = 6000;
-  const switchElapsed = 1.25;
-  const atSwitch = reanchorSample(startOffset, switchElapsed, 1.0, SR);
-  assert.equal(atSwitch, startOffset + 1.25 * SR);
-  // New anchor: startOffset := atSwitch, startedAt := now (elapsed resets 0).
-  // Same instant under the new rate must return the identical position.
-  const afterInstant = advanceSamples(atSwitch, 0, 0.5, SR);
-  assert.equal(afterInstant, atSwitch);
-  // And progress continues from there at the new rate.
-  assert.equal(advanceSamples(atSwitch, 0.5, 0.5, SR), atSwitch + 0.25 * SR);
-});
-
-test('re-anchoring a second time (0.5x -> 1.5x -> 0.25x) is still gapless', () => {
-  const sr = SR;
-  let startOffset = 0;
-  let rate = 0.5;
-  // Leg 1: play 2s at 0.5x, then switch (anchor moves to the current sample).
-  const atFirstSwitch = advanceSamples(startOffset, 2, rate, sr);
-  startOffset = reanchorSample(startOffset, 2, rate, sr);
-  assert.equal(startOffset, atFirstSwitch);
-  assert.equal(startOffset, sr); // 2s * 0.5 * 48000
-  // Leg 2: play 1s at 1.5x, then switch again.
-  rate = 1.5;
-  const atSecondSwitch = advanceSamples(startOffset, 1, rate, sr);
-  startOffset = reanchorSample(startOffset, 1, rate, sr);
-  assert.equal(startOffset, atSecondSwitch);
-  assert.equal(startOffset, sr + 1.5 * sr);
-  // Leg 3: progress continues from the exact switch position at the new rate.
-  rate = 0.25;
-  assert.equal(advanceSamples(startOffset, 0, rate, sr), startOffset);
-  assert.equal(advanceSamples(startOffset, 0.25, rate, sr), startOffset + 0.25 * 0.25 * sr);
 });

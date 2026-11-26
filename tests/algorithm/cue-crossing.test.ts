@@ -1,7 +1,7 @@
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { findCueCrossing } from '../src/core/cuecursor.js';
-import { MAX_TICKS } from '../src/core/timebase.js';
+import { findCueCrossing } from '../../src/core/cuecursor.js';
+import { MAX_TICKS } from '../../src/core/timebase.js';
 
 const TICKS = [192, 384, 576];
 

@@ -2,18 +2,7 @@ import { createPinia, disposePinia } from 'pinia';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useUiPreferencesStore } from '../../src/ui/preferences';
 import { setupI18n } from '../../src/i18n/setup';
-import { readFileSync } from 'node:fs';
-const dictionary = (language: string): unknown =>
-  JSON.parse(readFileSync(`${process.cwd()}/src/i18n/${language}.json`, 'utf8'));
-const en = dictionary('en');
-const zh = dictionary('zh');
-const ja = dictionary('ja');
-const ko = dictionary('ko');
-import { validateMessages } from '../../src/i18n/validation';
-
-const pinia = createPinia();
 afterEach(() => {
-  disposePinia(pinia);
   localStorage.clear();
   document.documentElement.classList.remove('dark');
 });
@@ -114,17 +103,5 @@ describe('UI preferences', () => {
     stopAppearance();
     setup.stop();
     disposePinia(instance);
-  });
-});
-
-describe('translation schema', () => {
-  it('preserves every existing key and placeholder across all four dictionaries', () => {
-    for (const dictionary of [zh, ja, ko]) expect(validateMessages(en, dictionary)).toEqual([]);
-  });
-  it('reports missing keys and changed placeholders', () => {
-    expect(validateMessages({ greeting: 'Hi {name}' }, { greeting: 'Hi {other}' })).toEqual([
-      'greeting: placeholders differ',
-    ]);
-    expect(validateMessages({ greeting: 'Hi' }, {})).toEqual(['greeting: missing']);
   });
 });

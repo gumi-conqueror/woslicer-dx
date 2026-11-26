@@ -173,12 +173,3 @@ export type ProjectDecodeResult = ProjectParseResult & {
   /** Owned copy of the input view, for unchanged-file preservation only. */
   readonly sourceBytes: Uint8Array;
 };
-
-export type ProjectOpenResult =
-  | ProjectParseResult
-  | {
-      kind: 'invalid-media-binding';
-      project: ProjectFileV1;
-      capability: ProjectCapability;
-      mediaIds: string[];
-    };

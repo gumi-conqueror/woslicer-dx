@@ -1,13 +1,17 @@
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { MANIFEST as manifest, DATA as GENERATED_DATA, EN as en } from '../src/i18n/generated.js';
+import {
+  MANIFEST as manifest,
+  DATA as GENERATED_DATA,
+  EN as en,
+} from '../../src/i18n/generated.js';
 import {
   LANGUAGES,
   DOC_LANG,
   detectLanguage,
   isLanguage,
   type Language,
-} from '../src/core/language.js';
+} from '../../src/core/language.js';
 // The menu/dialog key sets live in the generated i18n data; the old native
 // menu module that first consumed them is gone.
 const MENU_STRINGS = Object.fromEntries(
@@ -22,7 +26,7 @@ const DIALOG_STRINGS = Object.fromEntries(
     (sections as Record<string, unknown>).dialogs as Record<string, unknown>,
   ]),
 );
-import type { ChromeKey, StatusKey } from '../src/core/messages.js';
+import type { ChromeKey, StatusKey } from '../../src/core/messages.js';
 
 interface LanguageData {
   chrome: Record<string, string>;

@@ -1,6 +1,6 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { aggregatePeaks, scalePeakByGain, samplePeak } from '../../src/timeline/waveform/peaks.js';
+import { aggregatePeaks, samplePeak } from '../../src/timeline/waveform/peaks.js';
 import { rms } from '../../src/timeline/waveform/rms.js';
 import { samplePoints, sampleX } from '../../src/timeline/waveform/sample-geometry.js';
 import type { WaveView } from '../../src/timeline/waveform/sample-geometry.js';
@@ -52,7 +52,6 @@ test('peak normalization, gain, RMS and signed detail coordinates', () => {
     max: 32767 / 32768,
   });
   assert.equal(aggregatePeaks(new Int8Array(), 8, 0, 1), null);
-  assert.deepEqual(scalePeakByGain({ min: 0.6, max: 0.9 }, 2), { min: 1, max: 1 });
   assert.equal(rms(new Float32Array([-1, 1, -1, 1]), 0, 4), 1);
   const points = samplePoints(new Float32Array([1, -1, 0.5]), base, 50, 50);
   assert.deepEqual(

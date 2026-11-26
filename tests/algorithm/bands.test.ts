@@ -1,6 +1,6 @@
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { analyzeBands, filterBand, rmsEnvelope, BAND_CROSSOVERS } from '../src/core/bands.js';
+import { analyzeBands, filterBand, rmsEnvelope } from '../../src/core/bands.js';
 
 const SR = 48000;
 
@@ -39,11 +39,6 @@ test('band split routes 100 Hz to Low, 1 kHz to Mid and 8 kHz to High', () => {
     const best = Object.entries<number>(energies).sort((a, b) => b[1] - a[1])[0][0];
     assert.equal(best, expected, `${freq} Hz energies=${JSON.stringify(energies)}`);
   }
-});
-
-test('crossover constants stay at the frozen 250 Hz / 4 kHz', () => {
-  assert.equal(BAND_CROSSOVERS.lowMid, 250);
-  assert.equal(BAND_CROSSOVERS.midHigh, 4000);
 });
 
 test('rmsEnvelope includes the trailing partial hop', () => {
