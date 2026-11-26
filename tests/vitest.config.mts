@@ -16,14 +16,31 @@ export default defineConfig({
     }),
   ],
   test: {
-    environment: 'happy-dom',
-    setupFiles: ['tests/app/setup-audio.ts'],
-    include: [
-      'tests/components/**/*.test.ts',
-      'tests/app/**/*.test.ts',
-      'tests/project/**/*.test.ts',
-    ],
     restoreMocks: true,
     clearMocks: true,
+    projects: [
+      {
+        extends: true,
+        // Pure computations: no DOM, no Pinia, no platform.
+        test: { name: 'algorithm', environment: 'node', include: ['tests/algorithm/**/*.test.ts'] },
+      },
+      {
+        extends: true,
+        // One user task from input to result, through tests/support/app.ts.
+        test: {
+          name: 'business',
+          environment: 'happy-dom',
+          setupFiles: ['tests/support/setup-audio.ts'],
+          include: [
+            'tests/business/**/*.test.ts',
+            'tests/refactor-guard/**/*.test.ts',
+            // Not yet migrated.
+            'tests/components/**/*.test.ts',
+            'tests/app/**/*.test.ts',
+            'tests/project/**/*.test.ts',
+          ],
+        },
+      },
+    ],
   },
 });
