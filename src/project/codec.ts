@@ -1,4 +1,5 @@
 import type { z } from 'zod';
+import { markerTicks } from '@gumi-conqueror/wos-file';
 import { errorMessage } from '../core/messages';
 import { defaultBaseName } from '../core/slices';
 import { DEFAULT_CUE_DB, DEFAULT_PLAYBACK_DB } from '../core/volume';
@@ -319,9 +320,7 @@ export function projectFromWos(
         projectV1Schema.shape.slicing.shape.noisegateDb,
         data.noisegateDb,
       ),
-      markers: Array.from(data.markers, (marker, tick) => (marker === 1 ? tick : -1)).filter(
-        (tick) => tick >= 0,
-      ),
+      markers: markerTicks(data.markers),
     },
   };
 }
