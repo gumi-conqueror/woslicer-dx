@@ -1,4 +1,14 @@
-import type { CueMode } from '../slicing/editor-store';
+import type { CueMode } from '../project/schema';
+
+/** Length, starting gain and release lead of each cue sound, in seconds. */
+const VOICES: Record<
+  Exclude<CueMode, 'off'>,
+  { duration: number; gain: number; release: number }
+> = {
+  cowbell: { duration: 0.26, gain: 0.9, release: 0.01 },
+  triangle: { duration: 0.95, gain: 0.7, release: 0.05 },
+  metronome: { duration: 0.07, gain: 0.9, release: 0.01 },
+};
 
 /** Local synthesized monitoring cues; none of these nodes enters export DSP. */
 export function createCueSynth(context: AudioContext) {
@@ -13,12 +23,9 @@ export function createCueSynth(context: AudioContext) {
     const output = context.createGain();
     const nodes: AudioNode[] = [output];
     const sources: AudioScheduledSourceNode[] = [];
-    const duration = mode === 'triangle' ? 0.95 : mode === 'cowbell' ? 0.26 : 0.07;
-    output.gain.setValueAtTime(mode === 'triangle' ? 0.7 : 0.9, now);
-    output.gain.exponentialRampToValueAtTime(
-      0.001,
-      now + duration - (mode === 'triangle' ? 0.05 : 0.01),
-    );
+    const { duration, gain: level, release: releaseLead } = VOICES[mode];
+    output.gain.setValueAtTime(level, now);
+    output.gain.exponentialRampToValueAtTime(0.001, now + duration - releaseLead);
     output.connect(master);
     function oscillator(frequency: number, type: OscillatorType, destination: AudioNode): void {
       const oscillator = context.createOscillator();

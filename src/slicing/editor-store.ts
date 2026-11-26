@@ -6,7 +6,7 @@ import { remapMarkerKeys, type MarkerKeys } from '../project/marker-keys';
 import { ProjectEditor } from '../project/editor';
 import { createEmptyProject, projectCapability } from '../project/codec';
 import type { ProjectDocument, ProjectFileV1, OutputRecipe } from '../project/schema';
-import { PROJECT_MAX_GAIN_DB, PROJECT_MIN_GAIN_DB } from '../project/schema';
+import { clampGainDb, FIELD_RANGES, inRange, type CueMode } from '../project/schema';
 import { gridStepTicks } from '../core/gridlines';
 import {
   MAX_TICKS,
@@ -31,7 +31,6 @@ export type EditorPhase =
   | { kind: 'loading'; name: string }
   | { kind: 'ready' }
   | { kind: 'error'; message: string };
-export type CueMode = 'off' | 'cowbell' | 'triangle' | 'metronome';
 export interface StatusSegment {
   key: StatusKey;
   params?: FormatParams;
@@ -84,9 +83,6 @@ export const useEditorStore = defineStore('editor', () => {
   // Project global/track playback state is the single truth; these writable
   // projections keep the UI and command entry points stable. One user intent is
   // one transaction, so playback properties participate in undo and dirty.
-  function clampGainDb(value: number): number {
-    return Math.max(PROJECT_MIN_GAIN_DB, Math.min(PROJECT_MAX_GAIN_DB, value));
-  }
   function applyGlobal(edit: (draft: ProjectFileV1) => void): void {
     if (limited.value) return; // read-only projects expose playback controls as view state only
     transact(edit);
@@ -136,7 +132,7 @@ export const useEditorStore = defineStore('editor', () => {
   const playbackRate = computed({
     get: () => document.value.global.playbackRate,
     set: (value) => {
-      if (!Number.isFinite(value) || value < 0.25 || value > 1.5) return;
+      if (!inRange(value, FIELD_RANGES.playbackRate)) return;
       applyGlobal((draft) => {
         draft.global.playbackRate = value;
       });
@@ -382,33 +378,19 @@ export const useEditorStore = defineStore('editor', () => {
   }
   function setDocumentOptions(values: Partial<DocumentOptions>): void {
     transact((draft) => {
+      // Out-of-range values are ignored; the inputs already clamp what users type.
+      const { bpm, shift, fadeoutMs, noisegateDb } = values;
+      if (bpm !== undefined && inRange(bpm, FIELD_RANGES.bpm)) draft.timing.bpm = bpm;
+      if (shift !== undefined && inRange(shift, FIELD_RANGES.shiftTicks))
+        draft.timing.shiftTicks = shift;
       if (
-        values.bpm !== undefined &&
-        Number.isFinite(values.bpm) &&
-        values.bpm > 0 &&
-        values.bpm <= 10000
+        fadeoutMs !== undefined &&
+        Number.isInteger(fadeoutMs) &&
+        inRange(fadeoutMs, FIELD_RANGES.fadeoutMs)
       )
-        draft.timing.bpm = values.bpm;
-      if (
-        values.shift !== undefined &&
-        Number.isFinite(values.shift) &&
-        Math.abs(values.shift) <= 1e9
-      )
-        draft.timing.shiftTicks = values.shift;
-      if (
-        values.fadeoutMs !== undefined &&
-        Number.isInteger(values.fadeoutMs) &&
-        values.fadeoutMs >= 0 &&
-        values.fadeoutMs <= 60000
-      )
-        draft.slicing.fadeoutMs = values.fadeoutMs;
-      if (
-        values.noisegateDb !== undefined &&
-        Number.isFinite(values.noisegateDb) &&
-        values.noisegateDb >= -200 &&
-        values.noisegateDb <= 0
-      )
-        draft.slicing.noisegateDb = values.noisegateDb;
+        draft.slicing.fadeoutMs = fadeoutMs;
+      if (noisegateDb !== undefined && inRange(noisegateDb, FIELD_RANGES.noisegateDb))
+        draft.slicing.noisegateDb = noisegateDb;
     });
   }
   function reset(): void {

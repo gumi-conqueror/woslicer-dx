@@ -16,6 +16,7 @@ import {
   type RecordingInput,
 } from './recording-bindings';
 import type { EditorStore } from '../slicing/editor-store';
+import { FIELD_RANGES } from '../project/schema';
 import type { Workspace } from '../workspace/workspace';
 import type { Playback } from '../playback';
 
@@ -303,7 +304,10 @@ export function createCommands({
   }
   function changeClipNumber(direction: -1 | 1): void {
     editor.setOutputOptions({
-      clipStartNumber: Math.max(0, Math.min(9999, editor.clipStartNumber + direction)),
+      clipStartNumber: Math.max(
+        FIELD_RANGES.clipStartNumber.min,
+        Math.min(FIELD_RANGES.clipStartNumber.max, editor.clipStartNumber + direction),
+      ),
     });
     editor.setStatus('clipStartNumber', { number: editor.clipStartNumber });
   }

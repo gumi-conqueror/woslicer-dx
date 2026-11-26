@@ -428,24 +428,6 @@ export function createWorkspace(options: WorkspaceOptions) {
       finishOpening(request);
     }
   }
-  function assertWosTiming(data: {
-    bpm: number;
-    shift: number;
-    fadeoutMs: number;
-    noisegateDb: number;
-  }): void {
-    if (
-      !Number.isFinite(data.bpm) ||
-      data.bpm <= 0 ||
-      !Number.isFinite(data.shift) ||
-      data.fadeoutMs < 0 ||
-      data.fadeoutMs > 60000 ||
-      data.noisegateDb > 0 ||
-      data.noisegateDb < -200
-    ) {
-      throw new Error('Invalid WOS timing or processing parameters');
-    }
-  }
   /** Imports timing and cuts into the current project in one undo step, keeping its identity and media. */
   async function importWosSettings(): Promise<void> {
     if (!requireEditable()) return;
@@ -454,7 +436,6 @@ export function createWorkspace(options: WorkspaceOptions) {
       const file = await platform.openFile('wos');
       if (!file || disposed || revision !== editor.docRevision) return;
       const data = readWos(file.bytes);
-      assertWosTiming(data);
       const wos = projectFromWos(data, file.name);
       editor.transact((draft) => {
         draft.timing.bpm = wos.timing.bpm;
@@ -521,7 +502,6 @@ export function createWorkspace(options: WorkspaceOptions) {
       const file = await platform.openFile('wos');
       if (!file || disposed || request !== opening || revision !== editor.docRevision) return;
       const data = readWos(file.bytes);
-      assertWosTiming(data);
       const project = projectFromWos(data, file.name);
       beginOpening();
       invalidate();

@@ -1,6 +1,6 @@
 import { createEmptyProject, parseProject } from '../project/codec';
 import type { ProjectDocument, ProjectFileV1 } from '../project/schema';
-import { PROJECT_MAX_GAIN_DB, PROJECT_MIN_GAIN_DB } from '../project/schema';
+import { clampGainDb, CUE_MODES, FIELD_RANGES } from '../project/schema';
 import { MAX_TICKS } from '../core/timebase';
 import { ampToDb } from '../core/volume';
 import type { EditorStore } from '../slicing/editor-store';
@@ -74,7 +74,10 @@ function legacyProject(input: Record<string, unknown>): ProjectFileV1 | null {
     markers: [...new Set(markers)].sort((a, b) => a - b),
   });
   const o = object(input.options) ? input.options : {};
-  if (number(o.clipStartNumber, 0, 9999) && Number.isInteger(o.clipStartNumber))
+  if (
+    number(o.clipStartNumber, FIELD_RANGES.clipStartNumber.min, FIELD_RANGES.clipStartNumber.max) &&
+    Number.isInteger(o.clipStartNumber)
+  )
     project.output.clipStartNumber = o.clipStartNumber;
   if (typeof o.baseName === 'string' && o.baseName.length <= 120)
     project.output.baseName = o.baseName;
@@ -99,18 +102,12 @@ export function parseEditorSession(input: unknown): EditorSession | null {
   const o = object(input.options) ? input.options : {};
   // Older archives carried playback state as session options; migrate it into
   // the project document, which is the single truth for these properties now.
-  const clampGainDb = (value: number): number =>
-    Math.max(PROJECT_MIN_GAIN_DB, Math.min(PROJECT_MAX_GAIN_DB, value));
   if (number(o.volume, 0, 1)) project.global.masterGainDb = clampGainDb(ampToDb(o.volume));
   if (number(o.cueVolume, 0, 1)) project.global.cueGainDb = clampGainDb(ampToDb(o.cueVolume));
-  if (number(o.playbackRate, 0.25, 1.5)) project.global.playbackRate = o.playbackRate;
-  if (
-    o.cueMode === 'off' ||
-    o.cueMode === 'cowbell' ||
-    o.cueMode === 'triangle' ||
-    o.cueMode === 'metronome'
-  )
-    project.global.cueMode = o.cueMode;
+  if (number(o.playbackRate, FIELD_RANGES.playbackRate.min, FIELD_RANGES.playbackRate.max))
+    project.global.playbackRate = o.playbackRate;
+  const cueMode = CUE_MODES.find((mode) => mode === o.cueMode);
+  if (cueMode) project.global.cueMode = cueMode;
   if (typeof o.rmsVisible === 'boolean') project.global.views.rms = o.rmsVisible;
   if (typeof o.bandsVisible === 'boolean') project.global.views.bands = o.bandsVisible;
   if (number(o.grid, 1, 192) && Number.isInteger(o.grid) && 192 % o.grid === 0)

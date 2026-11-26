@@ -16,6 +16,33 @@ export const PROJECT_MAX_FRAMES = 2_000_000_000;
 export const PROJECT_MAX_GAIN_DB = 12;
 export const PROJECT_MIN_GAIN_DB = -96;
 
+/**
+ * Ranges of editable numeric fields. The schema below, the editor inputs and
+ * setters, and file imports all read these, so each limit is written once.
+ */
+export const FIELD_RANGES = {
+  bpm: { min: Number.MIN_VALUE, max: 10000 },
+  shiftTicks: { min: -1e9, max: 1e9 },
+  fadeoutMs: { min: 0, max: 60000 },
+  noisegateDb: { min: -200, max: 0 },
+  playbackRate: { min: 0.25, max: 1.5 },
+  clipStartNumber: { min: 0, max: 9999 },
+  gainDb: { min: PROJECT_MIN_GAIN_DB, max: PROJECT_MAX_GAIN_DB },
+} as const;
+type Range = { readonly min: number; readonly max: number };
+
+export function inRange(value: number, range: Range): boolean {
+  return Number.isFinite(value) && value >= range.min && value <= range.max;
+}
+
+export function clampGainDb(value: number): number {
+  return Math.max(FIELD_RANGES.gainDb.min, Math.min(FIELD_RANGES.gainDb.max, value));
+}
+
+/** Monitoring cue sounds; `off` plays none. */
+export const CUE_MODES = ['off', 'cowbell', 'triangle', 'metronome'] as const;
+export type CueMode = (typeof CUE_MODES)[number];
+
 // Field structure and bounds live here; cross-reference and compatibility policies
 // stay in codec.ts. Object schemas strip extensions from editable data.
 const text = (max = 4096, min = 1) =>
@@ -24,7 +51,8 @@ const text = (max = 4096, min = 1) =>
     error: 'text length is outside its supported range',
   });
 const integer = (min: number, max: number) => z.int().min(min).max(max);
-const gain = z.number().min(PROJECT_MIN_GAIN_DB).max(PROJECT_MAX_GAIN_DB);
+const ranged = (range: Range) => z.number().min(range.min).max(range.max);
+const gain = ranged(FIELD_RANGES.gainDb);
 const markerKeySchema = z.union([
   z.literal(1),
   z.literal(2),
@@ -105,12 +133,12 @@ export const projectV1Schema = z.object({
   projectId: text(128),
   name: text(512),
   timing: z.object({
-    bpm: z.number().min(Number.MIN_VALUE).max(10000),
-    shiftTicks: z.number().min(-1e9).max(1e9),
+    bpm: ranged(FIELD_RANGES.bpm),
+    shiftTicks: ranged(FIELD_RANGES.shiftTicks),
   }),
   slicing: z.object({
-    fadeoutMs: integer(0, 60000),
-    noisegateDb: z.number().min(-200).max(0),
+    fadeoutMs: integer(FIELD_RANGES.fadeoutMs.min, FIELD_RANGES.fadeoutMs.max),
+    noisegateDb: ranged(FIELD_RANGES.noisegateDb),
     noisegateEnabled: z.boolean(),
     markers: z.array(integer(0, MAX_TICKS - 1)).max(PROJECT_MAX_MARKERS),
     markerKeys: z
@@ -131,15 +159,15 @@ export const projectV1Schema = z.object({
   }),
   output: z.object({
     baseName: text(240, 0),
-    clipStartNumber: integer(0, 9999),
+    clipStartNumber: integer(FIELD_RANGES.clipStartNumber.min, FIELD_RANGES.clipStartNumber.max),
     useFfNumbering: z.boolean(),
   }),
   global: z.object({
     masterGainDb: gain,
     masterMuted: z.boolean(),
     cueGainDb: gain,
-    cueMode: z.enum(['off', 'cowbell', 'triangle', 'metronome']),
-    playbackRate: z.number().min(0.25).max(1.5),
+    cueMode: z.enum(CUE_MODES),
+    playbackRate: ranged(FIELD_RANGES.playbackRate),
     views: z.object({ rms: z.boolean(), bands: z.boolean(), spectrum: z.literal('reserved') }),
   }),
   media: z.array(mediaSchema).max(PROJECT_MAX_MEDIA),
