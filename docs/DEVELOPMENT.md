@@ -82,6 +82,15 @@ Regenerate translation metadata after changing `src/i18n/*.json`. Restart the se
 | Apply formatting or lint fixes | `npm run format` / `npm run lint:fix` | Source changes |
 
 Use `test:tooling` for script tests or `test:units` for algorithm and business tests. `npx vitest run --config tests/vitest.config.mts --project algorithm` runs one Vitest project.
+
+| Directory | Contents |
+| --- | --- |
+| `tests/algorithm/` | Pure computations in Node: formats, time base, slicing, input readers, routing and the command wheel |
+| `tests/business/` | One user task from input to result in happy-dom, through the driver in `tests/support/app.ts` |
+| `tests/e2e/` | Playwright checks of the built web app, run by `test:ui` |
+| `tests/support/` | The business driver and audio helpers |
+| `tests/fixtures/` | Files from the original programs and captured device input |
+| `scripts/*.test.mjs` | Build, release and packaging scripts, run by `test:tooling` |
 The package commands build fresh output. To archive an already tested website, run `node scripts/package-web.mjs`.
 On macOS, select the DMG bundle explicitly with `npm run package:desktop -- --bundles dmg`.
 Generated files under `dist/`, `src/app/generated/` and `src-tauri/generated/` are not source files.
