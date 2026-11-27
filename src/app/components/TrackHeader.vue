@@ -2,6 +2,7 @@
 import { computed, nextTick, ref, useTemplateRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useEditorStore } from '../../slicing/editor-store';
+import { FIELD_RANGES } from '../../project/schema';
 import type { LoadingActivity } from '../../workspace/workspace';
 import AppIcon from '../../ui/AppIcon.vue';
 import TrackOverview from '../../timeline/TrackOverview.vue';
@@ -35,6 +36,13 @@ async function rename(): Promise<void> {
   renaming.value = true;
   await nextTick();
   input.value?.select();
+}
+/** Track gain in whole dB, committed once per change. */
+function setGain(event: Event): void {
+  if (!(event.target instanceof HTMLInputElement)) return;
+  const value = Number(event.target.value);
+  if (Number.isFinite(value)) editor.setTrackMix(props.trackId, { gainDb: Math.round(value) });
+  event.target.value = String(track.value?.gainDb ?? 0);
 }
 function commit(): void {
   if (!renaming.value) return;
@@ -73,6 +81,18 @@ function commit(): void {
           >{{ name }}</span
         >
         <span class="track-mix">
+          <input
+            class="track-gain"
+            type="number"
+            step="1"
+            :min="FIELD_RANGES.gainDb.min"
+            :max="FIELD_RANGES.gainDb.max"
+            :value="track?.gainDb ?? 0"
+            :aria-label="t('chrome.trackGain')"
+            :title="t('chrome.trackGain')"
+            @pointerdown.stop
+            @change="setGain"
+          />
           <button
             type="button"
             class="track-toggle"
@@ -174,6 +194,18 @@ function commit(): void {
 .track-mix {
   display: inline-flex;
   gap: 2px;
+}
+.track-gain {
+  width: 46px;
+  height: 18px;
+  padding: 0 2px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 3px;
+  background: var(--el-fill-color-blank);
+  color: var(--el-text-color-regular);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 .track-toggle {
   width: 20px;

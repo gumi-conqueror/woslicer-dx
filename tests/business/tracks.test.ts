@@ -58,6 +58,21 @@ it('replaces only the current track audio in a multi-track project', async () =>
   expect(f.editor.track.name).toBe('snare');
 });
 
+it('moves the current track in the list and undoes the move', async () => {
+  const f = setup();
+  await f.workspace.loadAudio(audioFile('kick.wav'));
+  f.opened = audioFile('snare.wav', 24000);
+  await f.run('add-track');
+  const names = () => f.editor.document.tracks.map((track) => track.name);
+  await f.run('move-track-up');
+  expect(names()).toEqual(['snare', 'kick']);
+  expect(f.editor.track.name).toBe('snare');
+  await f.run('move-track-up');
+  expect(names()).toEqual(['snare', 'kick']);
+  await f.run('undo');
+  expect(names()).toEqual(['kick', 'snare']);
+});
+
 it('renames a track and ignores a blank name', () => {
   const f = setup();
   const id = f.editor.track.trackId;

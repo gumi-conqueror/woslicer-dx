@@ -218,7 +218,8 @@
     "pressKey": "使用するキーを押す。Esc で取消。",
     "pressControl": "使用するコントローラーのボタンを押す。Menu で取消。",
     "keyReserved": "このキーはメニューとダイアログ用。別のキーを押す。",
-    "inputSettingsTitle": "入力設定"
+    "inputSettingsTitle": "入力設定",
+    "trackGain": "トラックのゲイン（dB）"
   },
   "status": {
     "projectOpened": "プロジェクトを開いた：{name}",
@@ -461,7 +462,9 @@
     },
     "audioFormats": "WAV、AIFF、FLAC、Ogg Vorbis、MP3、AAC-LC、ALAC のモノラル・ステレオに対応。内部処理は Float32、WAV 出力は 16-bit PCM。AAC は先頭・末尾にエンコーダー由来の余白を含む場合がある。 MKV/MKA は上記コーデックに対応。Opus は非対応。 MKV/MKA は1音声トラックのみ読み込み。既定の指定が省略されていると先頭トラックを選ぶ場合あり。必要に応じて目的の音声を先に抽出。",
     "previousTrack": "前のトラックを選択",
-    "nextTrack": "次のトラックを選択"
+    "nextTrack": "次のトラックを選択",
+    "moveTrackUp": "現在のトラックを上へ移動",
+    "moveTrackDown": "現在のトラックを下へ移動"
   },
   "input": {
     "keyboard": "キーボード／マウス",

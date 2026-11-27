@@ -218,7 +218,8 @@
     "pressKey": "Press the key to use. Esc cancels.",
     "pressControl": "Press the controller button to use. Menu cancels.",
     "keyReserved": "This key is reserved for menus and dialogs. Press another key.",
-    "inputSettingsTitle": "Input settings"
+    "inputSettingsTitle": "Input settings",
+    "trackGain": "Track gain (dB)"
   },
   "status": {
     "projectOpened": "Opened project: {name}",
@@ -461,7 +462,9 @@
     },
     "audioFormats": "WAV, AIFF, FLAC, Ogg Vorbis, MP3, AAC-LC and ALAC; mono or stereo. Processing uses Float32; WAV export uses 16-bit PCM. AAC may include encoder delay or padding. MKV/MKA accepts these codecs, excluding Opus. MKV/MKA decodes one audio track; an implicit default flag can cause selection of the first track. Extract the desired track first if needed.",
     "previousTrack": "Select previous track",
-    "nextTrack": "Select next track"
+    "nextTrack": "Select next track",
+    "moveTrackUp": "Move current track up",
+    "moveTrackDown": "Move current track down"
   },
   "input": {
     "keyboard": "Keyboard / mouse",
