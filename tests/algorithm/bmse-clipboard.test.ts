@@ -14,9 +14,9 @@ test('markers use the 101 column, 8-digit ticks, CRLF and a final NUL', () => {
   );
 });
 
-test('markers outside the marker map are dropped', () => {
+test('markers past 1000 measures are dropped', () => {
   expect(
-    buildBmseClipboard([60, -1, 12, 49152], { startNumber: 15, numbering: 'restricted' }),
+    buildBmseClipboard([60, -1, 12, 192000], { startNumber: 15, numbering: 'restricted' }),
   ).toBe(HEADER + '1010000001215\r\n1010000006036\r\n\0');
 });
 

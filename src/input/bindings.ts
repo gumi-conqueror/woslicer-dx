@@ -103,6 +103,7 @@ export const BINDINGS: readonly Binding[] = [
     ],
     gamepad: ['ls-up', 'ls-up-hard'],
   },
+  { layer: 'edit', command: 'zoom-fit', keyboard: key('0') },
   {
     layer: 'edit',
     command: 'zoom-out',

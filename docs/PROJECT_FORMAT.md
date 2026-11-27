@@ -39,7 +39,7 @@ handle 1 to 256 tracks. The editor edits one current track at a time.
 | `track.media` | `null` before audio is chosen, or one `MediaAsset` (below). |
 | `track.slicing.fadeoutMs` | Integer milliseconds. |
 | `track.slicing.noisegateDb`, `track.slicing.noisegateEnabled` | Threshold in dB and a separate enable flag. |
-| `track.slicing.markers` | Ticks at 192 ticks per measure, from 0 through 49,151. The codec sorts ticks and rejects duplicates. |
+| `track.slicing.markers` | Ticks at 192 ticks per measure, from 0 through 2,147,483,646. The codec sorts ticks and rejects duplicates. |
 | `track.slicing.markerKeys` | Optional `{tick, keys}` entries for recorded markers. `keys` contains unique integers 1–7, including chords. Entries must reference existing marker ticks. |
 | `track.slicing.bandDetection` | `bands {low,mid,high}`, `thresholdDb`, `minGapUnits`, `snap`. Detection settings are separate from waveform visibility. |
 | `track.output` | `baseName`, `clipStartNumber`, `useFfNumbering`. |
@@ -80,7 +80,7 @@ Replacing markers from WOS, BMSE, MIDI or edge detection clears old key attribut
 
 Projects without the field remain valid.
 Legacy `.wos` and original `.bmh` formats remain unchanged and do not store these
-attributes. WOS export retains the marker positions.
+attributes. WOS export retains the marker positions within the 256 measures (ticks 0 through 49,151) that a `.wos` file holds; it drops later markers and reports how many.
 
 ### BMHelper data
 
@@ -135,7 +135,7 @@ schema contain the complete validation rules.
 | Entire encoded UTF-8 JSON | 64 MiB, including BMHelper data and metadata. |
 | Desktop recovery JSON | 65 MiB, including the project and session fields. |
 | Tracks | 256, each with at most one media file. |
-| Markers | At most 49,152 markers. Ticks range from 0 through 49,151. |
+| Markers | At most 49,152 markers per track. Ticks range from 0 through 2,147,483,646; the timeline is as long as the longest audio or the last marker. |
 | Source frames | 0 through 2,000,000,000 per channel. |
 | Track / master / cue gain | −96 through +12 dB. |
 | BPM / `shiftTicks` | 0 < BPM ≤ 10,000. Shift from −1e9 through 1e9. |

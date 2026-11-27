@@ -8,6 +8,7 @@ import {
   parseProject,
   projectFromWos,
   projectToWos,
+  markersBeyondWos,
 } from '../project/codec';
 import {
   byteLimitText,
@@ -541,9 +542,18 @@ export function createWorkspace(options: WorkspaceOptions) {
     const version = generation;
     try {
       const bytes = writeWos(projectToWos(editor.document, editor.currentTrackId));
+      const dropped = markersBeyondWos(editor.document, editor.currentTrackId);
       const name = `${editor.source?.name ?? 'untitled'}.wos`;
       if ((await platform.saveFile('wos', name, bytes)) && !disposed && version === generation)
-        editor.setStatus('savedWos', { file: name });
+        if (dropped)
+          editor.setStatus(
+            [
+              { key: 'savedWos', params: { file: name } },
+              { key: 'wosMarkersDropped', params: { count: dropped } },
+            ],
+            true,
+          );
+        else editor.setStatus('savedWos', { file: name });
     } catch (error) {
       if (!disposed && version === generation)
         editor.setStatus('wosSaveFailed', { message: errorMessage(error) }, true);

@@ -6,6 +6,7 @@ import { captureEditorSession } from '../../src/workspace/session';
 import { ampToDb } from '../../src/core/volume';
 import { projectToWos } from '../../src/project/codec';
 import { writeWos } from '@gumi-conqueror/wos-file';
+import { wavFile } from '../support/audio';
 
 describe('portable project workflow', () => {
   it('saves absolute media paths and opens project media through the project grant', async () => {
@@ -442,4 +443,24 @@ describe('portable project workflow', () => {
     await loading;
     expect(f.editor.source).toBeNull();
   });
+});
+
+it('keeps markers past 256 measures in the project and drops them only from .wos export', async () => {
+  const f = setup();
+  // 300 measures of silence at 120 BPM: 600 s at 8 kHz.
+  await f.workspace.loadAudio({
+    name: 'long.wav',
+    reference: null,
+    bytes: wavFile([new Int16Array(8000 * 600)], 8000),
+  });
+  f.workspace.actions.setMarker(192 * 10);
+  f.workspace.actions.setMarker(192 * 280);
+  expect(f.editor.ticks).toEqual([1920, 53760]);
+  expect(f.editor.timelineTicks).toBeGreaterThan(192 * 280);
+  await f.workspace.saveWos();
+  expect(f.editor.status.segments.map((segment) => segment.key)).toEqual([
+    'savedWos',
+    'wosMarkersDropped',
+  ]);
+  expect(f.editor.status.segments[1]?.params).toEqual({ count: 1 });
 });

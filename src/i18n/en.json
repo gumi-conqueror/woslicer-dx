@@ -359,7 +359,8 @@
     "lastTrackKept": "A project keeps at least one track.",
     "trackRemoved": "Removed track {name}. Undo restores it.",
     "exportNameConflict": "Two tracks would both write {name}. Give the tracks different output names.",
-    "exportTracksWithoutAudio": "{count} tracks without audio were not exported."
+    "exportTracksWithoutAudio": "{count} tracks without audio were not exported.",
+    "wosMarkersDropped": "A .wos file holds 256 measures; {count} later markers were not written."
   },
   "menu": {
     "file": "File",
@@ -403,7 +404,8 @@
     "exportAllTracks": "Export slices of all tracks…",
     "inputSettings": "Input settings…",
     "track": "Track",
-    "renameTrack": "Rename track"
+    "renameTrack": "Rename track",
+    "zoomFit": "Show the whole timeline"
   },
   "dialogs": {
     "loadAudio": "Open audio",

@@ -12,7 +12,7 @@ import { useEditorStore } from '../slicing/editor-store';
 import { usePlayback } from '../playback';
 import { useUiPreferencesStore } from '../ui/preferences';
 import { paletteFor } from '../ui/palette';
-import { MAX_TICKS, sampleToTick, tickToSampleExport } from '../core/timebase';
+import { sampleToTick, tickToSampleExport } from '../core/timebase';
 import { createTimelineGestures, type TimelinePointer } from './gestures';
 import { drawOverlay, drawRuler, drawTimeline, RULER_HEIGHT, setupCanvas } from './render';
 const rulerHeightCss = `${RULER_HEIGHT}px`;
@@ -45,7 +45,14 @@ let fullDraw = false;
 let activePointer: number | null = null;
 // Widest scroll offset in ticks: timeline length minus one viewport width.
 const scrollMaximum = computed(() =>
-  Math.max(0, MAX_TICKS - dimensions.value.width / editor.pxPerTick),
+  Math.max(0, editor.timelineTicks - dimensions.value.width / editor.pxPerTick),
+);
+watch(
+  () => dimensions.value.width,
+  (width) => {
+    editor.viewportWidth = width;
+  },
+  { immediate: true },
 );
 // Coalesced repaint: one RAF redraws wave/ruler when fullDraw, then the overlay.
 function invalidate(all = true): void {

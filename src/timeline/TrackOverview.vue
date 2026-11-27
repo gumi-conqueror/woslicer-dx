@@ -2,7 +2,6 @@
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useDevicePixelRatio, useResizeObserver } from '@vueuse/core';
 import { useI18n } from 'vue-i18n';
-import { MAX_TICKS } from '../core/timebase';
 import { useEditorStore } from '../slicing/editor-store';
 import { useUiPreferencesStore } from '../ui/preferences';
 import { paletteFor } from '../ui/palette';
@@ -35,6 +34,7 @@ const snapshot = computed(() => {
     timeBase: editor.timeBaseOf(props.trackId),
     scrollTick: editor.scrollTick,
     pxPerTick: editor.pxPerTick,
+    timelineTicks: editor.timelineTicks,
   };
 });
 
@@ -83,7 +83,7 @@ function seek(event: PointerEvent): void {
   if (props.loading || !canvas.value || width.value <= 0) return;
   const ratio = (event.clientX - canvas.value.getBoundingClientRect().left) / width.value;
   const span = props.viewportWidth / editor.pxPerTick;
-  editor.setScrollTick(Math.max(0, Math.min(MAX_TICKS - span, ratio * MAX_TICKS - span / 2)));
+  editor.setScrollTick(ratio * editor.timelineTicks - span / 2);
 }
 function down(event: PointerEvent): void {
   if (props.loading || event.button !== 0 || pointer !== null || !current.value) return;

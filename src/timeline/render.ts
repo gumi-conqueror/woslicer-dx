@@ -1,6 +1,6 @@
 import type { EditorStore } from '../slicing/editor-store';
 import type { Palette } from '../ui/palette';
-import { MAX_TICKS, MEASURE_TICKS, sampleToTick, tickToSample } from '../core/timebase';
+import { MEASURE_TICKS, sampleToTick, tickToSample } from '../core/timebase';
 import { gridLineTicks, gridStepTicks, measureLabelStep } from '../core/gridlines';
 import { peakRange } from '../core/peaks';
 import { drawBandEnvelope, drawWaveLane } from './waveform';
@@ -11,6 +11,7 @@ export const OVERVIEW_HEIGHT = 36;
 export type TimelineSnapshot = Pick<
   EditorStore,
   | 'timeBase'
+  | 'timelineTicks'
   | 'ticks'
   | 'markerKeys'
   | 'previewTicks'
@@ -175,6 +176,7 @@ type TrackDrawing = Pick<
   | 'source'
   | 'peaks'
   | 'timeBase'
+  | 'timelineTicks'
   | 'scrollTick'
   | 'pxPerTick'
   | 'rmsVisible'
@@ -347,7 +349,10 @@ export function drawOverlay(
  */
 export function drawOverview(
   context: CanvasRenderingContext2D,
-  state: Pick<TimelineSnapshot, 'source' | 'peaks' | 'timeBase' | 'scrollTick' | 'pxPerTick'>,
+  state: Pick<
+    TimelineSnapshot,
+    'source' | 'peaks' | 'timeBase' | 'scrollTick' | 'pxPerTick' | 'timelineTicks'
+  >,
   width: number,
   viewportWidth: number | null,
   palette: Readonly<Palette>,
@@ -363,8 +368,8 @@ export function drawOverview(
     context.fillStyle = palette.wave;
     for (let lane = 0; lane < source.channels; lane++) {
       for (let x = 0; x < width; x += 2) {
-        const first = tickToSample((x / width) * MAX_TICKS, base),
-          last = tickToSample(((x + 2) / width) * MAX_TICKS, base);
+        const first = tickToSample((x / width) * state.timelineTicks, base),
+          last = tickToSample(((x + 2) / width) * state.timelineTicks, base);
         if (last <= 0 || first >= source.length) continue;
         const range = peakRange(cache, source.length, first, last);
         const middle = laneHeight * (lane + 0.5),
@@ -376,15 +381,15 @@ export function drawOverview(
     }
     hatch(
       context,
-      (sampleToTick(source.length, base) / MAX_TICKS) * width,
+      (sampleToTick(source.length, base) / state.timelineTicks) * width,
       width,
       OVERVIEW_HEIGHT,
       palette,
     );
   }
   if (viewportWidth === null) return;
-  const left = (state.scrollTick / MAX_TICKS) * width,
-    span = Math.max(2, (viewportWidth / state.pxPerTick / MAX_TICKS) * width);
+  const left = (state.scrollTick / state.timelineTicks) * width,
+    span = Math.max(2, (viewportWidth / state.pxPerTick / state.timelineTicks) * width);
   context.fillStyle = palette.viewportFill;
   context.fillRect(left, 0, span, OVERVIEW_HEIGHT);
   context.strokeStyle = palette.accent;

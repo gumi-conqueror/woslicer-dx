@@ -11,7 +11,6 @@ import { providePlayback, type Playback } from '../../src/playback';
 import TimelineEditor from '../../src/timeline/TimelineEditor.vue';
 import PlaybackControls from '../../src/playback/PlaybackControls.vue';
 import { buildPeakCache } from '../../src/core/peaks';
-import { MAX_TICKS } from '../../src/core/timebase';
 import { dbToAmp, sliderToDb } from '../../src/core/volume';
 import { drawBandEnvelope, drawWaveLane } from '../../src/timeline/waveform';
 import { drawOverview, setupCanvas } from '../../src/timeline/render';
@@ -242,16 +241,16 @@ describe('waveform drawing algorithms', () => {
     expect(record.context.lineTo).toHaveBeenCalled();
     expect(record.context.setLineDash).toHaveBeenLastCalledWith([]);
   });
-  it('maps overview viewport to the full tick timeline, not file percentages', () => {
+  it('maps overview viewport to the timeline length, not file percentages', () => {
     const { context, record } = canvasFixture();
     const editor = useEditorStore();
     editor.setScrollTick(192);
     editor.pxPerTick = 2;
     drawOverview(context, editor, 1000, 600, paletteFor('dark'));
     expect(record.context.strokeRect).toHaveBeenCalledWith(
-      (192 / MAX_TICKS) * 1000 + 0.5,
+      (192 / editor.timelineTicks) * 1000 + 0.5,
       0.5,
-      (300 / MAX_TICKS) * 1000,
+      (300 / editor.timelineTicks) * 1000,
       35,
     );
   });

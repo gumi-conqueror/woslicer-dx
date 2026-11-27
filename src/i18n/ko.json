@@ -359,7 +359,8 @@
     "lastTrackKept": "프로젝트에는 트랙이 하나 이상 필요.",
     "trackRemoved": "트랙 {name} 삭제. 실행 취소로 복원 가능.",
     "exportNameConflict": "두 트랙이 같은 {name} 파일을 씀. 트랙마다 다른 출력 이름 지정 필요.",
-    "exportTracksWithoutAudio": "오디오가 없는 트랙 {count}개는 내보내지 않음."
+    "exportTracksWithoutAudio": "오디오가 없는 트랙 {count}개는 내보내지 않음.",
+    "wosMarkersDropped": ".wos 파일은 256마디까지. 이후 분할점 {count}개는 쓰지 않음."
   },
   "menu": {
     "file": "파일",
@@ -403,7 +404,8 @@
     "exportAllTracks": "모든 트랙의 구간 내보내기…",
     "inputSettings": "입력 설정…",
     "track": "트랙",
-    "renameTrack": "트랙 이름 변경"
+    "renameTrack": "트랙 이름 변경",
+    "zoomFit": "전체 타임라인 표시"
   },
   "dialogs": {
     "loadAudio": "음원 열기",

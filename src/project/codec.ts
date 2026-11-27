@@ -3,7 +3,7 @@ import { markerTicks } from '@gumi-conqueror/wos-file';
 import { errorMessage } from '../core/messages';
 import { defaultBaseName } from '../core/slices';
 import { DEFAULT_CUE_DB, DEFAULT_PLAYBACK_DB } from '../core/volume';
-import { MAX_TICKS } from '../core/timebase';
+import { WOS_TICKS } from '../core/timebase';
 import {
   byteLimitText,
   PROJECT_FILE_MAX_BYTES,
@@ -243,7 +243,7 @@ export function projectFromWos(
   name: string,
   projectId: string = crypto.randomUUID(),
 ): ProjectFile {
-  if (data.markers.length !== MAX_TICKS)
+  if (data.markers.length !== WOS_TICKS)
     throw new ProjectFormatError('WOS marker map has an invalid length');
   const project = createEmptyProject(projectId, name);
   const fields = projectSchema.shape.tracks.element.shape.slicing.shape;
@@ -258,11 +258,16 @@ export function projectFromWos(
   return project;
 }
 
-/** The .wos fields of one track. */
+/** The number of a track's markers that a .wos file cannot hold. */
+export function markersBeyondWos(project: ProjectDocument, trackId: string | null = null): number {
+  return currentTrack(project, trackId).slicing.markers.filter((tick) => tick >= WOS_TICKS).length;
+}
+
+/** The .wos fields of one track. Markers past the .wos length are dropped. */
 export function projectToWos(project: ProjectDocument, trackId: string | null = null) {
   const { slicing } = currentTrack(project, trackId);
-  const markers = new Uint8Array(MAX_TICKS);
-  for (const tick of slicing.markers) markers[tick] = 1;
+  const markers = new Uint8Array(WOS_TICKS);
+  for (const tick of slicing.markers) if (tick < WOS_TICKS) markers[tick] = 1;
   return {
     bpm: project.timing.bpm,
     shift: project.timing.shiftTicks,

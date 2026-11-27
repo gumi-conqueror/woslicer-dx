@@ -4,8 +4,15 @@ import { MARKER_COUNT } from '@gumi-conqueror/wos-file';
 export const TICKS_PER_BEAT = 48;
 /** A measure has four beats. */
 export const MEASURE_TICKS = 4 * TICKS_PER_BEAT;
-/** Marker positions in a .wos bitmap are ticks 0 through MAX_TICKS - 1. */
-export const MAX_TICKS = MARKER_COUNT;
+/** A .wos marker bitmap covers ticks 0 through WOS_TICKS - 1; .wos export drops later markers. */
+export const WOS_TICKS = MARKER_COUNT;
+/**
+ * Project ticks are 0 through MAX_TICKS - 1. The limit only keeps tick values
+ * safe integers; the timeline itself is as long as its audio and markers.
+ */
+export const MAX_TICKS = 2 ** 31 - 1;
+/** Without audio or markers, the timeline shows this many ticks. */
+export const EMPTY_TIMELINE_TICKS = 64 * MEASURE_TICKS;
 
 /** Maps project ticks to source samples. `shift` is in ticks and moves tick 0 within the source. */
 export interface TimeBase {

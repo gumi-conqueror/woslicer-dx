@@ -10,6 +10,7 @@
 - A **Track** menu in the menu bar collects the track commands. Add audio track, Remove current track, Relink audio and Export slices of all tracks moved there from the Project menu.
 - F2 renames the current track; Shift+M and Shift+S mute and solo it.
 - Selecting another track during playback keeps playing from the same time.
+- The timeline has no 256-measure limit: it is as long as the longest audio or the last marker. **View → Show the whole timeline** (0) fits it in the window, and zooming out stops there. Exporting `.wos` keeps the first 256 measures and reports how many later markers were not written.
 
 ### Changed
 

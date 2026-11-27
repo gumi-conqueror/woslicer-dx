@@ -359,7 +359,8 @@
     "lastTrackKept": "工程至少保留一条音轨。",
     "trackRemoved": "已删除音轨 {name}。撤销可恢复。",
     "exportNameConflict": "两条音轨都会写出 {name}。请为音轨设置不同的输出名称。",
-    "exportTracksWithoutAudio": "{count} 条没有音频的音轨未导出。"
+    "exportTracksWithoutAudio": "{count} 条没有音频的音轨未导出。",
+    "wosMarkersDropped": ".wos 文件只能容纳 256 小节，之后的 {count} 个切点没有写入。"
   },
   "menu": {
     "file": "文件",
@@ -403,7 +404,8 @@
     "exportAllTracks": "导出全部音轨的切片…",
     "inputSettings": "输入设置…",
     "track": "音轨",
-    "renameTrack": "重命名音轨"
+    "renameTrack": "重命名音轨",
+    "zoomFit": "显示整条时间轴"
   },
   "dialogs": {
     "loadAudio": "打开音频",

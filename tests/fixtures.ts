@@ -1,7 +1,7 @@
 /** Deterministic audio/fixture builders shared by the test suites. */
 
 import type { SourceAudio } from '../src/core/audio/pcm.js';
-import { MAX_TICKS, MEASURE_TICKS, tickToSample } from '../src/core/timebase.js';
+import { WOS_TICKS, MEASURE_TICKS, tickToSample } from '../src/core/timebase.js';
 
 /** Deterministic linear congruential generator (reproducible "noise"). */
 export function makeRng(seed: number): () => number {
@@ -177,5 +177,5 @@ export function makeTestSource(sampleRate: number, bpm: number, measures = 2): S
 
 /** Empty marker bitmap. */
 export function emptyBitmap(): Uint8Array {
-  return new Uint8Array(MAX_TICKS);
+  return new Uint8Array(WOS_TICKS);
 }

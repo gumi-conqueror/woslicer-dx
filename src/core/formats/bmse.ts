@@ -6,7 +6,10 @@
  * decimal value, then CRLF. Marker exports end with a NUL byte.
  */
 
-import { MAX_TICKS, TICKS_PER_BEAT } from '../timebase.js';
+import { MEASURE_TICKS, TICKS_PER_BEAT } from '../timebase.js';
+
+/** BMSE holds measures 0 through 999. */
+const BMSE_TICKS = 1000 * MEASURE_TICKS;
 import { markerNextId, stepId, validId, type NumberingMode } from './numbering.js';
 
 const FORMAT_NAME = 'BMSE ClipBoard Object Data Format';
@@ -25,15 +28,15 @@ function clipboardTick(tick: number, resolution: number): number {
 }
 
 /**
- * Markers in the `101` column, numbered from `startNumber`. Ticks outside the
- * marker map are dropped. In restricted numbering, a start number that the
+ * Markers in the `101` column, numbered from `startNumber`. Ticks past BMSE's
+ * 1000 measures are dropped. In restricted numbering, a start number that the
  * rule skips moves to the next allowed number.
  */
 export function buildBmseClipboard(
   ticks: readonly number[],
   options: { startNumber: number; numbering: NumberingMode },
 ): string {
-  const sorted = [...ticks].sort((a, b) => a - b).filter((t) => t >= 0 && t < MAX_TICKS);
+  const sorted = [...ticks].sort((a, b) => a - b).filter((t) => t >= 0 && t < BMSE_TICKS);
   let n = markerNextId(stepId(options.startNumber, -1, 'extended'), options.numbering);
   let out = FORMAT_NAME + '\r\n';
   for (const tick of sorted) {
@@ -56,7 +59,7 @@ export function parseBmseClipboard(text: string): { ticks: number[]; invalidLine
   for (let i = 1; i < lines.length - 1; i++) {
     const line = lines[i];
     const tick = Number.parseInt(line.slice(3, 11), 10);
-    if (line.length >= 11 && Number.isInteger(tick) && tick >= 0 && tick < MAX_TICKS)
+    if (line.length >= 11 && Number.isInteger(tick) && tick >= 0 && tick < BMSE_TICKS)
       ticks.push(tick);
     else invalidLines.push(i);
   }

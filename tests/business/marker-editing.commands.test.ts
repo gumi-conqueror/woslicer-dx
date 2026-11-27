@@ -105,9 +105,10 @@ describe('marker editing actions', () => {
     { ticks: [10, 20, 30], delta: 1000, applied: 1000, expected: [1010, 1020, 1030] },
     {
       ticks: [10, 20, 30],
+      // Without audio the timeline has no end.
       delta: 999999,
-      applied: MAX_TICKS - 1 - 30,
-      expected: [MAX_TICKS - 21, MAX_TICKS - 11, MAX_TICKS - 1],
+      applied: 999999,
+      expected: [1000009, 1000019, 1000029],
     },
     { ticks: [100, 150], delta: -1000, applied: -100, expected: [0, 50] },
   ])(

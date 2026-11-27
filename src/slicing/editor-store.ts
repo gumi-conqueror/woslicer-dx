@@ -19,6 +19,9 @@ import {
   markerTickAllowed,
   resolveBreakpointTick,
   samplesPerTick,
+  sampleToTick,
+  EMPTY_TIMELINE_TICKS,
+  MEASURE_TICKS,
   tickToSampleExport,
   type TimeBase,
 } from '../core/timebase';
@@ -413,16 +416,45 @@ export const useEditorStore = defineStore('editor', () => {
     selectionStartTick.value = start;
     selectionEndTick.value = end;
   }
+  /** Scrolls within the timeline: the view never starts after its last viewport width. */
   function setScrollTick(value: number): void {
-    if (Number.isFinite(value)) scrollTick.value = Math.max(0, value);
+    if (!Number.isFinite(value)) return;
+    const span = viewportWidth.value > 0 ? viewportWidth.value / pxPerTick.value : 0;
+    scrollTick.value = Math.max(0, Math.min(value, timelineTicks.value - span));
+  }
+  /** Shows the whole timeline. */
+  function zoomToFit(): void {
+    pxPerTick.value = fitScale.value;
+    scrollTick.value = 0;
   }
   function snapTick(tick: number): number {
     return resolveBreakpointTick(tick, snap.value, gridStepTicks(grid.value), false);
   }
+  /**
+   * The timeline length in ticks: to the end of the longest track's audio or
+   * the last marker of any track, plus one measure. Scrolling and zooming out
+   * stop there.
+   */
+  const timelineTicks = computed(() => {
+    let end = 0;
+    for (const item of document.value.tracks) {
+      const audio = sessions.value.get(item.trackId)?.source;
+      const base = timeBaseOf(item.trackId);
+      if (audio && base) end = Math.max(end, Math.ceil(sampleToTick(audio.length, base)));
+      end = Math.max(end, item.slicing.markers.at(-1) ?? 0);
+    }
+    return end > 0 ? Math.min(MAX_TICKS, end + MEASURE_TICKS) : EMPTY_TIMELINE_TICKS;
+  });
+  /** The visible width of the timeline in CSS pixels; the timeline view reports it. */
+  const viewportWidth = shallowRef(0);
+  /** The zoom that shows the whole timeline in the viewport. */
+  const fitScale = computed(() =>
+    viewportWidth.value > 0 ? viewportWidth.value / timelineTicks.value : 0.02,
+  );
   function zoomAt(anchor: number, factor: number): void {
     const frames = timeBase.value ? samplesPerTick(timeBase.value) : 500;
     const next = zoomView({ scale: pxPerTick.value, scroll: scrollTick.value }, anchor, factor, {
-      min: 0.02,
+      min: Math.min(fitScale.value, 600),
       max: Math.max(600, 4 * frames),
     });
     pxPerTick.value = next.scale;
@@ -509,6 +541,9 @@ export const useEditorStore = defineStore('editor', () => {
     sessions,
     timeBase,
     timeBaseOf,
+    timelineTicks,
+    viewportWidth,
+    zoomToFit,
     docRevision,
     documentGeneration,
     isDirty,

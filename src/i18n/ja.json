@@ -359,7 +359,8 @@
     "lastTrackKept": "プロジェクトには 1 トラック以上が必要。",
     "trackRemoved": "トラック {name} を削除。元に戻すで復元可能。",
     "exportNameConflict": "2 つのトラックが同じ {name} を書き出す。トラックごとに別の出力名を設定。",
-    "exportTracksWithoutAudio": "音声のないトラック {count} 件は書き出していない。"
+    "exportTracksWithoutAudio": "音声のないトラック {count} 件は書き出していない。",
+    "wosMarkersDropped": ".wos は 256 小節まで。それ以降の分割点 {count} 個は書き出していない。"
   },
   "menu": {
     "file": "ファイル",
@@ -403,7 +404,8 @@
     "exportAllTracks": "全トラックの区間を書き出す…",
     "inputSettings": "入力設定…",
     "track": "トラック",
-    "renameTrack": "トラック名を変更"
+    "renameTrack": "トラック名を変更",
+    "zoomFit": "タイムライン全体を表示"
   },
   "dialogs": {
     "loadAudio": "音声を開く",

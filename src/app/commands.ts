@@ -336,6 +336,11 @@ export const COMMANDS = {
     group: 'navigation',
     run: ({ editor }) => editor.zoomAt(editor.cursorTick, 0.8),
   },
+  'zoom-fit': {
+    label: 'menu.zoomFit',
+    group: 'navigation',
+    run: ({ editor }) => editor.zoomToFit(),
+  },
   'grid-down': { label: 'help.gridDown', group: 'navigation', run: (c) => stepGrid(c, -1) },
   'grid-up': { label: 'help.gridUp', group: 'navigation', run: (c) => stepGrid(c, 1) },
   'cursor-left-grid': {

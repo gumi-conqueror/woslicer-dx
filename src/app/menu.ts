@@ -59,6 +59,7 @@ export const APPLICATION_MENU = [
     commands: [
       { id: 'zoom-in', mnemonic: 'i' },
       { id: 'zoom-out', mnemonic: 'o' },
+      { id: 'zoom-fit', mnemonic: 'f' },
     ],
   },
   {
