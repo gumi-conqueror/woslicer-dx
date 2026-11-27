@@ -7,6 +7,8 @@ import { ampToDb } from '../../src/core/volume';
 import { projectToWos } from '../../src/project/codec';
 import { writeWos } from '@gumi-conqueror/wos-file';
 import { wavFile } from '../support/audio';
+import { createBrowserPlatform } from '../../src/platform/browser';
+import type { DroppedFile } from '../../src/platform/contracts';
 
 describe('portable project workflow', () => {
   it('saves absolute media paths and opens project media through the project grant', async () => {
@@ -402,9 +404,24 @@ describe('portable project workflow', () => {
     Object.defineProperty(file, 'size', { value: 64 * 1024 * 1024 + 1 });
     const read = vi.spyOn(file, 'arrayBuffer');
     const original = f.editor.document;
-    await f.workspace.openDroppedFile(file);
+    // The browser reports drops from page events.
+    let dropped: DroppedFile[] = [];
+    const stop = createBrowserPlatform().watchDrops({
+      active: () => {},
+      dropped: (files) => {
+        dropped = files;
+      },
+    });
+    // The test DOM keeps no DataTransfer on events, so the drop carries a stand-in.
+    const drop = new Event('drop', { cancelable: true });
+    Object.defineProperty(drop, 'dataTransfer', { value: { types: ['Files'], files: [file] } });
+    window.dispatchEvent(drop);
+    stop();
+    expect(dropped.map((item) => item.name)).toEqual(['large.wosdx']);
+    await f.workspace.openDroppedFiles(dropped);
     expect(read).not.toHaveBeenCalled();
     expect(f.editor.document).toBe(original);
+    expect(f.editor.status.segments[0]?.key).toBe('dropFailed');
     await f.workspace.loadAudio(audioFile());
     f.editor.transact((draft) => {
       const media = draft.tracks[0].media;

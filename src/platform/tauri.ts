@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { byteLimitText, MEDIA_FILE_MAX_BYTES, PROJECT_FILE_MAX_BYTES } from '../project/schema';
 import type { OpenedFile, Platform } from './contracts';
 import type { AboutLink } from './about-links';
@@ -72,6 +73,29 @@ export function createTauriPlatform(): Platform {
     },
     async reopenFile(id) {
       return readOpened(await invoke<unknown>('reopen_file', { reference: id }));
+    },
+    watchDrops({ active, dropped }) {
+      const stops = [
+        listen<unknown>('drop-active', (event) => active(event.payload === true)),
+        listen<unknown>('files-dropped', (event) => {
+          if (!Array.isArray(event.payload)) return;
+          dropped(
+            event.payload.map((value: unknown) => {
+              const name =
+                typeof value === 'object' &&
+                value !== null &&
+                'name' in value &&
+                typeof value.name === 'string'
+                  ? value.name
+                  : '';
+              return { name, open: () => readOpened(value, /\.wosdx$/i.test(name)) };
+            }),
+          );
+        }),
+      ];
+      return () => {
+        for (const stop of stops) void stop.then((unlisten) => unlisten());
+      };
     },
     async openProjectMedia(projectReference, mediaId) {
       const value: unknown = await invoke('open_project_media', { projectReference, mediaId });

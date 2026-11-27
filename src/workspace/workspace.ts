@@ -1,5 +1,6 @@
 import { inject, provide, readonly, shallowRef, type InjectionKey } from 'vue';
 import { errorMessage } from '../core/messages';
+import { audioFileFormat } from '../core/audio-formats';
 import {
   createEmptyTrack,
   currentTrack,
@@ -10,13 +11,7 @@ import {
   projectToWos,
   markersBeyondWos,
 } from '../project/codec';
-import {
-  byteLimitText,
-  MEDIA_FILE_MAX_BYTES,
-  PROJECT_FILE_MAX_BYTES,
-  PROJECT_MAX_TRACKS,
-  type ProjectDocument,
-} from '../project/schema';
+import { PROJECT_MAX_TRACKS, type ProjectDocument } from '../project/schema';
 import {
   identifyAudio,
   projectFileName,
@@ -29,7 +24,7 @@ import { readWos, writeWos } from '@gumi-conqueror/wos-file';
 import { linkMarkersTo } from '../project/marker-links';
 import { markerTickAllowed } from '../core/timebase';
 import { buildBmseClipboard, parseBmseClipboard } from '../core/formats/bmse';
-import type { Platform, OpenedFile } from '../platform/contracts';
+import type { DroppedFile, Platform, OpenedFile } from '../platform/contracts';
 import type { EditorStore } from '../slicing/editor-store';
 import { createEditorActions } from '../slicing/editor-actions';
 import { createAudioEngine } from '../audio/audio-client';
@@ -470,27 +465,51 @@ export function createWorkspace(options: WorkspaceOptions) {
         editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
     }
   }
-  async function openDroppedFile(file: File): Promise<void> {
+  /**
+   * Opens dropped files. A project replaces the current project, and the other
+   * files are ignored. Audio files become tracks: the first one fills the
+   * current track when it has no audio, and every further file adds a track.
+   */
+  async function openDroppedFiles(files: readonly DroppedFile[]): Promise<void> {
     if (recoveryBlock && !(await releaseRecoveryBlock())) return;
-    const project = /\.wosdx$/i.test(file.name);
+    const project = files.find((file) => /\.wosdx$/i.test(file.name));
+    if (project) {
+      await openDropped(project, (opened) => acceptProject(opened), true);
+      return;
+    }
+    // Filling an empty track starts a new project; another replacement stops the loop.
+    let documentGeneration = editor.documentGeneration;
+    for (const [index, file] of files.filter((item) => audioFileFormat(item.name)).entries()) {
+      if (disposed || documentGeneration !== editor.documentGeneration) return;
+      const fill = index === 0 && !editor.track.media && !editor.source;
+      if (!fill && editor.document.tracks.length >= PROJECT_MAX_TRACKS) {
+        editor.setStatus('trackLimit', { count: PROJECT_MAX_TRACKS }, true);
+        return;
+      }
+      await openDropped(file, (opened) =>
+        loadAudio(opened, false, fill ? { trackId: editor.track.trackId } : { newTrack: true }),
+      );
+      if (fill) documentGeneration = editor.documentGeneration;
+    }
+  }
+  /** Reads one dropped file and opens it, unless the document changed meanwhile. */
+  async function openDropped(
+    file: DroppedFile,
+    open: (opened: OpenedFile) => Promise<void>,
+    project = false,
+  ): Promise<void> {
     const request = beginOpening({ stage: 'reading', name: file.name }),
       revision = editor.docRevision,
       documentGeneration = editor.documentGeneration;
     try {
-      const limit = project ? PROJECT_FILE_MAX_BYTES : MEDIA_FILE_MAX_BYTES;
-      if (file.size > limit)
-        throw new Error(`${project ? 'Project' : 'Audio'} exceeds ${byteLimitText(limit)}`);
-      const bytes = new Uint8Array(await file.arrayBuffer());
+      const opened = await file.open();
       if (
         !disposed &&
         request === opening &&
         documentGeneration === editor.documentGeneration &&
         (!project || revision === editor.docRevision)
-      ) {
-        const opened = { name: file.name, bytes, reference: null };
-        if (project) await acceptProject(opened);
-        else await loadAudio(opened);
-      }
+      )
+        await open(opened);
     } catch (error) {
       if (!disposed && request === opening)
         editor.setStatus('dropFailed', { message: errorMessage(error) }, true);
@@ -708,7 +727,7 @@ export function createWorkspace(options: WorkspaceOptions) {
     openProject,
     saveProject,
     relinkAudio,
-    openDroppedFile,
+    openDroppedFiles,
     loadAudio,
     reopen,
     importWosSettings,

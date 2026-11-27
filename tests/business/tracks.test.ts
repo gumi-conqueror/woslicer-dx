@@ -126,3 +126,21 @@ it('exports the slices of every track into one archive and refuses equal file na
   expect(f.editor.isError).toBe(false);
   expect(f.exported.map((file) => file.name).sort()).toEqual(['kick_000.wav', 'snare_000.wav']);
 });
+
+it('adds dropped audio files as tracks and fills an empty current track first', async () => {
+  const f = setup();
+  const dropped = (name: string, frames = 48000) => ({
+    name,
+    open: () => Promise.resolve(audioFile(name, frames)),
+  });
+  await f.workspace.openDroppedFiles([
+    dropped('kick.wav'),
+    dropped('notes.txt'),
+    dropped('snare.wav', 24000),
+  ]);
+  expect(f.editor.document.tracks.map((track) => track.name)).toEqual(['kick', 'snare']);
+  // With audio on the current track, every dropped file adds a track.
+  await f.workspace.openDroppedFiles([dropped('hat.wav')]);
+  expect(f.editor.document.tracks.map((track) => track.name)).toEqual(['kick', 'snare', 'hat']);
+  expect(f.editor.track.name).toBe('hat');
+});

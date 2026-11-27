@@ -220,6 +220,58 @@ export function createBrowserPlatform(): Platform {
         throw new Error(`Project exceeds ${byteLimitText(PROJECT_FILE_MAX_BYTES)}`);
       return { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()), reference: null };
     },
+    watchDrops({ active, dropped }) {
+      const files = (event: DragEvent) =>
+        Array.from(event.dataTransfer?.types ?? []).includes('Files');
+      // Enter and leave also fire between child elements; count them to know when files leave the page.
+      let depth = 0;
+      const enter = (event: DragEvent) => {
+        if (!files(event)) return;
+        event.preventDefault();
+        depth++;
+        active(true);
+      };
+      const over = (event: DragEvent) => {
+        if (files(event)) event.preventDefault();
+      };
+      const leave = (event: DragEvent) => {
+        if (!files(event)) return;
+        depth = Math.max(0, depth - 1);
+        if (!depth) active(false);
+      };
+      const drop = (event: DragEvent) => {
+        if (!files(event)) return;
+        event.preventDefault();
+        depth = 0;
+        active(false);
+        dropped(
+          Array.from(event.dataTransfer?.files ?? [], (file) => ({
+            name: file.name,
+            async open(): Promise<OpenedFile> {
+              const limit = /\.wosdx$/i.test(file.name)
+                ? PROJECT_FILE_MAX_BYTES
+                : MEDIA_FILE_MAX_BYTES;
+              if (file.size > limit) throw new Error(`File exceeds ${byteLimitText(limit)}`);
+              return {
+                name: file.name,
+                bytes: new Uint8Array(await file.arrayBuffer()),
+                reference: null,
+              };
+            },
+          })),
+        );
+      };
+      window.addEventListener('dragenter', enter);
+      window.addEventListener('dragover', over);
+      window.addEventListener('dragleave', leave);
+      window.addEventListener('drop', drop);
+      return () => {
+        window.removeEventListener('dragenter', enter);
+        window.removeEventListener('dragover', over);
+        window.removeEventListener('dragleave', leave);
+        window.removeEventListener('drop', drop);
+      };
+    },
     openProjectMedia() {
       return Promise.resolve(null);
     },

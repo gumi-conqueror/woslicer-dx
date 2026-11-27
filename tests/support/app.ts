@@ -134,6 +134,9 @@ export function fixture(createEngine = processorEngine) {
       if (opened?.reference === reference) return Promise.resolve(opened);
       return Promise.reject(new Error('Missing source'));
     },
+    watchDrops() {
+      return () => {};
+    },
     saveFile(_kind, name, bytes) {
       saved.push({ name, bytes });
       return Promise.resolve(true);

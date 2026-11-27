@@ -60,7 +60,7 @@ impl FileKind {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct OpenedFile {
     name: String,
@@ -338,6 +338,36 @@ pub(crate) async fn open_file(
         return Err("unsupported file extension".into());
     }
     state.grant(file.path()).map(Some)
+}
+/// Files dragged onto the main window. Dropping files is a user choice like the
+/// file picker, so dropped audio and project files get the same grants. The page
+/// receives `drop-active` while files hover over the window and `files-dropped`
+/// with the granted files; other files are left out.
+pub(crate) fn drag_drop(window: &tauri::Window, event: &tauri::DragDropEvent) {
+    use tauri::{Emitter, Manager};
+    let emit = |name: &str, payload: serde_json::Value| {
+        if let Err(error) = window.emit(name, payload) {
+            eprintln!("could not report a file drop: {error}");
+        }
+    };
+    match event {
+        tauri::DragDropEvent::Enter { .. } => emit("drop-active", true.into()),
+        tauri::DragDropEvent::Leave => emit("drop-active", false.into()),
+        tauri::DragDropEvent::Drop { paths, .. } => {
+            let state = window.state::<HostFiles>();
+            let files: Vec<OpenedFile> = paths
+                .iter()
+                .filter(|path| FileKind::Audio.accepts(path) || FileKind::Wosdx.accepts(path))
+                .filter_map(|path| state.grant(path).ok())
+                .collect();
+            emit("drop-active", false.into());
+            match serde_json::to_value(files) {
+                Ok(value) => emit("files-dropped", value),
+                Err(error) => eprintln!("could not report a file drop: {error}"),
+            }
+        }
+        _ => {}
+    }
 }
 #[tauri::command]
 pub(crate) fn reopen_file(
