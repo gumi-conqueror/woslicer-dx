@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+## 2.0.0-alpha.9 — 2026-11-28
+
 ### Added
 
 - Right-click a track to open the track menu: add, rename, remove, move, mute, solo, open or relink audio, and export.
