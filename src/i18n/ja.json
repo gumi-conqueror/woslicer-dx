@@ -226,7 +226,8 @@
     "markerTracks": "全トラックの分割点",
     "markerAbsent": "分割点なし",
     "markerOwn": "分割点",
-    "markerLinked": "リンク済み分割点"
+    "markerLinked": "リンク済み分割点",
+    "dropFiles": "音声ファイルをドロップでトラック追加、プロジェクトはドロップで開く"
   },
   "status": {
     "projectOpened": "プロジェクトを開いた：{name}",

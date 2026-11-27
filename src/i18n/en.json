@@ -226,7 +226,8 @@
     "markerTracks": "Markers of all tracks",
     "markerAbsent": "no marker",
     "markerOwn": "marker",
-    "markerLinked": "linked marker"
+    "markerLinked": "linked marker",
+    "dropFiles": "Drop audio files to add tracks, or a project to open it"
   },
   "status": {
     "projectOpened": "Opened project: {name}",

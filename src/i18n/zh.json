@@ -226,7 +226,8 @@
     "markerTracks": "所有音轨的切点",
     "markerAbsent": "无切点",
     "markerOwn": "切点",
-    "markerLinked": "已链接的切点"
+    "markerLinked": "已链接的切点",
+    "dropFiles": "拖放音频文件添加音轨，或拖放工程打开"
   },
   "status": {
     "projectOpened": "已打开工程：{name}",

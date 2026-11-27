@@ -226,7 +226,8 @@
     "markerTracks": "모든 트랙의 분할점",
     "markerAbsent": "분할점 없음",
     "markerOwn": "분할점",
-    "markerLinked": "링크된 분할점"
+    "markerLinked": "링크된 분할점",
+    "dropFiles": "오디오 파일을 놓으면 트랙 추가, 프로젝트를 놓으면 열기"
   },
   "status": {
     "projectOpened": "프로젝트 열기 완료: {name}",

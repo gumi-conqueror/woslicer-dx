@@ -433,7 +433,7 @@ onUnmounted(() => {
         v-if="dragActive"
         class="drop-overlay"
       >
-        {{ t('chrome.emptySub') }}
+        {{ t('chrome.dropFiles') }}
       </div>
     </main>
   </ElConfigProvider>
