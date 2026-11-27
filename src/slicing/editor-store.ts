@@ -439,7 +439,7 @@ export const useEditorStore = defineStore('editor', () => {
   function moveCursorTo(tick: number): void {
     setCursorTick(tick);
     if (viewportWidth.value > 0)
-      setScrollTick(cursorTick.value - viewportWidth.value / pxPerTick.value / 2);
+      glideScrollTo(cursorTick.value - viewportWidth.value / pxPerTick.value / 2);
   }
   function setSelectedTicks(value: readonly number[]): void {
     selectedTicks.value = normalizeSelection(value).filter((t) => ticks.value.includes(t));
@@ -450,9 +450,47 @@ export const useEditorStore = defineStore('editor', () => {
   }
   /** Scrolls within the timeline: the view never starts after its last viewport width. */
   function setScrollTick(value: number): void {
-    if (!Number.isFinite(value)) return;
+    stopGlide();
+    if (Number.isFinite(value)) scrollTick.value = scrollLimit(value);
+  }
+  function scrollLimit(value: number): number {
     const span = viewportWidth.value > 0 ? viewportWidth.value / pxPerTick.value : 0;
-    scrollTick.value = Math.max(0, Math.min(value, timelineTicks.value - span));
+    return Math.max(0, Math.min(value, timelineTicks.value - span));
+  }
+  /** A glide approaches its target by 63 % in this time, so it slows down as it arrives. */
+  const GLIDE_MS = 70;
+  let glideFrame = 0,
+    glideTarget = 0;
+  function stopGlide(): void {
+    if (glideFrame) cancelAnimationFrame(glideFrame);
+    glideFrame = 0;
+  }
+  /**
+   * Scrolls smoothly toward a scroll position. A later target redirects the
+   * glide; any direct scroll stops it. Without animation frames, or when the
+   * user prefers reduced motion, the view jumps.
+   */
+  function glideScrollTo(value: number): void {
+    if (!Number.isFinite(value)) return;
+    glideTarget = scrollLimit(value);
+    const reduced =
+      typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (typeof requestAnimationFrame !== 'function' || reduced) {
+      setScrollTick(glideTarget);
+      return;
+    }
+    if (glideFrame) return;
+    let last = performance.now();
+    const step = (now: number): void => {
+      const share = 1 - Math.exp(-Math.max(0, now - last) / GLIDE_MS);
+      last = now;
+      const next = scrollTick.value + (glideTarget - scrollTick.value) * share;
+      // Within half a pixel, the glide lands on its target.
+      const done = Math.abs(glideTarget - next) * pxPerTick.value < 0.5;
+      scrollTick.value = done ? glideTarget : next;
+      glideFrame = done ? 0 : requestAnimationFrame(step);
+    };
+    glideFrame = requestAnimationFrame(step);
   }
   /** Shows the whole timeline. */
   function zoomToFit(): void {
@@ -565,6 +603,7 @@ export const useEditorStore = defineStore('editor', () => {
     cursorTick.value = 0;
     setSelection(null, null);
     pxPerTick.value = 6;
+    stopGlide();
     scrollTick.value = 0;
     followPlayhead.value = true;
     exportLock.value = false;
