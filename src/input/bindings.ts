@@ -78,6 +78,8 @@ export const BINDINGS: readonly Binding[] = [
   { layer: 'edit', command: 'select-all', keyboard: [primary('a')] },
   { layer: 'edit', command: 'clear-selection', keyboard: CANCEL, gamepad: ['b'] },
   { layer: 'edit', command: 'clear-markers', keyboard: key('c') },
+  { layer: 'edit', command: 'link-markers-all-tracks', keyboard: key('l') },
+  { layer: 'edit', command: 'unlink-markers', keyboard: [{ key: 'l', shift: true }] },
   { layer: 'edit', command: 'toggle-marker', keyboard: key('z'), gamepad: ['x'] },
   { layer: 'edit', command: 'place-marker', keyboard: CALIBRATION_TAP, gamepad: ['a'] },
   {
@@ -101,42 +103,71 @@ export const BINDINGS: readonly Binding[] = [
       { key: '+', shift: 'either' },
       { key: '=', shift: 'either' },
     ],
-    gamepad: ['rs-up'],
+    gamepad: ['ls-up', 'ls-up-hard'],
   },
-  { layer: 'edit', command: 'zoom-out', keyboard: key('-'), gamepad: ['rs-down'] },
+  { layer: 'edit', command: 'zoom-fit', keyboard: key('0') },
+  {
+    layer: 'edit',
+    command: 'zoom-out',
+    keyboard: key('-'),
+    gamepad: ['ls-down', 'ls-down-hard'],
+  },
   {
     layer: 'edit',
     command: 'cursor-left-grid',
     keyboard: key('ArrowLeft'),
-    gamepad: ['dpad-left', 'ls-left'],
+    gamepad: ['dpad-left', 'ls-left-hard'],
   },
   {
     layer: 'edit',
     command: 'cursor-right-grid',
     keyboard: key('ArrowRight'),
-    gamepad: ['dpad-right', 'ls-right'],
+    gamepad: ['dpad-right', 'ls-right-hard'],
   },
   {
     layer: 'edit',
     command: 'cursor-left-tick',
     keyboard: [{ key: 'ArrowLeft', shift: true }],
-    gamepad: ['rs-left'],
+    gamepad: ['ls-left'],
   },
   {
     layer: 'edit',
     command: 'cursor-right-tick',
     keyboard: [{ key: 'ArrowRight', shift: true }],
-    gamepad: ['rs-right'],
+    gamepad: ['ls-right'],
   },
   {
     layer: 'edit',
     command: 'cursor-previous-measure',
     keyboard: key('ArrowUp'),
-    gamepad: ['lb'],
+    gamepad: ['lb', 'ls-left-long'],
   },
-  { layer: 'edit', command: 'cursor-next-measure', keyboard: key('ArrowDown'), gamepad: ['rb'] },
-  { layer: 'edit', command: 'previous-track', keyboard: [primary('ArrowUp')] },
-  { layer: 'edit', command: 'next-track', keyboard: [primary('ArrowDown')] },
+  {
+    layer: 'edit',
+    command: 'cursor-next-measure',
+    keyboard: key('ArrowDown'),
+    gamepad: ['rb', 'ls-right-long'],
+  },
+  {
+    layer: 'edit',
+    command: 'previous-track',
+    keyboard: [primary('ArrowUp')],
+    gamepad: ['rs-up', 'rs-up-hard'],
+  },
+  {
+    layer: 'edit',
+    command: 'next-track',
+    keyboard: [primary('ArrowDown')],
+    gamepad: ['rs-down', 'rs-down-hard'],
+  },
+  // The right stick moves the playhead in editing; recording seeks with the left stick's rotation.
+  { layer: 'edit', command: 'seek-backward', gamepad: ['rs-left', 'rs-left-hard'] },
+  { layer: 'edit', command: 'seek-forward', gamepad: ['rs-right', 'rs-right-hard'] },
+  { layer: 'edit', command: 'seek-backward-fast', gamepad: ['rs-left-long'] },
+  { layer: 'edit', command: 'seek-forward-fast', gamepad: ['rs-right-long'] },
+  { layer: 'edit', command: 'rename-track', keyboard: key('F2') },
+  { layer: 'edit', command: 'toggle-track-mute', keyboard: [{ key: 'm', shift: true }] },
+  { layer: 'edit', command: 'toggle-track-solo', keyboard: [{ key: 's', shift: true }] },
   { layer: 'edit', command: 'move-track-up', keyboard: [primary('ArrowUp', true)] },
   { layer: 'edit', command: 'move-track-down', keyboard: [primary('ArrowDown', true)] },
   { layer: 'edit', command: 'export-slice', keyboard: [primary('e')] },
@@ -182,7 +213,17 @@ export const BINDINGS: readonly Binding[] = [
   {
     layer: 'recording',
     command: null,
-    gamepad: ['dpad-down', 'ls-up', 'ls-down', 'ls-left', 'ls-right'],
+    gamepad: [
+      'dpad-down',
+      'ls-up',
+      'ls-down',
+      'ls-left',
+      'ls-right',
+      'ls-up-hard',
+      'ls-down-hard',
+      'ls-left-hard',
+      'ls-right-hard',
+    ],
   },
 ];
 
@@ -212,6 +253,16 @@ type KeyEvent = Pick<
   KeyboardEvent,
   'key' | 'code' | 'ctrlKey' | 'metaKey' | 'altKey' | 'shiftKey' | 'isComposing'
 >;
+/** macOS uses Command where other systems use Ctrl. */
+export const MAC =
+  typeof navigator !== 'undefined' &&
+  /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+/** The name of the primary shortcut modifier on this system. */
+export const PRIMARY_KEY = MAC ? 'Cmd' : 'Ctrl';
+/** The primary modifier is held: Command on macOS, Ctrl elsewhere. */
+export function primaryPressed(event: Pick<KeyEvent, 'ctrlKey' | 'metaKey'>): boolean {
+  return MAC ? event.metaKey : event.ctrlKey;
+}
 function keyMatches(chord: KeyChord, event: KeyEvent): boolean {
   if (chord.code !== undefined)
     return (
@@ -223,7 +274,9 @@ function keyMatches(chord: KeyChord, event: KeyEvent): boolean {
     );
   return (
     chord.key?.toLowerCase() === event.key.toLowerCase() &&
-    Boolean(chord.primary) === (event.ctrlKey || event.metaKey) &&
+    Boolean(chord.primary) === primaryPressed(event) &&
+    // The other system modifier is not part of any shortcut.
+    !(MAC ? event.ctrlKey : event.metaKey) &&
     Boolean(chord.alt) === event.altKey &&
     (chord.shift === 'either' || Boolean(chord.shift) === event.shiftKey)
   );
@@ -339,15 +392,17 @@ function keyLabel(chord: KeyChord): string {
   const value = chord.key ?? '';
   return KEY_LABELS[value] ?? (value.length === 1 ? value.toUpperCase() : value);
 }
+/** The keys of one chord, modifiers first, as key caps show them. */
+export function chordKeys(chord: KeyChord): string[] {
+  return [
+    ...(chord.primary ? [PRIMARY_KEY] : []),
+    ...(chord.alt ? ['Alt'] : []),
+    ...(chord.shift === true ? ['Shift'] : []),
+    keyLabel(chord),
+  ];
+}
 export function formatChords(chords: readonly KeyChord[]): string {
-  const labels = chords.map((chord) =>
-    [
-      ...(chord.primary ? ['Ctrl/Cmd'] : []),
-      ...(chord.alt ? ['Alt'] : []),
-      ...(chord.shift === true ? ['Shift'] : []),
-      keyLabel(chord),
-    ].join('+'),
-  );
+  const labels = chords.map((chord) => chordKeys(chord).join('+'));
   return [...new Set(labels)].join(' / ');
 }
 /** The keyboard text shown beside a command in menus and tooltips. */

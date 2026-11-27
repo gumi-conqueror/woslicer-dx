@@ -1,7 +1,6 @@
 import { BAND_NAMES } from '../core/bands';
 import { errorMessage } from '../core/messages';
 import { gridStepTicks } from '../core/gridlines';
-import { MAX_TICKS } from '../core/timebase';
 import type { AudioEngine } from '../audio/audio-jobs';
 import type { EditorStore } from '../slicing/editor-store';
 
@@ -69,7 +68,7 @@ export function createDetection(
         grid: cell,
         minGapTicks: cell * settings.minGapUnits,
         fromTick: start === null || end === null ? 0 : Math.min(start, end),
-        toTick: start === null || end === null ? MAX_TICKS - 1 : Math.max(start, end),
+        toTick: start === null || end === null ? editor.timelineTicks : Math.max(start, end),
         base,
         existing: new Set(editor.ticks),
         snap: settings.snap,

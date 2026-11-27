@@ -63,10 +63,10 @@ pub fn run() {
         )
         .manage(clipboard::NativeClipboard::default())
         .manage(input::NativeInput::default())
-        .on_window_event(|window, event| {
-            if matches!(event, tauri::WindowEvent::Destroyed) {
-                window.state::<input::NativeInput>().reset();
-            }
+        .on_window_event(|window, event| match event {
+            tauri::WindowEvent::Destroyed => window.state::<input::NativeInput>().reset(),
+            tauri::WindowEvent::DragDrop(drop) => files::drag_drop(window, drop),
+            _ => {}
         })
         .invoke_handler(tauri::generate_handler![
             input::input_clock,
@@ -77,6 +77,7 @@ pub fn run() {
             app_data::app_data_folders,
             app_data::open_data_folder,
             files::open_file,
+            files::open_files,
             files::reopen_file,
             files::open_project_media,
             files::begin_read,

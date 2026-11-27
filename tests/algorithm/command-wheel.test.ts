@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_WHEELS,
+  stepToward,
   stepWheel,
   WHEEL_SLOTS,
   WHEEL_TAP_MS,
@@ -95,6 +96,23 @@ describe('command wheel', () => {
         { type: 'release', time: WHEEL_TAP_MS },
       ]),
     ).toEqual({ state: { open: false, page: 0 }, chosen: [] });
+  });
+  it('steps one slot toward a direction the short way, passing the corners', () => {
+    expect(stepToward(null, 0)).toBe(0);
+    // From left, up goes through up-left.
+    expect(stepToward(6, 0)).toBe(7);
+    expect(stepToward(7, 0)).toBe(0);
+    expect(stepToward(0, 0)).toBe(0);
+    // From up, down (the opposite) turns clockwise.
+    expect(stepToward(0, 4)).toBe(1);
+    expect(stepToward(2, 6)).toBe(3);
+    const tapped = run([
+      { type: 'open', time: 0 },
+      { type: 'release', time: WHEEL_TAP_MS - 1 },
+      { type: 'step', toward: 6 },
+      { type: 'step', toward: 0 },
+    ]).state;
+    expect(selected(tapped)).toBe(7);
   });
   it('switches pages in both directions and remembers the page', () => {
     const pages = DEFAULT_WHEELS.length;

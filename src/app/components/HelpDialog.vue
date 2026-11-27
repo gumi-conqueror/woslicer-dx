@@ -14,6 +14,9 @@ import { UI_NAVIGATION } from '../../input/gamepad';
 import { COMMAND_GROUPS, commandGroup, commandLabel } from '../commands';
 import { APPLICATION_MENU } from '../menu';
 import GamepadIcon from '../../ui/GamepadIcon.vue';
+import KeyCaps from '../../ui/KeyCaps.vue';
+import MouseIcon from '../../ui/MouseIcon.vue';
+import { HINT_AREAS } from '../hint-areas';
 import UninstallGuide from './UninstallGuide.vue';
 import RecordingGuide from './RecordingGuide.vue';
 const open = defineModel<boolean>({ required: true });
@@ -23,7 +26,7 @@ const guideDevice = ref<'keyboard' | 'gamepad' | 'yuancon'>('keyboard');
 const editing = boundCommands('edit').map((command) => ({
   command,
   group: commandGroup(command),
-  keyboard: formatChords(keyboardChords(command)),
+  keyboard: keyboardChords(command),
   gamepad: gamepadControls(command),
 }));
 const sections = computed(() =>
@@ -33,7 +36,7 @@ const sections = computed(() =>
       (row) =>
         row.group === group &&
         (guideDevice.value === 'keyboard'
-          ? row.keyboard
+          ? row.keyboard.length
           : guideDevice.value === 'gamepad' && row.gamepad.length),
     ),
   })).filter((section) => section.rows.length),
@@ -83,7 +86,27 @@ const sections = computed(() =>
       <p>{{ t('help.workspaceBody') }}</p>
       <template v-if="guideDevice === 'keyboard'">
         <h3>{{ t('help.mouse') }}</h3>
-        <p>{{ t('help.mouseBody', { cancel: formatChords(CANCEL) }) }}</p>
+        <section
+          v-for="(area, name) in HINT_AREAS"
+          :key="name"
+        >
+          <h4>{{ t(area.title) }}</h4>
+          <dl>
+            <template
+              v-for="(hint, index) in area.mouse"
+              :key="index"
+              ><dt>{{ t(hint.label) }}</dt>
+              <dd>
+                <KeyCaps
+                  v-if="'keys' in hint"
+                  :keys="hint.keys"
+                /><MouseIcon
+                  v-if="'mouse' in hint"
+                  v-bind="hint.mouse"
+                /></dd
+            ></template>
+          </dl>
+        </section>
         <h3>{{ t('help.keyboard') }}</h3>
         <p>{{ t('help.keyboardScope') }}</p>
         <p>{{ t('input.altNavigation') }}</p>
@@ -91,8 +114,8 @@ const sections = computed(() =>
           <span
             v-for="menu in APPLICATION_MENU"
             :key="menu.label"
-            >{{ t(menu.label) }} <kbd>Alt+{{ menu.mnemonic.toUpperCase() }}</kbd></span
-          >
+            >{{ t(menu.label) }} <KeyCaps :keys="['Alt', menu.mnemonic.toUpperCase()]"
+          /></span>
         </div>
         <h4>{{ t('input.wheel') }}</h4>
         <p>{{ t('input.wheelKeyboard', { key: formatChords(keyboardChords('open-wheel')) }) }}</p>
@@ -137,7 +160,10 @@ const sections = computed(() =>
                   :key="control"
                   :control="control"
               /></template>
-              <kbd v-else>{{ row.keyboard }}</kbd>
+              <KeyCaps
+                v-else
+                :chords="row.keyboard"
+              />
             </dd>
           </template>
         </dl>

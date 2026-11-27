@@ -10,7 +10,17 @@ import type { YuanconControl } from './yuancon/protocol';
  * dialog; `text` is focus in an editable control.
  */
 export type InputContext = 'dialog' | 'modal' | 'wheel' | 'menu' | 'text' | InputLayer;
-export type WheelAction = 'hold' | 'release' | 'confirm' | 'cancel' | 'previous' | 'next';
+export type WheelAction =
+  | 'hold'
+  | 'release'
+  | 'confirm'
+  | 'cancel'
+  | 'previous'
+  | 'next'
+  | 'step-up'
+  | 'step-right'
+  | 'step-down'
+  | 'step-left';
 export type InputAction =
   | { kind: 'dialog'; action: UiNavigation }
   | { kind: 'menu'; action: UiNavigation }
@@ -19,12 +29,16 @@ export type InputAction =
 
 /** Commands that stay available while a text field has focus. */
 const TEXT_COMMANDS: readonly AppCommand[] = ['help'];
-/** Directions point inside the wheel, so only these buttons act on it. */
+/** Sticks point inside the wheel; buttons and D-pad presses act on it. */
 const WHEEL_ACTIONS: Partial<Record<GamepadControl, WheelAction>> = {
   a: 'confirm',
   b: 'cancel',
   lb: 'previous',
   rb: 'next',
+  'dpad-up': 'step-up',
+  'dpad-right': 'step-right',
+  'dpad-down': 'step-down',
+  'dpad-left': 'step-left',
 };
 
 /** Merges the recording taps of one poll into a single chord at the poll time. */

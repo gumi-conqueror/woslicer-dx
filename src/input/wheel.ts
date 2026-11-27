@@ -63,7 +63,9 @@ export type WheelEvent =
   | { type: 'confirm' }
   | { type: 'cancel' }
   | { type: 'page'; delta: number; pages: number }
-  | { type: 'choose'; slot: number };
+  | { type: 'choose'; slot: number }
+  /** A direction key moves the selection one slot toward its direction. */
+  | { type: 'step'; toward: number };
 
 /** Clockwise angle from the top for screen coordinates (x right, y down). */
 function angleOf(x: number, y: number): number {
@@ -89,6 +91,18 @@ function pointedSlot(
 }
 
 const closed = (page: number): WheelState => ({ open: false, page });
+
+/**
+ * The slot one step from `current` toward `target`, the short way round. From
+ * nothing selected, the target itself. Left (6) toward up (0) goes to up-left (7).
+ */
+export function stepToward(current: number | null, target: number): number {
+  if (current === null) return target;
+  const distance = (target - current + WHEEL_SLOTS) % WHEEL_SLOTS;
+  if (distance === 0) return current;
+  const direction = distance <= WHEEL_SLOTS / 2 ? 1 : -1;
+  return (current + direction + WHEEL_SLOTS) % WHEEL_SLOTS;
+}
 
 /** The next wheel state, and the slot to run when the event chooses one. */
 export function stepWheel(
@@ -134,5 +148,9 @@ export function stepWheel(
       };
     case 'choose':
       return { state: closed(state.page), chosen: event.slot };
+    case 'step': {
+      const selected = stepToward(state.selected, event.toward);
+      return { state: { ...state, selected, pointed: true } };
+    }
   }
 }

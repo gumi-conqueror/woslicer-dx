@@ -9,6 +9,8 @@ import {
 import { APPLICATION_MENU } from '../../src/app/menu';
 
 const track = (media: unknown) => ({ media }) as unknown as MenuEditorState['track'];
+const linked = (links: number[]) =>
+  ({ media: null, slicing: { markers: links, links } }) as unknown as MenuEditorState['track'];
 const tracks = (count: number) =>
   ({
     tracks: Array.from({ length: count }, () => ({ slicing: { markers: [] } })),
@@ -78,6 +80,8 @@ const table: ReadonlyArray<readonly [AppCommand, MenuEditorState, boolean]> = [
   ['seek-backward', withSource, true],
   ['recording-tap', withSource, true],
   ['seek-forward', state(), false],
+  ['seek-backward-fast', state(), false],
+  ['seek-forward-fast', withSource, true],
   ['place-marker', state(), false],
   ['place-marker-free', withSource, true],
   // Marker-wide edits need markers.
@@ -89,6 +93,12 @@ const table: ReadonlyArray<readonly [AppCommand, MenuEditorState, boolean]> = [
   ['open-wheel', state(), true],
   // A project keeps at least one track.
   ['add-track', state(), true],
+  ['zoom-fit', state(), true],
+  ['rename-track', state(), true],
+  ['toggle-track-mute', state(), true],
+  ['toggle-track-solo', state(), true],
+  ['previous-track', state(), true],
+  ['next-track', state(), true],
   // One track cannot move.
   ['move-track-up', state(), false],
   ['move-track-down', state(), false],
@@ -96,6 +106,14 @@ const table: ReadonlyArray<readonly [AppCommand, MenuEditorState, boolean]> = [
   ['export-all-tracks', state(), false],
   ['remove-track', state(), false],
   ['remove-track', state({ document: tracks(2) }), true],
+  // Links need markers and another track; unlinking needs linked markers.
+  ['link-markers-all-tracks', withSource, false],
+  ['link-markers-all-tracks', state({ ticks: [12], document: tracks(2) }), true],
+  ['relink-markers', state({ document: tracks(2) }), false],
+  ['relink-markers', state({ ticks: [12], document: tracks(2) }), true],
+  ['unlink-markers', state({ track: linked([]) }), false],
+  ['unlink-markers', state({ track: linked([12]) }), true],
+  ['toggle-shared-markers', state(), true],
 ];
 
 describe('command availability rules', () => {

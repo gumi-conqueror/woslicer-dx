@@ -8,6 +8,8 @@ export interface Palette {
   text2: string;
   text3: string;
   accent: string;
+  /** Markers that are linked to markers on other tracks. */
+  linked: string;
   selection: string;
   playhead: string;
   cue: string;
@@ -43,6 +45,7 @@ const DARK: Palette = {
   text2: '#b3b4bd',
   text3: '#8f909c',
   accent: '#ffad56',
+  linked: '#b4e05a',
   selection: '#b0ddeb',
   playhead: '#f0f1f5',
   cue: '#03c3d5',
@@ -74,6 +77,7 @@ const LIGHT: Palette = {
   text2: '#262a33',
   text3: '#4b4f5c',
   accent: '#a85600',
+  linked: '#4a7000',
   selection: '#006a79',
   playhead: '#0f121a',
   cue: '#007383',

@@ -97,7 +97,8 @@ test('opens, saves and relinks a project at native browser scale', async ({ page
   await pick(page, 'Open', 'tone.wav', wav);
   const loading = page.locator('.track-header .track-loading');
   await expect(loading).toBeVisible();
-  await expect(loading).toHaveAttribute('aria-label', 'Checking audio…');
+  // Hashing and decoding start together, so the label names the decoding.
+  await expect(loading).toHaveAttribute('aria-label', 'Decoding audio and creating waveform…');
   await expect(loading).toHaveText('');
   await expect
     .poll(() =>
@@ -109,7 +110,11 @@ test('opens, saves and relinks a project at native browser scale', async ({ page
       ),
     )
     .toBeGreaterThan(0);
-  expect(await loading.boundingBox()).toEqual(overviewBefore);
+  // The loading box starts where the overview starts. With the declared length
+  // known, it ends where the audio will end on the timeline.
+  const box = await loading.boundingBox();
+  expect({ ...box, width: 0 }).toEqual({ ...overviewBefore, width: 0 });
+  expect(box?.width).toBeLessThanOrEqual(overviewBefore?.width ?? 0);
   expect(await page.locator('.track-header').boundingBox()).toEqual(trackBefore);
   expect(await page.locator('.timeline-viewport').boundingBox()).toEqual(waveformBefore);
   await expect(page.locator('.track-name')).toHaveText('tone.wav');

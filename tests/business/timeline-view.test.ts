@@ -11,7 +11,6 @@ import { providePlayback, type Playback } from '../../src/playback';
 import TimelineEditor from '../../src/timeline/TimelineEditor.vue';
 import PlaybackControls from '../../src/playback/PlaybackControls.vue';
 import { buildPeakCache } from '../../src/core/peaks';
-import { MAX_TICKS } from '../../src/core/timebase';
 import { dbToAmp, sliderToDb } from '../../src/core/volume';
 import { drawBandEnvelope, drawWaveLane } from '../../src/timeline/waveform';
 import { drawOverview, setupCanvas } from '../../src/timeline/render';
@@ -132,6 +131,8 @@ async function flushFrame() {
   await nextTick();
 }
 
+const normalized = (data: Int16Array) => Float32Array.from(data, (value) => value / 32768);
+
 describe('waveform drawing algorithms', () => {
   it('sizes backing canvases using fractional DPR and CSS viewport size', () => {
     const { canvas, record } = canvasFixture();
@@ -144,7 +145,7 @@ describe('waveform drawing algorithms', () => {
   it('places one-device-pixel sample dots within their channel', () => {
     const { context, record } = canvasFixture();
     const data = Int16Array.of(1000, 8192, -16384, 4096, 0);
-    drawWaveLane(context, view, data, { center: 20, halfHeight: 16 }, colors, true);
+    drawWaveLane(context, view, normalized(data), { center: 20, halfHeight: 16 }, colors, true);
     expect(record.fills).toHaveLength(4);
     expect(
       record.fills.every(
@@ -165,7 +166,7 @@ describe('waveform drawing algorithms', () => {
     drawWaveLane(
       context,
       { ...view, scrollTick: 0, pxPerTick: 500 },
-      data,
+      normalized(data),
       { center: 20, halfHeight: 16 },
       colors,
       true,
@@ -182,7 +183,7 @@ describe('waveform drawing algorithms', () => {
     drawWaveLane(
       context,
       { ...view, scrollTick: 0, pxPerTick: 1 },
-      data,
+      normalized(data),
       { center: 20, halfHeight: 16 },
       colors,
       true,
@@ -194,7 +195,7 @@ describe('waveform drawing algorithms', () => {
     drawWaveLane(
       context,
       { ...view, scrollTick: 0, pxPerTick: 1 },
-      data,
+      normalized(data),
       { center: 20, halfHeight: 16 },
       colors,
       false,
@@ -207,7 +208,7 @@ describe('waveform drawing algorithms', () => {
     drawWaveLane(
       context,
       { ...view, dpr: 1, scrollTick: 0, pxPerTick: 10 },
-      data,
+      normalized(data),
       { center: 20, halfHeight: 16 },
       colors,
       false,
@@ -240,16 +241,16 @@ describe('waveform drawing algorithms', () => {
     expect(record.context.lineTo).toHaveBeenCalled();
     expect(record.context.setLineDash).toHaveBeenLastCalledWith([]);
   });
-  it('maps overview viewport to the full tick timeline, not file percentages', () => {
+  it('maps overview viewport to the timeline length, not file percentages', () => {
     const { context, record } = canvasFixture();
     const editor = useEditorStore();
     editor.setScrollTick(192);
     editor.pxPerTick = 2;
     drawOverview(context, editor, 1000, 600, paletteFor('dark'));
     expect(record.context.strokeRect).toHaveBeenCalledWith(
-      (192 / MAX_TICKS) * 1000 + 0.5,
+      (192 / editor.timelineTicks) * 1000 + 0.5,
       0.5,
-      (300 / MAX_TICKS) * 1000,
+      (300 / editor.timelineTicks) * 1000,
       35,
     );
   });
@@ -442,12 +443,34 @@ describe('Vue timeline ownership', () => {
     expect(editor.cueVolume).toBeCloseTo(dbToAmp(sliderToDb(30)), 12);
     expect(editor.volume).toBeCloseTo(dbToAmp(sliderToDb(42)), 12);
     // Range payloads never enter the draft, so the release re-commits the
-    // bound position instead of a stale range value.
+    // bound position instead of a stale range value. The bound position comes
+    // from the last render, as between two real input events.
+    await nextTick();
     master.vm.$emit('update:modelValue', [10, 20]);
     master.vm.$emit('change', 5);
     expect(setVolume).toHaveBeenCalledTimes(2);
     expect(editor.volume).toBeCloseTo(dbToAmp(sliderToDb(42)), 12);
     expect(setCueVolume).toHaveBeenCalledOnce();
+  });
+  it('moves a volume slider by 1 dB per wheel notch and commits once when the wheel rests', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(800);
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(200);
+    const { wrapper, editor } = componentFixture();
+    const controls = wrapper.getComponent(PlaybackControls);
+    await nextTick();
+    const setVolume = vi.spyOn(editor, 'setVolume');
+    const before = editor.document.global.masterGainDb;
+    const master = controls.get('.volume-slider').element;
+    for (let notch = 0; notch < 3; notch++)
+      master.dispatchEvent(new WheelEvent('wheel', { deltaY: -100, cancelable: true }));
+    // The wheel previews at once; the document changes only after it rests.
+    expect(editor.masterAmp).toBeCloseTo(dbToAmp(before + 3), 9);
+    expect(setVolume).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(400);
+    expect(setVolume).toHaveBeenCalledOnce();
+    expect(editor.document.global.masterGainDb).toBeCloseTo(before + 3, 9);
+    vi.useRealTimers();
   });
   it('returns sliders to the bound value after undo clears the draft', async () => {
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(800);

@@ -56,6 +56,8 @@ export function createPlayback(editor: EditorStore): Playback {
   let anchorSample = 0;
   let anchorTime = 0;
   let activeRate = editor.playbackRate;
+  /** Sample rate of the track that drives the playhead while playing. */
+  let activeSampleRate = 0;
   let lastCueTick = 0;
 
   function tickAtSample(sample: number): number {
@@ -72,12 +74,12 @@ export function createPlayback(editor: EditorStore): Playback {
     node.disconnect();
   }
   function elapsedSample(): number {
-    if (!track || !editor.source) return editor.playheadSample;
+    if (!track) return editor.playheadSample;
     return advanceSamples(
       anchorSample,
       context.currentTime - anchorTime,
       activeRate,
-      editor.source.sampleRate,
+      activeSampleRate,
     );
   }
   function currentSample(): number {
@@ -156,6 +158,7 @@ export function createPlayback(editor: EditorStore): Playback {
     preview = null;
     if (editor.playheadSample >= editor.source.length) editor.setPlayheadSample(0);
     activeRate = editor.playbackRate;
+    activeSampleRate = buffer.sampleRate;
     const node = trackNode(editor.track.trackId, buffer);
     anchorSample = editor.playheadSample;
     anchorTime = context.currentTime;
@@ -256,14 +259,22 @@ export function createPlayback(editor: EditorStore): Playback {
     });
   }
   scope.run(() => {
-    // Another current track or new audio on it restarts the playhead.
+    // Selecting another track keeps the playhead at the same time and keeps playing;
+    // new audio on the same track starts again from the beginning.
     watch(
-      () => editor.source,
-      () => {
+      [() => editor.track.trackId, () => editor.source],
+      (next, previous) => {
+        const switched = previous !== undefined && next[0] !== previous[0];
+        const playing = track !== null;
+        const seconds = switched
+          ? elapsedSample() / (playing ? activeSampleRate : (previous[1]?.sampleRate ?? 1))
+          : 0;
         stop();
-        editor.setPlayheadSample(0);
+        const rate = editor.source?.sampleRate ?? 0;
+        editor.setPlayheadSample(Math.round(seconds * rate));
         inputTimeline.reset();
-        remember(0);
+        remember(editor.playheadSample);
+        if (switched && playing) play();
       },
       { immediate: true, flush: 'sync' },
     );

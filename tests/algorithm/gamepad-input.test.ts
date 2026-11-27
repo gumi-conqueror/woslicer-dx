@@ -58,31 +58,61 @@ describe('controller reader', () => {
   });
   it('separates the sticks from the D-pad and uses the dominant axis of each stick', () => {
     const read = createGamepadReader();
+    // Stick drift below the 0.4 light-push travel does nothing.
     expect(read(pad([], [0.25, -0.3, 0, 0]), 0, true)).toEqual([]);
     expect(pressed(read(pad([15], [0.8, -0.6, 0, 0]), 10, true))).toEqual([
       'dpad-right',
       'ls-right',
     ]);
     read(pad(), 20, true);
-    expect(pressed(read(pad([], [0, 0, -0.3, 0.9]), 30, true))).toEqual(['rs-down']);
+    // 0.9 travel and more is a hard push.
+    expect(pressed(read(pad([], [0, 0, -0.3, 0.9]), 30, true))).toEqual(['rs-down-hard']);
     read(pad(), 40, true);
     expect(pressed(read(pad([10, 11]), 50, true))).toEqual(['ls', 'rs']);
   });
-  it('repeats a stick faster the further it is pushed', () => {
+  it('repeats a light push steadily and a hard push faster the longer it is held', () => {
     const read = createGamepadReader();
-    const full = pad([], [1, 0, 0, 0]);
-    read(full, 0, true);
-    expect(read(full, 380, true)).toEqual([{ control: 'ls-right', phase: 'repeat' }]);
-    // Full travel repeats every 40 ms.
-    expect(read(full, 419, true)).toEqual([]);
-    expect(read(full, 420, true)).toEqual([{ control: 'ls-right', phase: 'repeat' }]);
-    read(pad(), 500, true);
-    const threshold = pad([], [0.56, 0, 0, 0]);
-    read(threshold, 600, true);
-    expect(read(threshold, 980, true)).toEqual([{ control: 'ls-right', phase: 'repeat' }]);
-    // Just past the dead zone it repeats almost at the 110 ms button rate.
-    expect(read(threshold, 1088, true)).toEqual([]);
-    expect(read(threshold, 1090, true)).toEqual([{ control: 'ls-right', phase: 'repeat' }]);
+    const light = pad([], [0.6, 0, 0, 0]);
+    expect(read(light, 0, true)).toEqual([{ control: 'ls-right', phase: 'press' }]);
+    expect(read(light, 380, true)).toEqual([{ control: 'ls-right', phase: 'repeat' }]);
+    // A light push keeps the 110 ms rate however long it is held.
+    expect(read(light, 3000, true)).toEqual([{ control: 'ls-right', phase: 'repeat' }]);
+    expect(read(light, 3109, true)).toEqual([]);
+    expect(read(light, 3110, true)).toEqual([{ control: 'ls-right', phase: 'repeat' }]);
+    // Pushing further switches to the hard control.
+    const hard = pad([], [1, 0, 0, 0]);
+    expect(read(hard, 3200, true)).toEqual([
+      { control: 'ls-right', phase: 'release' },
+      { control: 'ls-right-hard', phase: 'press' },
+    ]);
+    // Held 700 ms (380 ms delay, then repeats), the interval halves to 55 ms.
+    expect(read(hard, 3580, true)).toEqual([{ control: 'ls-right-hard', phase: 'repeat' }]);
+    read(hard, 3900, true);
+    expect(read(hard, 3954, true)).toEqual([]);
+    expect(read(hard, 3956, true)).toEqual([{ control: 'ls-right-hard', phase: 'repeat' }]);
+    // Held 1500 ms, the hard push becomes the long push, which repeats 110 ms later.
+    expect(read(hard, 4699, true)).toEqual([{ control: 'ls-right-hard', phase: 'repeat' }]);
+    expect(read(hard, 4700, true)).toEqual([
+      { control: 'ls-right-hard', phase: 'release' },
+      { control: 'ls-right-long', phase: 'press' },
+    ]);
+    expect(read(hard, 4809, true)).toEqual([]);
+    expect(read(hard, 4810, true)).toEqual([{ control: 'ls-right-long', phase: 'repeat' }]);
+    // After several seconds it reaches the 25 ms floor.
+    read(hard, 9000, true);
+    expect(read(hard, 9024, true)).toEqual([]);
+    expect(read(hard, 9025, true)).toEqual([{ control: 'ls-right-long', phase: 'repeat' }]);
+    // Easing to a light push leaves the long push.
+    expect(read(light, 9030, true)).toEqual([
+      { control: 'ls-right-long', phase: 'release' },
+      { control: 'ls-right', phase: 'press' },
+    ]);
+  });
+  it('keeps a long hard push up or down as a hard push', () => {
+    const read = createGamepadReader();
+    const up = pad([], [0, -1, 0, 0]);
+    read(up, 0, true);
+    expect(pressed(read(up, 2000, true))).toEqual(['ls-up-hard']);
   });
   it('requires neutral controls after focus loss and clears disconnected inputs', () => {
     const read = createGamepadReader();

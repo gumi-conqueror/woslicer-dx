@@ -22,7 +22,7 @@ const effects = vi.hoisted(() => ({
   execute: vi.fn(),
 }));
 vi.mock('../../src/platform', () => ({
-  getPlatform: () => ({ kind: 'browser', setTheme: async () => {} }),
+  getPlatform: () => ({ kind: 'browser', setTheme: async () => {}, watchDrops: () => () => {} }),
   // Intentionally unresolved: mounting and interaction must not wait for build metadata.
   getBuildIdentity: () => new Promise(() => {}),
 }));

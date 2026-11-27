@@ -1,6 +1,6 @@
 import type { EditorStore } from '../slicing/editor-store';
 import type { Palette } from '../ui/palette';
-import { MAX_TICKS, MEASURE_TICKS, sampleToTick, tickToSample } from '../core/timebase';
+import { MEASURE_TICKS, sampleToTick, tickToSample } from '../core/timebase';
 import { gridLineTicks, gridStepTicks, measureLabelStep } from '../core/gridlines';
 import { peakRange } from '../core/peaks';
 import { drawBandEnvelope, drawWaveLane } from './waveform';
@@ -11,8 +11,10 @@ export const OVERVIEW_HEIGHT = 36;
 export type TimelineSnapshot = Pick<
   EditorStore,
   | 'timeBase'
+  | 'timelineTicks'
   | 'ticks'
   | 'markerKeys'
+  | 'linkedTicks'
   | 'previewTicks'
   | 'source'
   | 'peaks'
@@ -175,6 +177,7 @@ type TrackDrawing = Pick<
   | 'source'
   | 'peaks'
   | 'timeBase'
+  | 'timelineTicks'
   | 'scrollTick'
   | 'pxPerTick'
   | 'rmsVisible'
@@ -216,7 +219,7 @@ function drawTrack(
     context.stroke();
     // The second channel uses the bright variants; band overlays dim the waveform.
     const second = channel > 0;
-    const data = source.data[channel];
+    const data = source.floatData[channel];
     if (data && track.peaks)
       drawWaveLane(
         context,
@@ -248,7 +251,7 @@ function drawTrack(
   }
 }
 
-/** Marker lines with their head triangles and recorded key labels. */
+/** Marker lines with their head triangles and recorded key labels. Linked markers have their own color. */
 function drawMarkers(
   context: CanvasRenderingContext2D,
   state: TimelineSnapshot,
@@ -264,7 +267,11 @@ function drawMarkers(
   for (const tick of state.previewTicks ?? state.ticks) {
     if (tick < state.scrollTick || tick > toTick) continue;
     const x = (tick - state.scrollTick) * state.pxPerTick;
-    const color = state.selectedTicks.includes(tick) ? palette.selection : palette.accent;
+    const color = state.selectedTicks.includes(tick)
+      ? palette.selection
+      : state.linkedTicks.has(tick)
+        ? palette.linked
+        : palette.accent;
     context.strokeStyle = context.fillStyle = color;
     vertical(context, x, 0, height);
     context.beginPath();
@@ -347,7 +354,10 @@ export function drawOverlay(
  */
 export function drawOverview(
   context: CanvasRenderingContext2D,
-  state: Pick<TimelineSnapshot, 'source' | 'peaks' | 'timeBase' | 'scrollTick' | 'pxPerTick'>,
+  state: Pick<
+    TimelineSnapshot,
+    'source' | 'peaks' | 'timeBase' | 'scrollTick' | 'pxPerTick' | 'timelineTicks'
+  >,
   width: number,
   viewportWidth: number | null,
   palette: Readonly<Palette>,
@@ -363,8 +373,8 @@ export function drawOverview(
     context.fillStyle = palette.wave;
     for (let lane = 0; lane < source.channels; lane++) {
       for (let x = 0; x < width; x += 2) {
-        const first = tickToSample((x / width) * MAX_TICKS, base),
-          last = tickToSample(((x + 2) / width) * MAX_TICKS, base);
+        const first = tickToSample((x / width) * state.timelineTicks, base),
+          last = tickToSample(((x + 2) / width) * state.timelineTicks, base);
         if (last <= 0 || first >= source.length) continue;
         const range = peakRange(cache, source.length, first, last);
         const middle = laneHeight * (lane + 0.5),
@@ -376,15 +386,15 @@ export function drawOverview(
     }
     hatch(
       context,
-      (sampleToTick(source.length, base) / MAX_TICKS) * width,
+      (sampleToTick(source.length, base) / state.timelineTicks) * width,
       width,
       OVERVIEW_HEIGHT,
       palette,
     );
   }
   if (viewportWidth === null) return;
-  const left = (state.scrollTick / MAX_TICKS) * width,
-    span = Math.max(2, (viewportWidth / state.pxPerTick / MAX_TICKS) * width);
+  const left = (state.scrollTick / state.timelineTicks) * width,
+    span = Math.max(2, (viewportWidth / state.pxPerTick / state.timelineTicks) * width);
   context.fillStyle = palette.viewportFill;
   context.fillRect(left, 0, span, OVERVIEW_HEIGHT);
   context.strokeStyle = palette.accent;

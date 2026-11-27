@@ -1,3 +1,4 @@
+import { inject, provide, type InjectionKey } from 'vue';
 import { GRID_DENSITIES, gridStepTicks } from '../core/gridlines';
 import { latencySamples } from '../core/calibration';
 import {
@@ -7,7 +8,7 @@ import {
   tickToSampleExport,
 } from '../core/timebase';
 import { formatRate, stepPlaybackRate } from '../core/rate';
-import { RECORDING_SEEK_SECONDS, type RecordingInput } from '../input/recording';
+import { FAST_SEEK_SECONDS, RECORDING_SEEK_SECONDS, type RecordingInput } from '../input/recording';
 import type { EditorStore } from '../slicing/editor-store';
 import { FIELD_RANGES } from '../project/schema';
 import type { Workspace } from '../workspace/workspace';
@@ -35,6 +36,8 @@ export interface CommandHosts {
   connectYuancon?(): void;
   openWheel?(): void;
   inputSettings?(): void;
+  /** Opens the export window, where tracks and marker sets are chosen. */
+  exportSlices?(): void;
   openProject(): void | Promise<void>;
   newProjectFromWos(): void | Promise<void>;
   /** An app-owned dialog or lock is open. Visible dialogs always block commands. */
@@ -64,6 +67,8 @@ export function canRecord(state: Pick<CommandState, 'source'>): boolean {
 }
 const hasSource = (state: CommandState) => state.source !== null;
 const hasMarkers = (state: CommandState) => state.ticks.length > 0;
+/** Linking needs markers on the current track and another track. */
+const canLink = (state: CommandState) => hasMarkers(state) && state.document.tracks.length > 1;
 
 /**
  * Every application command. Menus, shortcuts, controllers, YuanCon and the
@@ -102,6 +107,23 @@ export const COMMANDS = {
     group: 'project',
     enabled: (state) => state.document.tracks.length > 1,
     run: ({ workspace }) => workspace.removeTrack(),
+  },
+  'rename-track': {
+    label: 'menu.renameTrack',
+    group: 'project',
+    run: ({ editor }) => {
+      editor.renamingTrackId = editor.track.trackId;
+    },
+  },
+  'toggle-track-mute': {
+    label: 'chrome.muteTrack',
+    group: 'playback',
+    run: ({ editor }) => editor.setTrackMix(editor.track.trackId, { muted: !editor.track.muted }),
+  },
+  'toggle-track-solo': {
+    label: 'chrome.soloTrack',
+    group: 'playback',
+    run: ({ editor }) => editor.setTrackMix(editor.track.trackId, { solo: !editor.track.solo }),
   },
   'previous-track': {
     label: 'help.previousTrack',
@@ -221,6 +243,29 @@ export const COMMANDS = {
     group: 'edit',
     run: ({ workspace }) => workspace.actions.clearSelection(),
   },
+  'link-markers-all-tracks': {
+    label: 'menu.linkMarkersAll',
+    group: 'edit',
+    enabled: canLink,
+    run: ({ workspace }) => workspace.actions.linkMarkersToAllTracks(),
+  },
+  'unlink-markers': {
+    label: 'menu.unlinkMarkers',
+    group: 'edit',
+    enabled: (state) => (state.track.slicing.links?.length ?? 0) > 0,
+    run: ({ workspace }) => workspace.actions.unlinkMarkers(),
+  },
+  'relink-markers': {
+    label: 'menu.relinkMarkers',
+    group: 'edit',
+    enabled: canLink,
+    run: ({ workspace }) => workspace.actions.relinkMarkers(),
+  },
+  'toggle-shared-markers': {
+    label: 'menu.sharedMarkers',
+    group: 'edit',
+    run: ({ workspace }) => workspace.actions.toggleSharedMarkers(),
+  },
   'clear-markers': {
     label: 'menu.clearMarkers',
     group: 'edit',
@@ -308,6 +353,18 @@ export const COMMANDS = {
     enabled: canRecord,
     run: (context) => seekBy(context, RECORDING_SEEK_SECONDS),
   },
+  'seek-backward-fast': {
+    label: 'recording.backwardFast',
+    group: 'playback',
+    enabled: canRecord,
+    run: (context) => seekBy(context, -FAST_SEEK_SECONDS),
+  },
+  'seek-forward-fast': {
+    label: 'recording.forwardFast',
+    group: 'playback',
+    enabled: canRecord,
+    run: (context) => seekBy(context, FAST_SEEK_SECONDS),
+  },
   'zoom-in': {
     label: 'menu.zoomIn',
     group: 'navigation',
@@ -318,37 +375,42 @@ export const COMMANDS = {
     group: 'navigation',
     run: ({ editor }) => editor.zoomAt(editor.cursorTick, 0.8),
   },
+  'zoom-fit': {
+    label: 'menu.zoomFit',
+    group: 'navigation',
+    run: ({ editor }) => editor.zoomToFit(),
+  },
   'grid-down': { label: 'help.gridDown', group: 'navigation', run: (c) => stepGrid(c, -1) },
   'grid-up': { label: 'help.gridUp', group: 'navigation', run: (c) => stepGrid(c, 1) },
   'cursor-left-grid': {
     label: 'help.cursorLeftGrid',
     group: 'navigation',
-    run: ({ editor }) => editor.setCursorTick(editor.cursorTick - gridStepTicks(editor.grid)),
+    run: ({ editor }) => editor.moveCursorTo(editor.cursorTick - gridStepTicks(editor.grid)),
   },
   'cursor-right-grid': {
     label: 'help.cursorRightGrid',
     group: 'navigation',
-    run: ({ editor }) => editor.setCursorTick(editor.cursorTick + gridStepTicks(editor.grid)),
+    run: ({ editor }) => editor.moveCursorTo(editor.cursorTick + gridStepTicks(editor.grid)),
   },
   'cursor-left-tick': {
     label: 'help.cursorLeftTick',
     group: 'navigation',
-    run: ({ editor }) => editor.setCursorTick(editor.cursorTick - 1),
+    run: ({ editor }) => editor.moveCursorTo(editor.cursorTick - 1),
   },
   'cursor-right-tick': {
     label: 'help.cursorRightTick',
     group: 'navigation',
-    run: ({ editor }) => editor.setCursorTick(editor.cursorTick + 1),
+    run: ({ editor }) => editor.moveCursorTo(editor.cursorTick + 1),
   },
   'cursor-previous-measure': {
     label: 'help.cursorUpMeasure',
     group: 'navigation',
-    run: ({ editor }) => editor.setCursorTick(editor.cursorTick - MEASURE_TICKS),
+    run: ({ editor }) => editor.moveCursorTo(editor.cursorTick - MEASURE_TICKS),
   },
   'cursor-next-measure': {
     label: 'help.cursorDownMeasure',
     group: 'navigation',
-    run: ({ editor }) => editor.setCursorTick(editor.cursorTick + MEASURE_TICKS),
+    run: ({ editor }) => editor.moveCursorTo(editor.cursorTick + MEASURE_TICKS),
   },
   'export-slice': {
     label: 'menu.exportSlice',
@@ -360,13 +422,13 @@ export const COMMANDS = {
     label: 'menu.exportAll',
     group: 'output',
     enabled: (state) => hasSource(state) && hasMarkers(state),
-    run: ({ workspace }) => workspace.exportAll(),
+    run: (context) => exportSlices(context, () => context.workspace.exportAll()),
   },
   'export-all-tracks': {
     label: 'menu.exportAllTracks',
     group: 'output',
     enabled: (state) => state.document.tracks.some((track) => track.slicing.markers.length > 0),
-    run: ({ workspace }) => workspace.exportAllTracks(),
+    run: (context) => exportSlices(context, () => context.workspace.exportAllTracks()),
   },
   'copy-bmse': {
     label: 'help.bmseOut',
@@ -443,7 +505,27 @@ export function createCommands(options: {
   return { run };
 }
 export type RunCommand = ReturnType<typeof createCommands>['run'];
+const runnerKey: InjectionKey<RunCommand> = Symbol('run-command');
+/** Lets components below the app shell run commands through the one execution entry. */
+export function provideCommandRunner(run: RunCommand): void {
+  provide(runnerKey, run);
+}
+/** The provided runner; `null` where no app shell provides one, as in component tests. */
+export function useCommandRunner(): RunCommand | null {
+  return inject(runnerKey, null);
+}
 
+/**
+ * With several tracks, exporting all slices opens the export window to choose
+ * tracks and markers; with one track it exports at once.
+ */
+function exportSlices({ editor, hosts }: CommandContext, direct: () => Promise<void>): unknown {
+  if (editor.document.tracks.length > 1 && hosts.exportSlices) {
+    hosts.exportSlices();
+    return undefined;
+  }
+  return direct();
+}
 /** Moves the playhead by whole seconds within the source; the cursor follows it. */
 function seekBy({ editor, playback }: CommandContext, seconds: number): void {
   const source = editor.source;
@@ -453,7 +535,7 @@ function seekBy({ editor, playback }: CommandContext, seconds: number): void {
     Math.min(source.length, playback.currentSample() + seconds * source.sampleRate),
   );
   playback.seekSample(sample);
-  if (editor.timeBase) editor.setCursorTick(sampleToTickNearest(sample, editor.timeBase));
+  if (editor.timeBase) editor.moveCursorTo(sampleToTickNearest(sample, editor.timeBase));
 }
 function placeMarker(
   { editor, workspace, playback }: CommandContext,

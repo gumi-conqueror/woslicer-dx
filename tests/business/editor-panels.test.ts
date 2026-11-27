@@ -1,9 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils';
-import ElementPlus, { ElCheckbox, ElInput, ElInputNumber } from 'element-plus';
+import ElementPlus, { ElButton, ElCheckbox, ElInput, ElInputNumber } from 'element-plus';
 import { createI18n } from 'vue-i18n';
 import en from '../../src/i18n/en.json';
 import MarkerList from '../../src/slicing/MarkerList.vue';
+import ExportDialog from '../../src/export/ExportDialog.vue';
+import StatusBar from '../../src/app/components/StatusBar.vue';
+import { useInputState } from '../../src/input/state';
 import OutputPanel from '../../src/export/OutputPanel.vue';
 import DetectionPanel from '../../src/detection/DetectionPanel.vue';
 import DocumentOptions from '../../src/app/components/DocumentOptions.vue';
@@ -135,7 +138,7 @@ describe('editor panels with real Element Plus controls', () => {
     await flushPromises();
     expect(wrapper.findAll('.marker-row')).toHaveLength(0);
   });
-  it('toggles cuts with ctrl and meta, freezes the playhead while playing, and numbers measures at 192 ticks', async () => {
+  it('toggles cuts with ctrl, freezes the playhead while playing, and numbers measures at 192 ticks', async () => {
     const { f, options } = setup();
     f.editor.setSource({
       name: 'example',
@@ -155,12 +158,12 @@ describe('editor panels with real Element Plus controls', () => {
     expect(rows[0].text()).toContain('M1');
     expect(rows[0].text()).toContain('191');
     expect(rows[1].text()).toContain('M2');
-    // Plain click replaces; Ctrl adds; Meta removes the already-selected tick.
+    // Plain click replaces; Ctrl adds, and removes an already-selected tick.
     await rows[0].trigger('click');
     expect(f.editor.selectedTicks).toEqual([191]);
     await rows[1].trigger('click', { ctrlKey: true });
     expect(f.editor.selectedTicks).toEqual([191, 192]);
-    await rows[1].trigger('click', { metaKey: true });
+    await rows[1].trigger('click', { ctrlKey: true });
     expect(f.editor.selectedTicks).toEqual([191]);
     // The playhead only follows clicks while playback is stopped.
     f.editor.setPlaying(true);
@@ -171,6 +174,142 @@ describe('editor panels with real Element Plus controls', () => {
     f.editor.setPlaying(false);
     await rows[2].trigger('click');
     expect(f.editor.playheadSample).not.toBe(12345);
+  });
+  it('selects, links and goes to points in the marker list and wraps track cells after eight tracks', async () => {
+    const { f, options } = setup();
+    // Track markers: tick 24 on two tracks, not linked.
+    f.editor.sharedMarkers = false;
+    f.editor.transact((draft) => {
+      const second = structuredClone(draft.tracks[0]);
+      second.trackId = 'second';
+      draft.tracks.push(second);
+    });
+    f.editor.setTicks([24]);
+    f.editor.selectTrack('second');
+    f.editor.setTicks([24]);
+    const wrapper = mount(MarkerList, options);
+    wrappers.push(wrapper);
+    await flushPromises();
+    const links = () => f.editor.document.tracks.map((track) => track.slicing.links ?? []);
+    const cell = (name: string) => wrapper.get(`[aria-label="${name}"]`);
+    const click = (name: string, detail = 1) =>
+      cell(name).element.dispatchEvent(new MouseEvent('click', { bubbles: true, detail }));
+    const middle = async (name: string) => {
+      cell(name).element.dispatchEvent(new MouseEvent('auxclick', { bubbles: true, button: 1 }));
+      await flushPromises();
+    };
+    // Left clicks select cells; a middle click links a selection without linked markers.
+    click('1: marker');
+    click('2: marker');
+    await flushPromises();
+    expect(wrapper.findAll('.marker-cell.picked')).toHaveLength(2);
+    await middle('2: marker');
+    expect(links()).toEqual([[24], [24]]);
+    expect(wrapper.findAll('.marker-cell.picked')).toHaveLength(0);
+    // A second click adds the cells linked with the clicked one.
+    click('1: linked marker');
+    click('1: linked marker', 2);
+    await flushPromises();
+    expect(wrapper.findAll('.marker-cell.picked')).toHaveLength(2);
+    // A middle click on a selection with linked markers unlinks them.
+    await middle('1: linked marker');
+    expect(links()).toEqual([[], []]);
+    // A third click selects the whole row.
+    click('1: marker', 3);
+    await middle('1: marker');
+    expect(links()).toEqual([[24], [24]]);
+    // With nothing selected, a middle click acts on the clicked cell.
+    await middle('2: linked marker');
+    expect(links()).toEqual([[], []]);
+    // A right click makes the cell's track current and moves the cursor to the marker.
+    f.editor.selectTrack(f.editor.document.tracks[0]?.trackId ?? '');
+    await cell('2: marker').trigger('contextmenu');
+    expect(f.editor.track.trackId).toBe('second');
+    expect(f.editor.cursorTick).toBe(24);
+    expect(f.editor.selectedTicks).toEqual([24]);
+    // A second right click on the cell removes that track's marker, on that track only.
+    const markers = () => f.editor.document.tracks.map((track) => track.slicing.markers);
+    await cell('2: marker').trigger('contextmenu');
+    expect(markers()).toEqual([[24], []]);
+    // A double right click on an empty cell adds the marker.
+    await cell('2: no marker').trigger('contextmenu');
+    await cell('2: no marker').trigger('contextmenu');
+    expect(markers()).toEqual([[24], [24]]);
+    // Ten tracks need two lines of cells, so rows grow from 32 px to 46 px.
+    f.editor.transact((draft) => {
+      for (let index = 3; index <= 10; index++) {
+        const track = structuredClone(draft.tracks[0]);
+        track.trackId = `track-${index}`;
+        draft.tracks.push(track);
+      }
+    });
+    await flushPromises();
+    expect(wrapper.get('.marker-row').attributes('style')).toContain('height: 46px');
+  });
+  it('shows the actions of the area under the pointer, or the controller buttons, in the status bar', async () => {
+    const { f, options } = setup();
+    const area = document.createElement('div');
+    area.dataset.hintArea = 'track';
+    document.body.append(area);
+    const wrapper = mount(StatusBar, { ...options, props: { identity: null } });
+    wrappers.push(wrapper);
+    area.dispatchEvent(new PointerEvent('pointerover', { bubbles: true }));
+    await flushPromises();
+    const hints = wrapper.get('[role="note"]');
+    // Mouse actions show a mouse icon, shortcuts show key caps.
+    expect(hints.get('[aria-label="Right button click"]').element.parentElement?.textContent).toBe(
+      'Track menu',
+    );
+    const rename = hints.findAll('.hint').find((hint) => hint.text().endsWith('Rename track'));
+    expect(rename?.findAll('kbd').map((key) => key.text())).toEqual(['F2']);
+    // Moving onto the status bar keeps the hints; an area without hints clears them.
+    wrapper
+      .get('.statusbar')
+      .element.dispatchEvent(new PointerEvent('pointerover', { bubbles: true }));
+    await flushPromises();
+    expect(wrapper.find('[role="note"]').exists()).toBe(true);
+    document.body.dispatchEvent(new PointerEvent('pointerover', { bubbles: true }));
+    await flushPromises();
+    expect(wrapper.find('[role="note"]').exists()).toBe(false);
+    // With a controller, the status bar shows the common controller buttons.
+    useInputState(f.pinia).device = 'gamepad';
+    await flushPromises();
+    expect(wrapper.get('[role="note"]').attributes('aria-label')).toBe('Controller buttons');
+    area.remove();
+  });
+  it('exports the checked tracks of the export window, each cut at its row of markers', async () => {
+    const { f, options } = setup();
+    await f.workspace.loadAudio(audioFile('kick.wav', 96000));
+    f.editor.sharedMarkers = false;
+    f.workspace.actions.setMarker(48);
+    await f.workspace.loadAudio(audioFile('snare.wav', 96000), false, { newTrack: true });
+    f.workspace.actions.setMarker(96);
+    const wrapper = mount(ExportDialog, { ...options, props: { modelValue: true } });
+    wrappers.push(wrapper);
+    await flushPromises();
+    const checked = () =>
+      wrapper.findAllComponents(ElCheckbox).map((box) => box.props('modelValue'));
+    // Rows: markers of track 1, markers of track 2. The default is the diagonal.
+    expect(checked()).toEqual([true, false, false, true]);
+    // The row button cycles the first row from its default to all tracks.
+    const rowButtons = wrapper
+      .findAllComponents(ElButton)
+      .filter((button) => ['Default', 'All', 'None'].includes(button.text()));
+    await rowButtons[0]?.trigger('click');
+    expect(checked()).toEqual([true, true, false, true]);
+    await wrapper
+      .findAllComponents(ElButton)
+      .find((button) => button.text() === 'Export')
+      ?.trigger('click');
+    const jobs = wrapper.emitted('export')?.[0]?.[0];
+    if (!Array.isArray(jobs)) throw new Error('Expected export jobs');
+    await f.workspace.exportTracks(jobs);
+    // The snare is cut at both rows, so its files carry the row; the kick keeps its name.
+    expect(f.exported.map((file) => file.name).sort()).toEqual([
+      'kick_000.wav',
+      'snare_m1_000.wav',
+      'snare_m2_000.wav',
+    ]);
   });
   it('disables export without audio and exports real WAV bytes through its button', async () => {
     const { f, options } = setup();

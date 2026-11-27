@@ -20,7 +20,7 @@ const MAX_FILE_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 // Memory budget for UTF-8 project JSON, including structured BMHelper data.
 pub(crate) const MAX_PROJECT_BYTES: u64 = 64 * 1024 * 1024;
 /// Current `.wosdx` schema version; `PROJECT_SCHEMA_VERSION` in src/project/schema.ts owns it.
-const PROJECT_SCHEMA_VERSION: u64 = 2;
+const PROJECT_SCHEMA_VERSION: u64 = 3;
 const MAX_REFERENCES: usize = 1024;
 const MAX_OPEN_READERS: usize = 64;
 
@@ -60,7 +60,7 @@ impl FileKind {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct OpenedFile {
     name: String,
@@ -168,11 +168,10 @@ impl HostFiles {
             return Err("project exceeds 64 MiB".into());
         }
         let value: serde_json::Value = serde_json::from_slice(&bytes).map_err(message)?;
-        // Version 1 lists media at the project level; version 2 keeps one per track.
-        // The app upgrades version 1 files only when it saves them.
+        // Version 1 lists media at the project level; later versions keep one per track.
+        // The app upgrades older files only when it saves them.
         let version = value["schemaVersion"].as_u64();
-        if value["format"] != "wosdx" || !matches!(version, Some(1) | Some(PROJECT_SCHEMA_VERSION))
-        {
+        if value["format"] != "wosdx" || !matches!(version, Some(1..=PROJECT_SCHEMA_VERSION)) {
             return Err("unsupported project format".into());
         }
         let media: Vec<&serde_json::Value> = if version == Some(1) {
@@ -338,6 +337,54 @@ pub(crate) async fn open_file(
         return Err("unsupported file extension".into());
     }
     state.grant(file.path()).map(Some)
+}
+/// Files dragged onto the main window. Dropping files is a user choice like the
+/// file picker, so dropped audio and project files get the same grants. The page
+/// receives `drop-active` while files hover over the window and `files-dropped`
+/// with the granted files; other files are left out.
+pub(crate) fn drag_drop(window: &tauri::Window, event: &tauri::DragDropEvent) {
+    use tauri::{Emitter, Manager};
+    let emit = |name: &str, payload: serde_json::Value| {
+        if let Err(error) = window.emit(name, payload) {
+            eprintln!("could not report a file drop: {error}");
+        }
+    };
+    match event {
+        tauri::DragDropEvent::Enter { .. } => emit("drop-active", true.into()),
+        tauri::DragDropEvent::Leave => emit("drop-active", false.into()),
+        tauri::DragDropEvent::Drop { paths, .. } => {
+            let state = window.state::<HostFiles>();
+            let files: Vec<OpenedFile> = paths
+                .iter()
+                .filter(|path| FileKind::Audio.accepts(path) || FileKind::Wosdx.accepts(path))
+                .filter_map(|path| state.grant(path).ok())
+                .collect();
+            emit("drop-active", false.into());
+            match serde_json::to_value(files) {
+                Ok(value) => emit("files-dropped", value),
+                Err(error) => eprintln!("could not report a file drop: {error}"),
+            }
+        }
+        _ => {}
+    }
+}
+#[tauri::command]
+pub(crate) async fn open_files(
+    kind: FileKind,
+    state: State<'_, HostFiles>,
+) -> Result<Vec<OpenedFile>, String> {
+    let Some(files) = rfd::AsyncFileDialog::new()
+        .add_filter("Supported files", kind.extensions())
+        .pick_files()
+        .await
+    else {
+        return Ok(Vec::new());
+    };
+    files
+        .iter()
+        .filter(|file| kind.accepts(file.path()))
+        .map(|file| state.grant(file.path()))
+        .collect()
 }
 #[tauri::command]
 pub(crate) fn reopen_file(

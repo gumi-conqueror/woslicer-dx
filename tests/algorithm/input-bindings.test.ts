@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   BINDINGS,
   gamepadBinding,
@@ -38,7 +38,10 @@ const commandFor = (
 describe('keyboard bindings', () => {
   it('distinguishes project, clipboard, navigation and snap-bypass modifiers', () => {
     expect(commandFor('s', { ctrlKey: true })).toBe('save-project');
-    expect(commandFor('S', { metaKey: true, shiftKey: true })).toBe('export-wos');
+    expect(commandFor('S', { ctrlKey: true, shiftKey: true })).toBe('export-wos');
+    // Outside macOS the Windows key is no shortcut modifier.
+    expect(commandFor('s', { metaKey: true })).toBeUndefined();
+    expect(commandFor('S', { metaKey: true, shiftKey: true })).toBeUndefined();
     expect(commandFor('s')).toBe('clip-number-up');
     expect(commandFor('s', { altKey: true })).toBeUndefined();
     expect(commandFor('ArrowLeft', { shiftKey: true })).toBe('cursor-left-tick');
@@ -47,7 +50,7 @@ describe('keyboard bindings', () => {
     expect(commandFor('+', { shiftKey: true })).toBe('zoom-in');
     expect(commandFor('r')).toBe('open-wheel');
     expect(commandFor('z', { isComposing: true })).toBeUndefined();
-    expect(shortcutLabel('save-project')).toBe('Ctrl/Cmd+S');
+    expect(shortcutLabel('save-project')).toBe('Ctrl+S');
   });
   it('uses the seven physical letter keys in recording and keeps modifier shortcuts', () => {
     const taps = [...'zsxdcfv'].map(
@@ -65,7 +68,7 @@ describe('keyboard bindings', () => {
     expect(shortcutLabel('clip-number-down', true)).toBe('');
     expect(shortcutLabel('clip-number-down')).toBe('A');
     expect(shortcutLabel('import-wos', true)).toBe('');
-    expect(shortcutLabel('save-project', true)).toBe('Ctrl/Cmd+S');
+    expect(shortcutLabel('save-project', true)).toBe('Ctrl+S');
     expect(shortcutLabel('rate-down', true)).toBe('A / [');
   });
 });
@@ -76,7 +79,7 @@ describe('controller bindings', () => {
     expect(gamepadBinding('rt', 'edit')?.command).toBe('play-pause');
     expect(gamepadBinding('rt', 'recording')?.command).toBe('play-pause');
     expect(gamepadBinding('lt', 'recording')?.command).toBe('open-wheel');
-    expect(gamepadBinding('rs-up', 'recording')?.command).toBe('zoom-in');
+    expect(gamepadBinding('rs-up', 'recording')?.command).toBe('previous-track');
     expect(gamepadBinding('view', 'recording')?.command).toBe('help');
   });
   it('lets the recording layer hide editing bindings', () => {
@@ -86,7 +89,9 @@ describe('controller bindings', () => {
     expect(gamepadBinding('ls-left', 'recording')).toBeUndefined();
     expect(gamepadControls('place-marker', 'recording')).toEqual([]);
     expect(gamepadControls('cursor-left-grid', 'recording')).toEqual([]);
-    expect(gamepadControls('zoom-in', 'recording')).toEqual(['rs-up']);
+    // The left stick seeks by rotation while recording, so zoom has no controller control there.
+    expect(gamepadControls('zoom-in', 'recording')).toEqual([]);
+    expect(gamepadControls('zoom-in')).toEqual(['ls-up', 'ls-up-hard']);
     expect(gamepadControls('rate-down', 'recording')).toEqual(['lb']);
   });
   it('maps the YuanCon keys and turntable in order', () => {
@@ -151,7 +156,7 @@ describe('input routing', () => {
       { kind: 'command', command: 'help' },
     ]);
   });
-  it('holds the wheel with its control and points with directions only', () => {
+  it('holds the wheel with its control, steps with the D-pad and points with sticks', () => {
     expect(routeGamepad([press('lt')], 'edit', 0)).toEqual([{ kind: 'wheel', action: 'hold' }]);
     expect(
       routeGamepad(
@@ -160,9 +165,24 @@ describe('input routing', () => {
         0,
       ),
     ).toEqual([
+      { kind: 'wheel', action: 'step-left' },
       { kind: 'wheel', action: 'next' },
       { kind: 'wheel', action: 'confirm' },
       { kind: 'wheel', action: 'release' },
     ]);
+  });
+});
+
+describe('macOS keys', () => {
+  it('uses Command as the primary modifier and names it Cmd', async () => {
+    vi.stubGlobal('navigator', { platform: 'MacIntel', userAgent: '' });
+    vi.resetModules();
+    const mac = await import('../../src/input/bindings');
+    expect(mac.PRIMARY_KEY).toBe('Cmd');
+    expect(mac.shortcutLabel('save-project')).toBe('Cmd+S');
+    expect(mac.keyBinding(key('s', { metaKey: true }), 'edit')?.command).toBe('save-project');
+    expect(mac.keyBinding(key('s', { ctrlKey: true }), 'edit')?.command).toBeUndefined();
+    vi.unstubAllGlobals();
+    vi.resetModules();
   });
 });

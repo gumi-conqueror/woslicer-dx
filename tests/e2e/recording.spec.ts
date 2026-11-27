@@ -109,8 +109,8 @@ test('records with keyboard, Xbox and YuanCon while preserving menus and playbac
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-pressed', 'true');
   const play = page.getByRole('button', { name: 'Play', exact: true });
-  const markers = page.locator('.statusbar > span').nth(2);
-  const cursor = page.locator('.statusbar > span').nth(1);
+  const markers = page.locator('.status-markers');
+  const cursor = page.locator('.status-cursor');
   let count = 0;
   for (const key of 'zsxdcfv') {
     await page.keyboard.press('t');
