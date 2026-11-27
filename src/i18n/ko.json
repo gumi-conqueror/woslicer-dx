@@ -600,5 +600,20 @@
     "double": "더블클릭",
     "triple": "트리플클릭",
     "drag": "드래그"
+  },
+  "exportDialog": {
+    "title": "슬라이스 내보내기",
+    "hint": "체크한 칸마다 그 열 트랙의 오디오를 그 행의 분할점으로 잘라 내보냄. 분할점이 같은 트랙은 한 행을 함께 씀.",
+    "markers": "분할점",
+    "rowTrack": "트랙 {tracks}의 분할점",
+    "rowLinked": "모든 트랙에 링크된 분할점",
+    "count": "분할점 {count}개",
+    "rowToggle": "행",
+    "modeDefault": "기본",
+    "modeAll": "전체",
+    "modeNone": "없음",
+    "modeCustom": "사용자 지정",
+    "cancel": "취소",
+    "export": "내보내기"
   }
 }

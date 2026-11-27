@@ -600,5 +600,20 @@
     "double": "双击",
     "triple": "三击",
     "drag": "拖动"
+  },
+  "exportDialog": {
+    "title": "导出切片",
+    "hint": "每个勾选的格子导出所在列音轨的音频，按所在行的切点切开。切点相同的音轨共用一行。",
+    "markers": "切点",
+    "rowTrack": "音轨 {tracks} 的切点",
+    "rowLinked": "所有音轨都链接的切点",
+    "count": "{count} 个切点",
+    "rowToggle": "整行",
+    "modeDefault": "默认",
+    "modeAll": "全选",
+    "modeNone": "全不选",
+    "modeCustom": "自定义",
+    "cancel": "取消",
+    "export": "导出"
   }
 }

@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils';
-import ElementPlus, { ElCheckbox, ElInput, ElInputNumber } from 'element-plus';
+import ElementPlus, { ElButton, ElCheckbox, ElInput, ElInputNumber } from 'element-plus';
 import { createI18n } from 'vue-i18n';
 import en from '../../src/i18n/en.json';
 import MarkerList from '../../src/slicing/MarkerList.vue';
+import ExportDialog from '../../src/export/ExportDialog.vue';
 import StatusBar from '../../src/app/components/StatusBar.vue';
 import { useInputState } from '../../src/input/state';
 import OutputPanel from '../../src/export/OutputPanel.vue';
@@ -267,6 +268,40 @@ describe('editor panels with real Element Plus controls', () => {
     await flushPromises();
     expect(wrapper.get('[role="note"]').attributes('aria-label')).toBe('Controller buttons');
     area.remove();
+  });
+  it('exports the checked tracks of the export window, each cut at its row of markers', async () => {
+    const { f, options } = setup();
+    await f.workspace.loadAudio(audioFile('kick.wav', 96000));
+    f.editor.sharedMarkers = false;
+    f.workspace.actions.setMarker(48);
+    await f.workspace.loadAudio(audioFile('snare.wav', 96000), false, { newTrack: true });
+    f.workspace.actions.setMarker(96);
+    const wrapper = mount(ExportDialog, { ...options, props: { modelValue: true } });
+    wrappers.push(wrapper);
+    await flushPromises();
+    const checked = () =>
+      wrapper.findAllComponents(ElCheckbox).map((box) => box.props('modelValue'));
+    // Rows: markers of track 1, markers of track 2. The default is the diagonal.
+    expect(checked()).toEqual([true, false, false, true]);
+    // The row button cycles the first row from its default to all tracks.
+    const rowButtons = wrapper
+      .findAllComponents(ElButton)
+      .filter((button) => ['Default', 'All', 'None'].includes(button.text()));
+    await rowButtons[0]?.trigger('click');
+    expect(checked()).toEqual([true, true, false, true]);
+    await wrapper
+      .findAllComponents(ElButton)
+      .find((button) => button.text() === 'Export')
+      ?.trigger('click');
+    const jobs = wrapper.emitted('export')?.[0]?.[0];
+    if (!Array.isArray(jobs)) throw new Error('Expected export jobs');
+    await f.workspace.exportTracks(jobs);
+    // The snare is cut at both rows, so its files carry the row; the kick keeps its name.
+    expect(f.exported.map((file) => file.name).sort()).toEqual([
+      'kick_000.wav',
+      'snare_m1_000.wav',
+      'snare_m2_000.wav',
+    ]);
   });
   it('disables export without audio and exports real WAV bytes through its button', async () => {
     const { f, options } = setup();

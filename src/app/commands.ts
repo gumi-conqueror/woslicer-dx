@@ -36,6 +36,8 @@ export interface CommandHosts {
   connectYuancon?(): void;
   openWheel?(): void;
   inputSettings?(): void;
+  /** Opens the export window, where tracks and marker sets are chosen. */
+  exportSlices?(): void;
   openProject(): void | Promise<void>;
   newProjectFromWos(): void | Promise<void>;
   /** An app-owned dialog or lock is open. Visible dialogs always block commands. */
@@ -420,13 +422,13 @@ export const COMMANDS = {
     label: 'menu.exportAll',
     group: 'output',
     enabled: (state) => hasSource(state) && hasMarkers(state),
-    run: ({ workspace }) => workspace.exportAll(),
+    run: (context) => exportSlices(context, () => context.workspace.exportAll()),
   },
   'export-all-tracks': {
     label: 'menu.exportAllTracks',
     group: 'output',
     enabled: (state) => state.document.tracks.some((track) => track.slicing.markers.length > 0),
-    run: ({ workspace }) => workspace.exportAllTracks(),
+    run: (context) => exportSlices(context, () => context.workspace.exportAllTracks()),
   },
   'copy-bmse': {
     label: 'help.bmseOut',
@@ -513,6 +515,17 @@ export function useCommandRunner(): RunCommand | null {
   return inject(runnerKey, null);
 }
 
+/**
+ * With several tracks, exporting all slices opens the export window to choose
+ * tracks and markers; with one track it exports at once.
+ */
+function exportSlices({ editor, hosts }: CommandContext, direct: () => Promise<void>): unknown {
+  if (editor.document.tracks.length > 1 && hosts.exportSlices) {
+    hosts.exportSlices();
+    return undefined;
+  }
+  return direct();
+}
 /** Moves the playhead by whole seconds within the source; the cursor follows it. */
 function seekBy({ editor, playback }: CommandContext, seconds: number): void {
   const source = editor.source;

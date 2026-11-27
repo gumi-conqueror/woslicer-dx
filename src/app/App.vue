@@ -33,6 +33,7 @@ import { openDataFolder } from '../platform/app-data';
 import { useInputState } from '../input/state';
 import YuanconDialog from './components/YuanconDialog.vue';
 import InputSettingsDialog from './components/InputSettingsDialog.vue';
+import ExportDialog from '../export/ExportDialog.vue';
 import { reservedControl, useBindingOverrides } from '../input/binding-overrides';
 import { useYuanconRecording } from '../input/yuancon/use-recording';
 
@@ -61,6 +62,7 @@ const helpOpen = ref(false);
 const troubleshootOpen = ref(false);
 const yuanconOpen = ref(false);
 const inputSettingsOpen = ref(false);
+const exportOpen = ref(false);
 const applicationMenu = useTemplateRef<InstanceType<typeof ApplicationMenu>>('applicationMenu');
 const closing = ref(false);
 // Every app-owned dialog and the close lock: while one is open, app input does nothing.
@@ -72,6 +74,7 @@ const modalOpen = computed(
     troubleshootOpen.value ||
     yuanconOpen.value ||
     inputSettingsOpen.value ||
+    exportOpen.value ||
     closing.value,
 );
 const dragActive = ref(false);
@@ -105,6 +108,9 @@ const commands = createCommands({
     },
     inputSettings: () => {
       inputSettingsOpen.value = true;
+    },
+    exportSlices: () => {
+      exportOpen.value = true;
     },
     openWheel: () => {
       // Opened without a held control, the wheel stays open like after a tap.
@@ -416,6 +422,10 @@ onUnmounted(() => {
         :connection="yuancon"
       />
       <InputSettingsDialog v-model="inputSettingsOpen" />
+      <ExportDialog
+        v-model="exportOpen"
+        @export="(jobs) => void workspace.exportTracks(jobs)"
+      />
       <TroubleshootDialog
         v-model="troubleshootOpen"
         :identity="identity"

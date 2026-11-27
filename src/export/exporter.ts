@@ -5,6 +5,7 @@ import type { Platform, OutputFile } from '../platform/contracts';
 import type { AudioEngine } from '../audio/audio-jobs';
 import type { EditorStore } from '../slicing/editor-store';
 import { currentTrack } from '../project/codec';
+import { defaultSelection, exportJobs, markerRows, type ExportJob } from './export-plan';
 
 export function createExporter(
   platform: Platform,
@@ -12,17 +13,22 @@ export function createExporter(
   engineOf: (trackId: string) => AudioEngine | null,
   generation: () => number,
 ) {
-  /** The slices of one track, or why it has none to export. */
-  function trackSlices(trackId: string, assertCurrent: () => void) {
+  /**
+   * The slices of one track's audio, or why it has none to export. By default
+   * the track's own markers cut it; an export job can give other markers and a
+   * suffix for the base name.
+   */
+  function trackSlices(trackId: string, assertCurrent: () => void, job?: ExportJob) {
     const source = editor.sessions.get(trackId)?.source ?? null;
     const worker = engineOf(trackId);
     const base = editor.timeBaseOf(trackId);
     const track = currentTrack(editor.document, trackId);
     if (!source || !worker || !base) return { kind: 'no-source' as const };
-    const ticks = track.slicing.markers;
+    const ticks = job?.ticks ?? track.slicing.markers;
     if (!ticks.length) return { kind: 'no-markers' as const };
     const { fadeoutMs, noisegateDb } = editor.sliceProcessingOf(trackId);
-    const baseName = portableStem(track.output.baseName, 'slice');
+    const name = track.output.baseName;
+    const baseName = portableStem(job?.suffix ? `${name}_${job.suffix}` : name, 'slice');
     const { ranges, skipped } = sliceRanges(ticks, base, source.length);
     async function fileAt(index: number): Promise<OutputFile | null> {
       assertCurrent();
@@ -98,13 +104,13 @@ export function createExporter(
   }
 
   /**
-   * Exports the slices of every track with audio and markers into one archive
-   * or folder named after the project. Each track uses its own base name and
-   * numbering; equal file names from two tracks stop the export before writing.
+   * Exports export jobs into one archive or folder named after the project:
+   * the audio of a track cut at a set of markers each. Each job uses its
+   * track's base name and numbering; equal file names stop the export before writing.
    */
-  async function exportAllTracks(): Promise<void> {
+  async function exportTracks(plan: readonly ExportJob[]): Promise<void> {
     await exclusive(async (assertCurrent) => {
-      const jobs = editor.document.tracks.map((track) => trackSlices(track.trackId, assertCurrent));
+      const jobs = plan.map((job) => trackSlices(job.trackId, assertCurrent, job));
       const ready = jobs.filter((job) => job.kind === 'ready');
       const withoutAudio = jobs.filter((job) => job.kind === 'no-source').length;
       if (!ready.length) {
@@ -143,5 +149,16 @@ export function createExporter(
       ]);
     });
   }
-  return { exportAll: () => run(false), exportSlice: () => run(true), exportAllTracks };
+  /** Exports every track's audio cut at its own markers. */
+  function exportAllTracks(): Promise<void> {
+    const { tracks } = editor.document;
+    const rows = markerRows(tracks);
+    return exportTracks(exportJobs(tracks, rows, defaultSelection(rows)));
+  }
+  return {
+    exportAll: () => run(false),
+    exportSlice: () => run(true),
+    exportAllTracks,
+    exportTracks,
+  };
 }

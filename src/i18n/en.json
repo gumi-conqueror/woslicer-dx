@@ -600,5 +600,20 @@
     "double": "double-click",
     "triple": "triple-click",
     "drag": "drag"
+  },
+  "exportDialog": {
+    "title": "Export slices",
+    "hint": "Each checked box exports the audio of its column, cut at the markers of its row. Tracks with equal markers share a row.",
+    "markers": "Markers",
+    "rowTrack": "Markers of track {tracks}",
+    "rowLinked": "Markers linked on all tracks",
+    "count": "{count} markers",
+    "rowToggle": "Row",
+    "modeDefault": "Default",
+    "modeAll": "All",
+    "modeNone": "None",
+    "modeCustom": "Custom",
+    "cancel": "Cancel",
+    "export": "Export"
   }
 }

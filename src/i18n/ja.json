@@ -600,5 +600,20 @@
     "double": "ダブルクリック",
     "triple": "トリプルクリック",
     "drag": "ドラッグ"
+  },
+  "exportDialog": {
+    "title": "スライスを書き出し",
+    "hint": "チェックしたセルごとに、その列のトラックの音声をその行の分割点で切って書き出す。分割点が同じトラックは 1 行にまとめる。",
+    "markers": "分割点",
+    "rowTrack": "トラック {tracks} の分割点",
+    "rowLinked": "全トラックでリンクした分割点",
+    "count": "分割点 {count} 個",
+    "rowToggle": "行",
+    "modeDefault": "既定",
+    "modeAll": "すべて",
+    "modeNone": "なし",
+    "modeCustom": "カスタム",
+    "cancel": "キャンセル",
+    "export": "書き出し"
   }
 }
