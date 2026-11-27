@@ -253,6 +253,16 @@ type KeyEvent = Pick<
   KeyboardEvent,
   'key' | 'code' | 'ctrlKey' | 'metaKey' | 'altKey' | 'shiftKey' | 'isComposing'
 >;
+/** macOS uses Command where other systems use Ctrl. */
+export const MAC =
+  typeof navigator !== 'undefined' &&
+  /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+/** The name of the primary shortcut modifier on this system. */
+export const PRIMARY_KEY = MAC ? 'Cmd' : 'Ctrl';
+/** The primary modifier is held: Command on macOS, Ctrl elsewhere. */
+export function primaryPressed(event: Pick<KeyEvent, 'ctrlKey' | 'metaKey'>): boolean {
+  return MAC ? event.metaKey : event.ctrlKey;
+}
 function keyMatches(chord: KeyChord, event: KeyEvent): boolean {
   if (chord.code !== undefined)
     return (
@@ -264,7 +274,9 @@ function keyMatches(chord: KeyChord, event: KeyEvent): boolean {
     );
   return (
     chord.key?.toLowerCase() === event.key.toLowerCase() &&
-    Boolean(chord.primary) === (event.ctrlKey || event.metaKey) &&
+    Boolean(chord.primary) === primaryPressed(event) &&
+    // The other system modifier is not part of any shortcut.
+    !(MAC ? event.ctrlKey : event.metaKey) &&
     Boolean(chord.alt) === event.altKey &&
     (chord.shift === 'either' || Boolean(chord.shift) === event.shiftKey)
   );
@@ -383,7 +395,7 @@ function keyLabel(chord: KeyChord): string {
 /** The keys of one chord, modifiers first, as key caps show them. */
 export function chordKeys(chord: KeyChord): string[] {
   return [
-    ...(chord.primary ? ['Ctrl/Cmd'] : []),
+    ...(chord.primary ? [PRIMARY_KEY] : []),
     ...(chord.alt ? ['Alt'] : []),
     ...(chord.shift === true ? ['Shift'] : []),
     keyLabel(chord),

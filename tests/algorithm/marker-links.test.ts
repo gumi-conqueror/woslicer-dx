@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createEmptyTrack } from '../../src/project/codec';
-import { applyMarkerEdit } from '../../src/project/marker-links';
+import { applyMarkerEdit, linkAt } from '../../src/project/marker-links';
 
 function tracks(...lists: { markers: number[]; links: number[] }[]) {
   return lists.map(({ markers, links }, index) => {
@@ -38,5 +38,17 @@ describe('linked marker edits', () => {
     );
     expect(other.slicing.markers).toEqual([30, 36]);
     expect(other.slicing.markerKeys).toEqual([{ tick: 36, keys: [3] }]);
+  });
+  it('adds one unlinked marker to the link group at its tick', () => {
+    const value = tracks(
+      { markers: [24], links: [24] },
+      { markers: [24], links: [24] },
+      { markers: [24], links: [] },
+    );
+    expect(linkAt(value, 24, ['t2'], anywhere)).toBe(1);
+    expect(value.map((track) => track.slicing.links)).toEqual([[24], [24], [24]]);
+    // Alone, one marker forms no link.
+    const lone = tracks({ markers: [24], links: [] }, { markers: [], links: [] });
+    expect(linkAt(lone, 24, ['t0'], anywhere)).toBe(0);
   });
 });

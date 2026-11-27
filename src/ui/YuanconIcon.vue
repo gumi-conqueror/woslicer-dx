@@ -20,7 +20,8 @@ const keyPositions = [
   <svg
     class="yuancon-icon"
     viewBox="0 0 68 32"
-    fill="none"
+    fill="currentColor"
+    fill-opacity="0.16"
     stroke="currentColor"
     stroke-width="1.5"
     aria-hidden="true"
@@ -38,10 +39,12 @@ const keyPositions = [
     />
     <path
       v-if="control === 'positive'"
+      fill="none"
       d="M5 14a7 7 0 0 1 12-3m-4 0h4V7"
     />
     <path
       v-if="control === 'negative'"
+      fill="none"
       d="M19 14A7 7 0 0 0 7 11m4 0H7V7"
     />
     <rect
@@ -63,6 +66,7 @@ const keyPositions = [
         text-anchor="middle"
         font-size="7"
         fill="currentColor"
+        fill-opacity="1"
         stroke="none"
       >
         {{ key.bit + 1 }}
@@ -77,9 +81,10 @@ const keyPositions = [
   flex: none;
   vertical-align: middle;
 }
+/* Bodies carry a light tint of the outline color; active parts a strong one. */
 .active {
   fill: currentColor;
-  fill-opacity: 0.25;
+  fill-opacity: 0.6;
   stroke-width: 2;
 }
 </style>

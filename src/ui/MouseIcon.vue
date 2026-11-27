@@ -45,6 +45,7 @@ const count = computed(() =>
       :clip-path="`url(#${clip})`"
     />
     <rect
+      class="body"
       x="4"
       y="2"
       width="12"
@@ -57,7 +58,7 @@ const count = computed(() =>
       d="M4 10h12M10 2v8"
       fill="none"
       stroke="currentColor"
-      stroke-width="0.8"
+      stroke-width="1"
     />
     <rect
       x="8.8"
@@ -101,5 +102,10 @@ const count = computed(() =>
   width: 21px;
   height: 19px;
   vertical-align: middle;
+}
+/* The mouse body is filled with a tint of its outline color, as the controller icons. */
+.body {
+  fill: currentColor;
+  fill-opacity: 0.16;
 }
 </style>

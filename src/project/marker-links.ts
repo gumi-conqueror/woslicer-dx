@@ -166,8 +166,9 @@ export function relinkMarkers(
 
 /**
  * Links the markers of the given tracks at one tick. A listed track without a
- * marker there gets one when it can hold it. Returns the number of linked
- * markers, or 0 when fewer than two tracks take part.
+ * marker there gets one when it can hold it. The markers join the link group
+ * that other tracks already form at the tick. Returns the number of markers
+ * that were linked, or 0 when the group would have fewer than two tracks.
  */
 export function linkAt(
   tracks: readonly ProjectTrack[],
@@ -180,7 +181,10 @@ export function linkAt(
       trackIds.includes(item.trackId) &&
       (item.slicing.markers.includes(tick) || allowed(item.trackId, tick)),
   );
-  if (members.length < 2) return 0;
+  const linkedElsewhere = tracks.filter(
+    (item) => !trackIds.includes(item.trackId) && item.slicing.links?.includes(tick),
+  ).length;
+  if (members.length + linkedElsewhere < 2) return 0;
   for (const { slicing } of members) {
     slicing.markers = normalizeSelection([...slicing.markers, tick]);
     slicing.links = [...(slicing.links ?? []), tick];

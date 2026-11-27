@@ -152,7 +152,8 @@ test('toggles ordered modules without losing drafts and integrates the track ove
   await page.getByRole('button', { name: 'Help', exact: true }).click();
   await page.getByRole('menuitem', { name: 'User guide and shortcuts', exact: true }).click();
   const help = page.getByRole('dialog');
-  await expect(help).toContainText('Ctrl/Cmd+S');
+  // Shortcuts are key caps; outside macOS the primary key is Ctrl.
+  await expect(help.locator('kbd', { hasText: /^Ctrl$/ }).first()).toBeVisible();
   await expect(help).toContainText('Add marker without snapping');
   await page.keyboard.press('Escape');
   await expect(help).toBeHidden();

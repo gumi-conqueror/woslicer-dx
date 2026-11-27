@@ -447,9 +447,8 @@
     "workspace": "Tracks and panels",
     "workspaceBody": "Click or drag the track’s waveform overview to move along the timeline. New panels open at the right edge and move older panels left. Click a panel’s switch again or its close button to hide it. Panels can fill the workspace. If space is insufficient, the oldest panel closes. There is no horizontal scrollbar, and closed panels keep your input. Project → Add audio track adds a track with its own audio and markers. Click a track to edit it; double-click its name to rename it. Playback plays all tracks; use M and S on a track to mute or solo it.",
     "mouse": "Mouse controls",
-    "mouseBody": "Left-drag adds markers. Right-drag removes them. Drag a marker to move the selected markers. Shift-drag adds to the selection, and Ctrl/Cmd-drag toggles selection within a range. Middle-drag pans, Ctrl/Cmd+wheel zooms, and Alt temporarily disables snapping. Press {cancel} to cancel a drag.",
     "keyboard": "Keyboard shortcuts",
-    "keyboardScope": "Shortcuts work in the editor, outside text fields and dialogs. Ctrl/Cmd means Ctrl on Windows/Linux or Command on macOS. Buttons, sliders and tabs use standard keyboard navigation.",
+    "keyboardScope": "Shortcuts work in the editor, outside text fields and dialogs. Buttons, sliders and tabs use standard keyboard navigation.",
     "calibrationBody": "Load audio and open Tools → Calibrate. Tap {keys} with the clicks. When the median stabilizes, select Finish, then Apply. Press {cancel} to close. The offset corrects marker timing during playback.",
     "measurePaste": "Paste markers into the measure",
     "clearSelection": "Clear selection / cancel drag",
@@ -588,8 +587,15 @@
     "selectCell": "Select a cell",
     "selectLinked": "Select its linked cells",
     "selectRow": "Select the row",
-    "linkCells": "Link or unlink the selection",
-    "goToMarker": "Go to the marker"
+    "linkCells": "Link the selection, or unlink it when all of it is linked",
+    "goToMarker": "Go to the marker",
+    "areaTimeline": "Waveform",
+    "areaRuler": "Ruler",
+    "areaOverview": "Track overview",
+    "areaTrack": "Track header",
+    "areaMarkers": "Marker list",
+    "cancelDrag": "Cancel a drag",
+    "toggleCellMarker": "Add or remove this track's marker"
   },
   "mouse": {
     "left": "Left button",

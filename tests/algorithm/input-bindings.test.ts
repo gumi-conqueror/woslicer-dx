@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   BINDINGS,
   gamepadBinding,
@@ -38,7 +38,10 @@ const commandFor = (
 describe('keyboard bindings', () => {
   it('distinguishes project, clipboard, navigation and snap-bypass modifiers', () => {
     expect(commandFor('s', { ctrlKey: true })).toBe('save-project');
-    expect(commandFor('S', { metaKey: true, shiftKey: true })).toBe('export-wos');
+    expect(commandFor('S', { ctrlKey: true, shiftKey: true })).toBe('export-wos');
+    // Outside macOS the Windows key is no shortcut modifier.
+    expect(commandFor('s', { metaKey: true })).toBeUndefined();
+    expect(commandFor('S', { metaKey: true, shiftKey: true })).toBeUndefined();
     expect(commandFor('s')).toBe('clip-number-up');
     expect(commandFor('s', { altKey: true })).toBeUndefined();
     expect(commandFor('ArrowLeft', { shiftKey: true })).toBe('cursor-left-tick');
@@ -47,7 +50,7 @@ describe('keyboard bindings', () => {
     expect(commandFor('+', { shiftKey: true })).toBe('zoom-in');
     expect(commandFor('r')).toBe('open-wheel');
     expect(commandFor('z', { isComposing: true })).toBeUndefined();
-    expect(shortcutLabel('save-project')).toBe('Ctrl/Cmd+S');
+    expect(shortcutLabel('save-project')).toBe('Ctrl+S');
   });
   it('uses the seven physical letter keys in recording and keeps modifier shortcuts', () => {
     const taps = [...'zsxdcfv'].map(
@@ -65,7 +68,7 @@ describe('keyboard bindings', () => {
     expect(shortcutLabel('clip-number-down', true)).toBe('');
     expect(shortcutLabel('clip-number-down')).toBe('A');
     expect(shortcutLabel('import-wos', true)).toBe('');
-    expect(shortcutLabel('save-project', true)).toBe('Ctrl/Cmd+S');
+    expect(shortcutLabel('save-project', true)).toBe('Ctrl+S');
     expect(shortcutLabel('rate-down', true)).toBe('A / [');
   });
 });
@@ -167,5 +170,19 @@ describe('input routing', () => {
       { kind: 'wheel', action: 'confirm' },
       { kind: 'wheel', action: 'release' },
     ]);
+  });
+});
+
+describe('macOS keys', () => {
+  it('uses Command as the primary modifier and names it Cmd', async () => {
+    vi.stubGlobal('navigator', { platform: 'MacIntel', userAgent: '' });
+    vi.resetModules();
+    const mac = await import('../../src/input/bindings');
+    expect(mac.PRIMARY_KEY).toBe('Cmd');
+    expect(mac.shortcutLabel('save-project')).toBe('Cmd+S');
+    expect(mac.keyBinding(key('s', { metaKey: true }), 'edit')?.command).toBe('save-project');
+    expect(mac.keyBinding(key('s', { ctrlKey: true }), 'edit')?.command).toBeUndefined();
+    vi.unstubAllGlobals();
+    vi.resetModules();
   });
 });

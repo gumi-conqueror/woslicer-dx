@@ -10,7 +10,9 @@ import {
 import type { EditorStore } from './editor-store';
 import type { MarkerKey } from '../project/schema';
 import { remapMarkerKeys, type MarkerKeys } from '../project/marker-keys';
+import { currentTrack } from '../project/codec';
 import {
+  applyMarkerEdit,
   linkAt,
   linkMarkersTo as copyLinkedMarkers,
   relinkMarkers as relinkTrackMarkers,
@@ -320,6 +322,34 @@ export function createEditorActions(editor: EditorStore) {
     editor.setStatus('markersUnlinked', { count });
     return count;
   }
+  /**
+   * Adds or removes one track's marker at a tick, on that track only, even
+   * with shared markers. A removed linked marker leaves its link.
+   */
+  function toggleTrackMarker(trackId: string, tick: number): boolean {
+    editor.cancelDraft();
+    const track = editor.document.tracks.find((item) => item.trackId === trackId);
+    if (!track) return false;
+    const present = track.slicing.markers.includes(tick);
+    if (!present && !editor.markerAllowed(trackId, tick)) {
+      editor.setStatus('cutBeyondEnd', true);
+      return false;
+    }
+    return editor.transact((draft) => {
+      const { slicing } = currentTrack(draft, trackId);
+      applyMarkerEdit(
+        draft.tracks,
+        trackId,
+        {
+          markers: present ? slicing.markers.filter((t) => t !== tick) : [...slicing.markers, tick],
+          keys: slicing.markerKeys ?? [],
+          target: (value) => value,
+        },
+        false,
+        editor.markerAllowed,
+      );
+    }).changed;
+  }
   function toggleSharedMarkers(): void {
     editor.sharedMarkers = !editor.sharedMarkers;
     editor.setStatus(editor.sharedMarkers ? 'sharedMarkersOn' : 'sharedMarkersOff');
@@ -354,6 +384,7 @@ export function createEditorActions(editor: EditorStore) {
     toggleSharedMarkers,
     linkPoints,
     unlinkPoints,
+    toggleTrackMarker,
     reset,
   };
 }

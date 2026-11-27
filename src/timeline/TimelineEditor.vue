@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CANCEL, matchesChords } from '../input/bindings';
+import { CANCEL, matchesChords, primaryPressed } from '../input/bindings';
 import TrackHeader from '../app/components/TrackHeader.vue';
 import CommandMenu from '../app/components/CommandMenu.vue';
 import { TRACK_MENU } from '../app/menu';
@@ -131,7 +131,7 @@ function point(event: PointerEvent): TimelinePointer {
     button: event.button,
     altKey: event.altKey,
     shiftKey: event.shiftKey,
-    ctrlKey: event.ctrlKey || event.metaKey,
+    ctrlKey: primaryPressed(event),
   };
 }
 // Viewport gesture protocol: one captured pointer drives begin/move/end;
@@ -177,7 +177,8 @@ function wheel(event: WheelEvent, rulerZoom = false): void {
     event.clientX - (rect?.left ?? 0),
     event.deltaX * unit,
     event.deltaY * unit,
-    rulerZoom || event.ctrlKey || event.metaKey,
+    // A trackpad pinch arrives as a wheel with Ctrl held, also on macOS.
+    rulerZoom || event.ctrlKey || primaryPressed(event),
   );
 }
 // Ruler click seeks: snapped cursor tick, then playback re-anchored to the same tick.

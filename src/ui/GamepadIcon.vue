@@ -47,6 +47,7 @@ const stick = computed(() => props.control.match(/^(ls|rs)(?:-|$)/)?.[1]?.toUppe
     </template>
     <template v-else-if="control.startsWith('dpad-') && direction">
       <path
+        class="body"
         d="M8 3h8v5h5v8h-5v5H8v-5H3V8h5Z"
         fill="none"
         stroke="currentColor"
@@ -58,6 +59,7 @@ const stick = computed(() => props.control.match(/^(ls|rs)(?:-|$)/)?.[1]?.toUppe
     </template>
     <template v-else-if="stick">
       <circle
+        class="body"
         cx="12"
         cy="12"
         r="10"
@@ -71,7 +73,7 @@ const stick = computed(() => props.control.match(/^(ls|rs)(?:-|$)/)?.[1]?.toUppe
         :d="arrows[direction]"
         transform="translate(12 12) scale(1.35) translate(-12 -12)"
         fill="currentColor"
-        opacity="0.45"
+        opacity="0.8"
       />
       <text
         x="12"
@@ -86,6 +88,7 @@ const stick = computed(() => props.control.match(/^(ls|rs)(?:-|$)/)?.[1]?.toUppe
     </template>
     <template v-else-if="control === 'menu' || control === 'view'">
       <circle
+        class="body"
         cx="12"
         cy="12"
         r="10"
@@ -101,6 +104,7 @@ const stick = computed(() => props.control.match(/^(ls|rs)(?:-|$)/)?.[1]?.toUppe
     <template v-else>
       <rect
         v-if="control.length > 1"
+        class="body"
         x="1"
         y="4"
         width="22"
@@ -111,6 +115,7 @@ const stick = computed(() => props.control.match(/^(ls|rs)(?:-|$)/)?.[1]?.toUppe
       />
       <circle
         v-else
+        class="body"
         cx="12"
         cy="12"
         r="10"
@@ -137,6 +142,12 @@ const stick = computed(() => props.control.match(/^(ls|rs)(?:-|$)/)?.[1]?.toUppe
   height: 23px;
   flex: none;
   vertical-align: middle;
+}
+/* Control bodies are filled with a tint of their outline color, so they read
+   as solid in both themes. */
+.body {
+  fill: currentColor;
+  fill-opacity: 0.16;
 }
 .a {
   color: var(--el-color-success);

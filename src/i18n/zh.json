@@ -447,9 +447,8 @@
     "workspace": "音轨与面板",
     "workspaceBody": "点击或拖动音轨缩略图可定位时间轴。新面板在最右侧打开，已有面板向左移动。再次点击开关或关闭按钮可隐藏面板，输入内容保留。面板可铺满工作区，空间不足时从最早打开的面板开始关闭，无横向滚动条。工程 → 添加音轨 可添加带独立音频和切点的音轨。点击音轨即可编辑，双击名称可重命名。播放时会同时播放全部音轨，可用音轨上的 M、S 静音或独奏。",
     "mouse": "鼠标操作",
-    "mouseBody": "左键拖动添加切点，右键拖动删除。拖动切点可移动选中的切点。Shift+拖动加选，Ctrl/Cmd+拖动反转范围内的选择。中键拖动平移，Ctrl/Cmd+滚轮缩放。Alt 临时关闭吸附，{cancel} 取消拖动。",
     "keyboard": "快捷键",
-    "keyboardScope": "快捷键在编辑区生效，输入框和对话框内不触发。Ctrl/Cmd 指 Windows/Linux 的 Ctrl 或 macOS 的 Command。按钮、滑块和标签页使用标准键盘导航。",
+    "keyboardScope": "快捷键在编辑区生效，输入框和对话框内不触发。按钮、滑块和标签页使用标准键盘导航。",
     "calibrationBody": "加载音频后打开“工具 → 校准”。跟随节拍按 {keys}，中位数稳定后点击“完成”，再点击“应用”。{cancel} 关闭校准。校准仅影响播放中手动添加的切点。",
     "measurePaste": "粘贴切点到小节",
     "clearSelection": "取消选择／取消拖动",
@@ -588,8 +587,15 @@
     "selectCell": "选择格子",
     "selectLinked": "选择链接的格子",
     "selectRow": "选择整行",
-    "linkCells": "链接或解除选中的格子",
-    "goToMarker": "跳到切点"
+    "linkCells": "链接选中的格子；全部已链接时解除链接",
+    "goToMarker": "跳到切点",
+    "areaTimeline": "波形",
+    "areaRuler": "标尺",
+    "areaOverview": "轨道缩略图",
+    "areaTrack": "轨头",
+    "areaMarkers": "切点列表",
+    "cancelDrag": "取消拖动",
+    "toggleCellMarker": "添加或删除这条音轨的切点"
   },
   "mouse": {
     "left": "左键",

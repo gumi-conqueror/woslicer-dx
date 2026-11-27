@@ -40,7 +40,7 @@ it('moves a key to its new command, keeps it on this device and restores default
   const reopened = useBindingOverrides(createPinia());
   expect(keyBinding(press('z'), 'edit')?.command).toBe('undo');
   reopened.restore(row('edit/undo'), 'keyboard');
-  expect(shortcutLabel('undo')).toBe('Ctrl/Cmd+Z');
+  expect(shortcutLabel('undo')).toBe('Ctrl+Z');
   // Toggle marker stays without Z until its own default is restored.
   expect(shortcutLabel('toggle-marker')).toBe('');
   reopened.restoreAll();

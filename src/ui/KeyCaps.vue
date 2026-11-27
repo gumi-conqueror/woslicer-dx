@@ -1,21 +1,49 @@
 <script setup lang="ts">
-/** Keys of one chord drawn as key caps, for example Shift and S. */
-defineProps<{ keys: readonly string[] }>();
+import { computed } from 'vue';
+import { chordKeys, type KeyChord } from '../input/bindings';
+
+/**
+ * Keys drawn as key caps: the keys of one chord, or several chords separated
+ * by a slash, for example Ctrl+Z / Ctrl+Y.
+ */
+const props = defineProps<{ keys?: readonly string[]; chords?: readonly KeyChord[] }>();
+const groups = computed(() => {
+  if (props.keys) return [props.keys];
+  const labels = (props.chords ?? []).map(chordKeys);
+  // Chords that look the same, such as + with or without Shift, are shown once.
+  return labels.filter(
+    (keys, index) => labels.findIndex((other) => other.join('+') === keys.join('+')) === index,
+  );
+});
 </script>
 <template>
   <span class="key-caps"
-    ><kbd
-      v-for="key in keys"
-      :key="key"
-      >{{ key }}</kbd
+    ><template
+      v-for="(group, index) in groups"
+      :key="index"
+      ><span
+        v-if="index"
+        class="separator"
+        >/</span
+      ><kbd
+        v-for="key in group"
+        :key="key"
+        >{{ key }}</kbd
+      ></template
     ></span
   >
 </template>
 <style scoped>
 .key-caps {
   display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 2px;
   vertical-align: middle;
+}
+.separator {
+  margin: 0 3px;
+  color: var(--el-text-color-secondary);
 }
 kbd {
   min-width: 16px;

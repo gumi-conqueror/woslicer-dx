@@ -138,7 +138,7 @@ describe('editor panels with real Element Plus controls', () => {
     await flushPromises();
     expect(wrapper.findAll('.marker-row')).toHaveLength(0);
   });
-  it('toggles cuts with ctrl and meta, freezes the playhead while playing, and numbers measures at 192 ticks', async () => {
+  it('toggles cuts with ctrl, freezes the playhead while playing, and numbers measures at 192 ticks', async () => {
     const { f, options } = setup();
     f.editor.setSource({
       name: 'example',
@@ -158,12 +158,12 @@ describe('editor panels with real Element Plus controls', () => {
     expect(rows[0].text()).toContain('M1');
     expect(rows[0].text()).toContain('191');
     expect(rows[1].text()).toContain('M2');
-    // Plain click replaces; Ctrl adds; Meta removes the already-selected tick.
+    // Plain click replaces; Ctrl adds, and removes an already-selected tick.
     await rows[0].trigger('click');
     expect(f.editor.selectedTicks).toEqual([191]);
     await rows[1].trigger('click', { ctrlKey: true });
     expect(f.editor.selectedTicks).toEqual([191, 192]);
-    await rows[1].trigger('click', { metaKey: true });
+    await rows[1].trigger('click', { ctrlKey: true });
     expect(f.editor.selectedTicks).toEqual([191]);
     // The playhead only follows clicks while playback is stopped.
     f.editor.setPlaying(true);
@@ -227,6 +227,14 @@ describe('editor panels with real Element Plus controls', () => {
     expect(f.editor.track.trackId).toBe('second');
     expect(f.editor.cursorTick).toBe(24);
     expect(f.editor.selectedTicks).toEqual([24]);
+    // A second right click on the cell removes that track's marker, on that track only.
+    const markers = () => f.editor.document.tracks.map((track) => track.slicing.markers);
+    await cell('2: marker').trigger('contextmenu');
+    expect(markers()).toEqual([[24], []]);
+    // A double right click on an empty cell adds the marker.
+    await cell('2: no marker').trigger('contextmenu');
+    await cell('2: no marker').trigger('contextmenu');
+    expect(markers()).toEqual([[24], [24]]);
     // Ten tracks need two lines of cells, so rows grow from 32 px to 46 px.
     f.editor.transact((draft) => {
       for (let index = 3; index <= 10; index++) {

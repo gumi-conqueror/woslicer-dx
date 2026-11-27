@@ -4,6 +4,7 @@ import { ElButton, ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-pl
 import { useI18n } from 'vue-i18n';
 import { MEASURE_TICKS, tickToSampleExport } from '../core/timebase';
 import { useWorkspace } from '../workspace/workspace';
+import { primaryPressed } from '../input/bindings';
 import { useUiPreferencesStore } from '../ui/preferences';
 import { paletteFor } from '../ui/palette';
 const { t } = useI18n();
@@ -44,6 +45,9 @@ const CELL_LABELS = {
 const current = computed(() => new Set(editor.ticks));
 /** Track cells wrap after this many tracks, so a row stays narrow enough for the panel. */
 const CELLS_PER_LINE = 8;
+/** The right padding of a row; the header adds it to line up with the cells. */
+const ROW_PADDING = 8;
+const rowPaddingCss = `${ROW_PADDING}px`;
 const cellLines = computed(() => Math.ceil(columns.value.length / CELLS_PER_LINE));
 const cellGrid = computed(() => ({
   gridTemplateColumns: `repeat(${Math.min(columns.value.length, CELLS_PER_LINE)}, 14px)`,
@@ -75,29 +79,44 @@ function pick(column: Column, tick: number, event: MouseEvent): void {
 }
 /**
  * A middle click edits the links of the selection, or of the clicked cell when
- * nothing is selected. Selected linked markers leave their links; a link that
- * keeps one marker ends. A selection without linked markers is linked, tick by tick.
+ * nothing is selected. While a selected cell is not linked, the selection is
+ * linked, tick by tick; a cell without a marker gets one. A fully linked
+ * selection leaves its links instead; a link that keeps one marker ends.
  */
 function applyLinks(column: Column, tick: number): void {
   const keys = picked.value.size ? [...picked.value] : [cellKey(column.trackId, tick)];
   const groups = new Map<number, string[]>();
-  let linked = false;
+  let unlinked = false;
   for (const key of keys) {
     const at = key.lastIndexOf('@');
     const trackId = key.slice(0, at),
       point = Number(key.slice(at + 1));
     const item = columns.value.find((entry) => entry.trackId === trackId);
     if (!item) continue;
-    if (item.links.has(point)) linked = true;
+    if (!item.links.has(point)) unlinked = true;
     groups.set(point, [...(groups.get(point) ?? []), trackId]);
   }
   const points = [...groups].map(([point, trackIds]) => ({ tick: point, trackIds }));
-  if (linked) workspace.actions.unlinkPoints(points);
-  else workspace.actions.linkPoints(points);
+  if (unlinked) workspace.actions.linkPoints(points);
+  else workspace.actions.unlinkPoints(points);
   picked.value = new Set();
 }
-/** A right click goes to the marker: its track becomes current and the cursor moves there. */
-function goTo(column: Column, tick: number): void {
+/** Two right clicks on one cell within this time are a double right click. */
+const DOUBLE_CLICK_MS = 400;
+let lastRightClick: { key: string; time: number } | null = null;
+/**
+ * A right click goes to the marker: its track becomes current and the cursor
+ * moves there. A second right click on the same cell adds or removes that
+ * track's marker there, on that track only.
+ */
+function goTo(column: Column, tick: number, event: MouseEvent): void {
+  const key = cellKey(column.trackId, tick);
+  if (lastRightClick?.key === key && event.timeStamp - lastRightClick.time <= DOUBLE_CLICK_MS) {
+    lastRightClick = null;
+    workspace.actions.toggleTrackMarker(column.trackId, tick);
+    return;
+  }
+  lastRightClick = { key, time: event.timeStamp };
   editor.selectTrack(column.trackId);
   editor.moveCursorTo(tick);
   editor.setSelectedTicks(column.markers.has(tick) ? [tick] : []);
@@ -121,11 +140,18 @@ const rows = computed(() =>
   ),
 );
 let observer: ResizeObserver | undefined;
+/** The scroll bar width of the list, so the header numbers stay above the cells. */
+const gutter = shallowRef(0);
+function measureGutter(): void {
+  if (viewport.value) gutter.value = viewport.value.offsetWidth - viewport.value.clientWidth;
+}
 onMounted(() => {
   viewportHeight.value = viewport.value?.clientHeight ?? 0;
   observer = new ResizeObserver(([entry]) => {
     if (entry) viewportHeight.value = entry.contentRect.height;
+    measureGutter();
   });
+  measureGutter();
   if (viewport.value) observer.observe(viewport.value);
 });
 onBeforeUnmount(() => observer?.disconnect());
@@ -146,7 +172,7 @@ function choose(tick: number, event: MouseEvent): void {
 }
 // Selection branch of the click protocol.
 function nextSelection(tick: number, event: MouseEvent): number[] {
-  if (!event.ctrlKey && !event.metaKey) return [tick];
+  if (!primaryPressed(event)) return [tick];
   if (!selected.value.has(tick)) return [...editor.selectedTicks, tick];
   return editor.selectedTicks.filter((t) => t !== tick);
 }
@@ -232,7 +258,7 @@ watch(
     <div
       v-if="multiTrack"
       class="marker-columns"
-      :style="cellGrid"
+      :style="{ ...cellGrid, paddingRight: `${ROW_PADDING + gutter}px` }"
       :aria-label="t('chrome.markerTracks')"
     >
       <span
@@ -296,7 +322,7 @@ watch(
                 @click.stop="pick(column, tick, $event)"
                 @mousedown.middle.prevent
                 @auxclick.stop="$event.button === 1 && applyLinks(column, tick)"
-                @contextmenu.prevent.stop="goTo(column, tick)"
+                @contextmenu.prevent.stop="goTo(column, tick, $event)"
               />
             </span>
           </div>
@@ -345,7 +371,7 @@ watch(
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 0 8px 0 0;
+  padding: 0 v-bind(rowPaddingCss) 0 0;
   border-bottom: 1px solid var(--el-border-color-lighter);
   font-variant-numeric: tabular-nums;
   cursor: pointer;
@@ -383,7 +409,7 @@ watch(
   gap: 3px;
 }
 .marker-columns {
-  padding: 0 24px 4px 0;
+  padding-bottom: 4px;
   font-size: 11px;
   color: var(--el-text-color-secondary);
 }
