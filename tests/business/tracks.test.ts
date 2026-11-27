@@ -6,6 +6,8 @@ it('adds tracks with their own audio, markers and output names', async () => {
   await f.workspace.loadAudio(audioFile('kick.wav'));
   f.workspace.actions.setMarker(24);
   const first = f.editor.track.trackId;
+  // With track markers, each track keeps its own markers.
+  await f.run('toggle-shared-markers');
   f.opened = audioFile('snare.wav', 24000);
   await f.run('add-track');
   expect(f.editor.document.tracks.map((track) => track.name)).toEqual(['kick', 'snare']);
@@ -111,6 +113,7 @@ it('exports the slices of every track into one archive and refuses equal file na
   const f = setup();
   await f.workspace.loadAudio(audioFile('kick.wav', 96000));
   f.workspace.actions.setMarker(48);
+  await f.run('toggle-shared-markers');
   f.opened = audioFile('snare.wav', 96000);
   await f.run('add-track');
   f.workspace.actions.setMarker(96);

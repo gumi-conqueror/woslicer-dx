@@ -14,6 +14,7 @@ export type TimelineSnapshot = Pick<
   | 'timelineTicks'
   | 'ticks'
   | 'markerKeys'
+  | 'linkedTicks'
   | 'previewTicks'
   | 'source'
   | 'peaks'
@@ -250,7 +251,7 @@ function drawTrack(
   }
 }
 
-/** Marker lines with their head triangles and recorded key labels. */
+/** Marker lines with their head triangles and recorded key labels. Linked markers have their own color. */
 function drawMarkers(
   context: CanvasRenderingContext2D,
   state: TimelineSnapshot,
@@ -266,7 +267,11 @@ function drawMarkers(
   for (const tick of state.previewTicks ?? state.ticks) {
     if (tick < state.scrollTick || tick > toTick) continue;
     const x = (tick - state.scrollTick) * state.pxPerTick;
-    const color = state.selectedTicks.includes(tick) ? palette.selection : palette.accent;
+    const color = state.selectedTicks.includes(tick)
+      ? palette.selection
+      : state.linkedTicks.has(tick)
+        ? palette.linked
+        : palette.accent;
     context.strokeStyle = context.fillStyle = color;
     vertical(context, x, 0, height);
     context.beginPath();

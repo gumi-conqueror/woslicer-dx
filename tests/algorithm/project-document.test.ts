@@ -299,6 +299,40 @@ describe('.wosdx project document', () => {
     ).toHaveLength(WOS_FILE_SIZE);
   });
 
+  it('upgrades a version 2 file to shared markers and keeps its markers', () => {
+    const current = project();
+    const { sharedMarkers: _shared, ...global } = current.global;
+    trackOf(current).slicing.markers = [24, 96];
+    const parsed = parseProject({ ...current, schemaVersion: 2, global });
+    if (parsed.kind !== 'supported') throw new Error('Expected supported project');
+    expect(parsed.project.schemaVersion).toBe(3);
+    expect(parsed.project.global.sharedMarkers).toBe(true);
+    expect(trackOf(parsed.project).slicing.markers).toEqual([24, 96]);
+    expect(parsed.unknownFields).toEqual([]);
+  });
+  it('keeps links only between markers at the same tick on several tracks', () => {
+    const value = project();
+    const first = trackOf(value);
+    first.slicing.markers = [24, 48, 96];
+    first.slicing.links = [96, 24, 48, 24];
+    const second = structuredClone(first);
+    second.trackId = 'track-2';
+    second.slicing.markers = [24, 96];
+    second.slicing.links = [24, 96];
+    value.tracks.push(second);
+    const decoded = decodeProject(encodeProject(value));
+    if (decoded.kind !== 'supported') throw new Error('Expected supported project');
+    // Tick 48 has no marker on the second track, so its link has no partner.
+    expect(decoded.project.tracks.map((track) => track.slicing.links)).toEqual([
+      [24, 96],
+      [24, 96],
+    ]);
+    value.tracks.pop();
+    const alone = decodeProject(encodeProject(value));
+    if (alone.kind !== 'supported') throw new Error('Expected supported project');
+    expect(trackOf(alone.project).slicing.links).toBeUndefined();
+  });
+
   describe('version 1 files', () => {
     // Version 1 kept markers and output at the project level and described audio as clips.
     function v1(clips: unknown[], media: unknown[]) {
@@ -325,7 +359,7 @@ describe('.wosdx project document', () => {
     it('upgrades a project without audio', () => {
       const parsed = parseProject(v1([], []));
       if (parsed.kind !== 'supported') throw new Error('Expected supported project');
-      expect(parsed.project.schemaVersion).toBe(2);
+      expect(parsed.project.schemaVersion).toBe(3);
       expect(trackOf(parsed.project).media).toBeNull();
       expect(trackOf(parsed.project).slicing.markers).toEqual([24, 96]);
     });

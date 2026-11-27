@@ -220,7 +220,13 @@
     "keyReserved": "This key is reserved for menus and dialogs. Press another key.",
     "inputSettingsTitle": "Input settings",
     "trackGain": "Track gain (dB)",
-    "trackMenu": "Track menu"
+    "trackMenu": "Track menu",
+    "sharedMarkers": "Shared markers",
+    "linkTo": "Link to track",
+    "markerTracks": "Markers of all tracks",
+    "markerAbsent": "no marker",
+    "markerOwn": "marker",
+    "markerLinked": "linked marker"
   },
   "status": {
     "projectOpened": "Opened project: {name}",
@@ -360,7 +366,13 @@
     "trackRemoved": "Removed track {name}. Undo restores it.",
     "exportNameConflict": "Two tracks would both write {name}. Give the tracks different output names.",
     "exportTracksWithoutAudio": "{count} tracks without audio were not exported.",
-    "wosMarkersDropped": "A .wos file holds 256 measures; {count} later markers were not written."
+    "wosMarkersDropped": "A .wos file holds 256 measures; {count} later markers were not written.",
+    "markersLinked": "Linked {count} markers to {tracks} tracks.",
+    "markersUnlinked": "Unlinked {count} markers.",
+    "markersRelinked": "Relinked {count} markers.",
+    "markersRelinkNone": "No other track has a marker at the same position.",
+    "sharedMarkersOn": "Shared markers: marker edits apply to all tracks.",
+    "sharedMarkersOff": "Track markers: marker edits apply to the current track only."
   },
   "menu": {
     "file": "File",
@@ -405,7 +417,11 @@
     "inputSettings": "Input settings…",
     "track": "Track",
     "renameTrack": "Rename track",
-    "zoomFit": "Show the whole timeline"
+    "zoomFit": "Show the whole timeline",
+    "linkMarkersAll": "Link markers to all tracks",
+    "unlinkMarkers": "Unlink markers",
+    "relinkMarkers": "Relink markers at the same position",
+    "sharedMarkers": "Share markers across tracks"
   },
   "dialogs": {
     "loadAudio": "Open audio",

@@ -34,6 +34,10 @@ export const APPLICATION_MENU = [
       { id: 'copy-selection', mnemonic: 'c' },
       { id: 'cut-selection', mnemonic: 't' },
       { id: 'paste-selection', mnemonic: 'p' },
+      { id: 'link-markers-all-tracks', mnemonic: 'l' },
+      { id: 'unlink-markers', mnemonic: 'k' },
+      { id: 'relink-markers', mnemonic: 'i' },
+      { id: 'toggle-shared-markers', mnemonic: 'h' },
     ],
   },
   {
@@ -101,4 +105,9 @@ export const TRACK_MENU = [
   null,
   'export-all',
   'export-all-tracks',
+  null,
+  'link-markers-all-tracks',
+  'unlink-markers',
+  'relink-markers',
+  'toggle-shared-markers',
 ] as const satisfies readonly (AppCommand | null)[];

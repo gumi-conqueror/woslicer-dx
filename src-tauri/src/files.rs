@@ -20,7 +20,7 @@ const MAX_FILE_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 // Memory budget for UTF-8 project JSON, including structured BMHelper data.
 pub(crate) const MAX_PROJECT_BYTES: u64 = 64 * 1024 * 1024;
 /// Current `.wosdx` schema version; `PROJECT_SCHEMA_VERSION` in src/project/schema.ts owns it.
-const PROJECT_SCHEMA_VERSION: u64 = 2;
+const PROJECT_SCHEMA_VERSION: u64 = 3;
 const MAX_REFERENCES: usize = 1024;
 const MAX_OPEN_READERS: usize = 64;
 
@@ -168,10 +168,10 @@ impl HostFiles {
             return Err("project exceeds 64 MiB".into());
         }
         let value: serde_json::Value = serde_json::from_slice(&bytes).map_err(message)?;
-        // Version 1 lists media at the project level; version 2 keeps one per track.
-        // The app upgrades version 1 files only when it saves them.
+        // Version 1 lists media at the project level; later versions keep one per track.
+        // The app upgrades older files only when it saves them.
         let version = value["schemaVersion"].as_u64();
-        if value["format"] != "wosdx" || !matches!(version, Some(1) | Some(PROJECT_SCHEMA_VERSION))
+        if value["format"] != "wosdx" || !matches!(version, Some(1..=PROJECT_SCHEMA_VERSION))
         {
             return Err("unsupported project format".into());
         }

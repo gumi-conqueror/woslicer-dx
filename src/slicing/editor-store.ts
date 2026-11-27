@@ -2,7 +2,8 @@ import type { SourceAudio } from '../core/audio/pcm';
 import { computed, markRaw, shallowRef, triggerRef } from 'vue';
 import { defineStore } from 'pinia';
 import { normalizeSelection } from '../core/markers';
-import { remapMarkerKeys, type MarkerKeys } from '../project/marker-keys';
+import type { MarkerKeys } from '../project/marker-keys';
+import { applyMarkerEdit } from '../project/marker-links';
 import { ProjectEditor } from '../project/editor';
 import { createEmptyProject, currentTrack } from '../project/codec';
 import type {
@@ -258,6 +259,16 @@ export const useEditorStore = defineStore('editor', () => {
   const bandBusy = shallowRef(false);
   const ticks = computed(() => track.value.slicing.markers);
   const markerKeys = computed(() => track.value.slicing.markerKeys ?? []);
+  /** Ticks of the current track's linked markers. */
+  const linkedTicks = computed<ReadonlySet<number>>(() => new Set(track.value.slicing.links ?? []));
+  /** Marker edits follow links to other tracks, and new markers go to every track. */
+  const sharedMarkers = computed({
+    get: () => document.value.global.sharedMarkers,
+    set: (value: boolean) =>
+      applyGlobal((draft) => {
+        draft.global.sharedMarkers = value;
+      }),
+  });
   const canUndo = computed(() => project.value.canUndo);
   const canRedo = computed(() => project.value.canRedo);
   function publish(): void {
@@ -345,23 +356,30 @@ export const useEditorStore = defineStore('editor', () => {
   ): void {
     updateSession({ lastFile: value }, trackId);
   }
-  function setTicks(value: readonly number[], keys: MarkerKeys = markerKeys.value): boolean {
-    return transact((draft) => {
-      const { slicing } = currentTrack(draft, currentTrackId.value);
-      slicing.markers = normalizeSelection(value);
-      const retained = new Set(slicing.markers);
-      slicing.markerKeys = remapMarkerKeys(
-        keys.filter((entry) => retained.has(entry.tick)),
-        (tick) => tick,
-      );
-    }).changed;
+  /**
+   * Replaces the current track's markers in one undoable edit. `target` tells
+   * where the edit moved each previous marker, so linked markers on other
+   * tracks can follow it.
+   */
+  function setTicks(
+    value: readonly number[],
+    keys: MarkerKeys = markerKeys.value,
+    target: (tick: number) => number = (tick) => tick,
+  ): boolean {
+    return transact((draft) =>
+      applyMarkerEdit(
+        draft.tracks,
+        currentTrack(draft, currentTrackId.value).trackId,
+        { markers: value, keys, target },
+        draft.global.sharedMarkers,
+        markerAllowed,
+      ),
+    ).changed;
   }
   function addTicks(value: readonly number[]): number {
-    return editTrack(({ slicing }) => {
-      const additions = normalizeSelection(value).filter((t) => !slicing.markers.includes(t));
-      slicing.markers = normalizeSelection([...slicing.markers, ...additions]);
-      return additions.length;
-    }).value;
+    const additions = normalizeSelection(value).filter((t) => !ticks.value.includes(t));
+    setTicks([...ticks.value, ...additions]);
+    return additions.length;
   }
   function setOutputOptions(value: Partial<OutputRecipe>): void {
     editTrack((draft) => {
@@ -400,10 +418,14 @@ export const useEditorStore = defineStore('editor', () => {
       tickToSampleExport(tick, timeBase.value) > source.value.length
     );
   }
+  /** Whether a track can hold a marker at a tick: within the timeline and, with audio, its audio. */
+  function markerAllowed(trackId: string, tick: number): boolean {
+    const audio = sessions.value.get(trackId)?.source,
+      base = timeBaseOf(trackId);
+    return markerTickAllowed(tick, audio && base ? { base, length: audio.length } : null);
+  }
   function legalTick(tick: number): boolean {
-    const audio = source.value,
-      base = timeBase.value;
-    return markerTickAllowed(tick, audio && base && { base, length: audio.length });
+    return markerAllowed(track.value.trackId, tick);
   }
   function setCursorTick(tick: number): void {
     if (Number.isFinite(tick))
@@ -592,6 +614,9 @@ export const useEditorStore = defineStore('editor', () => {
     bandBusy,
     ticks,
     markerKeys,
+    linkedTicks,
+    sharedMarkers,
+    markerAllowed,
     canUndo,
     canRedo,
     transact,

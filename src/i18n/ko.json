@@ -220,7 +220,13 @@
     "keyReserved": "메뉴와 대화 상자용 예약 키. 다른 키 입력.",
     "inputSettingsTitle": "입력 설정",
     "trackGain": "트랙 게인(dB)",
-    "trackMenu": "트랙 메뉴"
+    "trackMenu": "트랙 메뉴",
+    "sharedMarkers": "분할점 공유",
+    "linkTo": "트랙에 링크",
+    "markerTracks": "모든 트랙의 분할점",
+    "markerAbsent": "분할점 없음",
+    "markerOwn": "분할점",
+    "markerLinked": "링크된 분할점"
   },
   "status": {
     "projectOpened": "프로젝트 열기 완료: {name}",
@@ -360,7 +366,13 @@
     "trackRemoved": "트랙 {name} 삭제. 실행 취소로 복원 가능.",
     "exportNameConflict": "두 트랙이 같은 {name} 파일을 씀. 트랙마다 다른 출력 이름 지정 필요.",
     "exportTracksWithoutAudio": "오디오가 없는 트랙 {count}개는 내보내지 않음.",
-    "wosMarkersDropped": ".wos 파일은 256마디까지. 이후 분할점 {count}개는 쓰지 않음."
+    "wosMarkersDropped": ".wos 파일은 256마디까지. 이후 분할점 {count}개는 쓰지 않음.",
+    "markersLinked": "분할점 {count}개를 트랙 {tracks}개에 링크함.",
+    "markersUnlinked": "분할점 {count}개의 링크 해제함.",
+    "markersRelinked": "분할점 {count}개 다시 링크함.",
+    "markersRelinkNone": "다른 트랙의 같은 위치에 분할점 없음.",
+    "sharedMarkersOn": "분할점 공유: 분할점 편집이 모든 트랙에 적용됨.",
+    "sharedMarkersOff": "트랙 단독: 분할점 편집이 현재 트랙에만 적용됨."
   },
   "menu": {
     "file": "파일",
@@ -405,7 +417,11 @@
     "inputSettings": "입력 설정…",
     "track": "트랙",
     "renameTrack": "트랙 이름 변경",
-    "zoomFit": "전체 타임라인 표시"
+    "zoomFit": "전체 타임라인 표시",
+    "linkMarkersAll": "분할점을 모든 트랙에 링크",
+    "unlinkMarkers": "분할점 링크 해제",
+    "relinkMarkers": "같은 위치의 분할점 다시 링크",
+    "sharedMarkers": "트랙 간 분할점 공유"
   },
   "dialogs": {
     "loadAudio": "음원 열기",

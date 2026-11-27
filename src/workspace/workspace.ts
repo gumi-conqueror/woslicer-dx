@@ -26,6 +26,8 @@ import {
   setTrackAudio,
 } from './project-media';
 import { readWos, writeWos } from '@gumi-conqueror/wos-file';
+import { linkMarkersTo } from '../project/marker-links';
+import { markerTickAllowed } from '../core/timebase';
 import { buildBmseClipboard, parseBmseClipboard } from '../core/formats/bmse';
 import type { Platform, OpenedFile } from '../platform/contracts';
 import type { EditorStore } from '../slicing/editor-store';
@@ -214,8 +216,25 @@ export function createWorkspace(options: WorkspaceOptions) {
       } else if (newTrack) {
         const track = createEmptyTrack(trackId, file.name);
         setTrackAudio(track, file, identity, result);
+        const base = {
+          bpm: editor.document.timing.bpm,
+          shift: editor.document.timing.shiftTicks,
+          sampleRate: result.source.sampleRate,
+        };
+        const fits = (_: string, tick: number) =>
+          markerTickAllowed(tick, { base, length: result.source.length });
+        const from = editor.track.trackId;
         editor.transact((draft) => {
           draft.tracks.push(track);
+          // With shared markers, a new track starts with linked copies of the current track's markers.
+          if (draft.global.sharedMarkers)
+            linkMarkersTo(
+              draft.tracks,
+              from,
+              currentTrack(draft, from).slicing.markers,
+              [trackId],
+              fits,
+            );
         });
         editor.selectTrack(trackId);
       } else if (!expected)

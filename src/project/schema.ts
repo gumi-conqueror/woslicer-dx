@@ -4,7 +4,7 @@ import { bmhelperDocumentSchema } from './bmhelper';
 import { audioFileFormatSchema } from '../core/audio-formats';
 
 export const PROJECT_FORMAT = 'wosdx' as const;
-export const PROJECT_SCHEMA_VERSION = 2 as const;
+export const PROJECT_SCHEMA_VERSION = 3 as const;
 // Application memory budgets, not requirements of the original binary formats.
 // The native host repeats them in src-tauri/src/files.rs and session.rs;
 // scripts/native-consistency.test.mjs checks that the values agree.
@@ -124,6 +124,11 @@ const slicingSchema = z.object({
     )
     .max(PROJECT_MAX_MARKERS)
     .optional(),
+  /** Ticks of linked markers. Tracks that list the same tick share that marker. */
+  links: z
+    .array(integer(0, MAX_TICKS - 1))
+    .max(PROJECT_MAX_MARKERS)
+    .optional(),
   bandDetection: z.object({
     bands: z.object({ low: z.boolean(), mid: z.boolean(), high: z.boolean() }),
     thresholdDb: z.number().min(0).max(120),
@@ -175,6 +180,8 @@ export const projectSchema = z.object({
     cueMode: z.enum(CUE_MODES),
     playbackRate: ranged(FIELD_RANGES.playbackRate),
     views: z.object({ rms: z.boolean(), bands: z.boolean(), spectrum: z.literal('reserved') }),
+    /** Marker edits apply to every track through links, and new markers go to every track. */
+    sharedMarkers: z.boolean(),
   }),
   tracks: z.array(trackSchema).min(1).max(PROJECT_MAX_TRACKS),
   bmhelper: bmhelperDocumentSchema.nullable(),

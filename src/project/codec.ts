@@ -4,6 +4,7 @@ import { errorMessage } from '../core/messages';
 import { defaultBaseName } from '../core/slices';
 import { DEFAULT_CUE_DB, DEFAULT_PLAYBACK_DB } from '../core/volume';
 import { WOS_TICKS } from '../core/timebase';
+import { normalizeLinks } from './marker-links';
 import {
   byteLimitText,
   PROJECT_FILE_MAX_BYTES,
@@ -109,7 +110,7 @@ function upgradeV1(input: Record<string, unknown>): unknown {
   const { clips: _clips, ...trackFields } = track;
   return {
     format: input.format,
-    schemaVersion: PROJECT_SCHEMA_VERSION,
+    schemaVersion: 2,
     projectId: input.projectId,
     name: input.name,
     timing: input.timing,
@@ -117,6 +118,15 @@ function upgradeV1(input: Record<string, unknown>): unknown {
     tracks: [{ ...trackFields, media: asset, slicing: input.slicing, output: input.output }],
     bmhelper: input.bmhelper,
   };
+}
+
+/**
+ * Upgrades a version 2 file. Version 2 had no linked markers; its tracks keep
+ * their own markers, and new markers go to every track as in new projects.
+ */
+function upgradeV2(input: Record<string, unknown>): unknown {
+  const global = isRecord(input.global) ? { ...input.global, sharedMarkers: true } : input.global;
+  return { ...input, schemaVersion: PROJECT_SCHEMA_VERSION, global };
 }
 
 function normalizeTrack(track: ProjectTrack): void {
@@ -147,10 +157,11 @@ function normalizeTrack(track: ProjectTrack): void {
 export function parseProject(input: unknown): ProjectParseResult {
   const { schemaVersion: version } = parseStructure(projectHeaderSchema, input);
   if (version > PROJECT_SCHEMA_VERSION) return { kind: 'unsupported-version', version, raw: input };
-  const upgraded = version === 1 && isRecord(input) ? upgradeV1(input) : input;
+  let upgraded = version === 1 && isRecord(input) ? upgradeV1(input) : input;
+  if (version <= 2 && isRecord(upgraded)) upgraded = upgradeV2(upgraded);
   const project = parseStructure(projectSchema, upgraded);
   // Version 1 fields that have no place in version 2 are dropped without a report.
-  const extensions = version === PROJECT_SCHEMA_VERSION ? unknownFields(input, project) : [];
+  const extensions = version > 1 ? unknownFields(input, project) : [];
   const ids = new Set<string>();
   for (const track of project.tracks) {
     if (ids.has(track.trackId))
@@ -158,6 +169,7 @@ export function parseProject(input: unknown): ProjectParseResult {
     ids.add(track.trackId);
     normalizeTrack(track);
   }
+  normalizeLinks(project.tracks);
   return { kind: 'supported', project, unknownFields: extensions };
 }
 
@@ -205,6 +217,7 @@ export function createEmptyProject(
       cueMode: 'off',
       playbackRate: 1,
       views: { rms: false, bands: false, spectrum: 'reserved' },
+      sharedMarkers: true,
     },
     tracks: [createEmptyTrack(`${projectId}:track:1`, name)],
     bmhelper: null,

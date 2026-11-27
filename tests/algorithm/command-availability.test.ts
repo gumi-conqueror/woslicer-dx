@@ -9,6 +9,8 @@ import {
 import { APPLICATION_MENU } from '../../src/app/menu';
 
 const track = (media: unknown) => ({ media }) as unknown as MenuEditorState['track'];
+const linked = (links: number[]) =>
+  ({ media: null, slicing: { markers: links, links } }) as unknown as MenuEditorState['track'];
 const tracks = (count: number) =>
   ({
     tracks: Array.from({ length: count }, () => ({ slicing: { markers: [] } })),
@@ -102,6 +104,14 @@ const table: ReadonlyArray<readonly [AppCommand, MenuEditorState, boolean]> = [
   ['export-all-tracks', state(), false],
   ['remove-track', state(), false],
   ['remove-track', state({ document: tracks(2) }), true],
+  // Links need markers and another track; unlinking needs linked markers.
+  ['link-markers-all-tracks', withSource, false],
+  ['link-markers-all-tracks', state({ ticks: [12], document: tracks(2) }), true],
+  ['relink-markers', state({ document: tracks(2) }), false],
+  ['relink-markers', state({ ticks: [12], document: tracks(2) }), true],
+  ['unlink-markers', state({ track: linked([]) }), false],
+  ['unlink-markers', state({ track: linked([12]) }), true],
+  ['toggle-shared-markers', state(), true],
 ];
 
 describe('command availability rules', () => {

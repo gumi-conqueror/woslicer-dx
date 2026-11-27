@@ -220,7 +220,13 @@
     "keyReserved": "このキーはメニューとダイアログ用。別のキーを押す。",
     "inputSettingsTitle": "入力設定",
     "trackGain": "トラックのゲイン（dB）",
-    "trackMenu": "トラックメニュー"
+    "trackMenu": "トラックメニュー",
+    "sharedMarkers": "分割点共有",
+    "linkTo": "トラックにリンク",
+    "markerTracks": "全トラックの分割点",
+    "markerAbsent": "分割点なし",
+    "markerOwn": "分割点",
+    "markerLinked": "リンク済み分割点"
   },
   "status": {
     "projectOpened": "プロジェクトを開いた：{name}",
@@ -360,7 +366,13 @@
     "trackRemoved": "トラック {name} を削除。元に戻すで復元可能。",
     "exportNameConflict": "2 つのトラックが同じ {name} を書き出す。トラックごとに別の出力名を設定。",
     "exportTracksWithoutAudio": "音声のないトラック {count} 件は書き出していない。",
-    "wosMarkersDropped": ".wos は 256 小節まで。それ以降の分割点 {count} 個は書き出していない。"
+    "wosMarkersDropped": ".wos は 256 小節まで。それ以降の分割点 {count} 個は書き出していない。",
+    "markersLinked": "分割点 {count} 個を {tracks} トラックにリンク。",
+    "markersUnlinked": "分割点 {count} 個のリンクを解除。",
+    "markersRelinked": "分割点 {count} 個を再リンク。",
+    "markersRelinkNone": "他のトラックの同じ位置に分割点なし。",
+    "sharedMarkersOn": "分割点共有：分割点の編集は全トラックに適用。",
+    "sharedMarkersOff": "トラック単独：分割点の編集は現在のトラックのみに適用。"
   },
   "menu": {
     "file": "ファイル",
@@ -405,7 +417,11 @@
     "inputSettings": "入力設定…",
     "track": "トラック",
     "renameTrack": "トラック名を変更",
-    "zoomFit": "タイムライン全体を表示"
+    "zoomFit": "タイムライン全体を表示",
+    "linkMarkersAll": "分割点を全トラックにリンク",
+    "unlinkMarkers": "分割点のリンクを解除",
+    "relinkMarkers": "同位置の分割点を再リンク",
+    "sharedMarkers": "分割点をトラック間で共有"
   },
   "dialogs": {
     "loadAudio": "音声を開く",

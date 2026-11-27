@@ -10,6 +10,11 @@ import {
 import type { EditorStore } from './editor-store';
 import type { MarkerKey } from '../project/schema';
 import { remapMarkerKeys, type MarkerKeys } from '../project/marker-keys';
+import {
+  linkMarkersTo as copyLinkedMarkers,
+  relinkMarkers as relinkTrackMarkers,
+  unlinkMarkers as unlinkTrackMarkers,
+} from '../project/marker-links';
 
 /**
  * The delta that a group of markers can move by: as close to `delta` as the
@@ -39,9 +44,11 @@ export function groupMoveDelta(
 export function moveMarkers(editor: EditorStore, ticks: readonly number[], delta: number): number {
   const applied = groupMoveDelta(editor, ticks, delta);
   if (!applied) return 0;
+  const target = (tick: number) => (ticks.includes(tick) ? tick + applied : tick);
   editor.setTicks(
     [...editor.ticks.filter((t) => !ticks.includes(t)), ...ticks.map((t) => t + applied)],
-    remapMarkerKeys(editor.markerKeys, (tick) => (ticks.includes(tick) ? tick + applied : tick)),
+    remapMarkerKeys(editor.markerKeys, target),
+    target,
   );
   editor.setSelectedTicks(ticks.map((t) => t + applied));
   return applied;
@@ -144,9 +151,11 @@ export function createEditorActions(editor: EditorStore) {
       return false;
     }
     const destinations = new Map(selected.map((tick, index) => [tick, targets[index] ?? tick]));
+    const target = (tick: number) => destinations.get(tick) ?? tick;
     const changed = editor.setTicks(
       [...editor.ticks.filter((t) => !selected.includes(t)), ...targets],
-      remapMarkerKeys(editor.markerKeys, (tick) => destinations.get(tick) ?? tick),
+      remapMarkerKeys(editor.markerKeys, target),
+      target,
     );
     editor.setSelectedTicks(targets);
     return changed;
@@ -167,9 +176,11 @@ export function createEditorActions(editor: EditorStore) {
       (delta > 0 && editor.ticks.some((t) => editor.tickBeyondEnd(t + delta)))
     )
       return false;
+    const target = (tick: number) => tick + delta;
     return editor.setTicks(
-      normalizeSelection(editor.ticks.map((t) => t + delta)),
-      remapMarkerKeys(editor.markerKeys, (tick) => tick + delta),
+      normalizeSelection(editor.ticks.map(target)),
+      remapMarkerKeys(editor.markerKeys, target),
+      target,
     );
   }
   function undo(): boolean {
@@ -227,6 +238,48 @@ export function createEditorActions(editor: EditorStore) {
       ...remapMarkerKeys(measureClipboard.keys, (tick) => tick + base),
     ]);
   }
+  /** The selected markers, or all markers of the current track when none are selected. */
+  function linkTargets(): number[] {
+    return editor.selectedTicks.length ? [...editor.selectedTicks] : [...editor.ticks];
+  }
+  /** Copies the selected (or all) markers to other tracks as linked markers. */
+  function linkMarkersTo(trackIds: readonly string[]): number {
+    editor.cancelDraft();
+    const source = editor.track.trackId;
+    const targets = trackIds.filter((id) => id !== source);
+    const count =
+      editor.transact((draft) =>
+        copyLinkedMarkers(draft.tracks, source, linkTargets(), targets, editor.markerAllowed),
+      ).value ?? 0;
+    editor.setStatus('markersLinked', { count, tracks: targets.length });
+    return count;
+  }
+  function linkMarkersToAllTracks(): number {
+    return linkMarkersTo(editor.document.tracks.map((item) => item.trackId));
+  }
+  /** Removes the selected (or all) markers of the current track from their link groups. */
+  function unlinkMarkers(): number {
+    editor.cancelDraft();
+    const ticks = linkTargets();
+    const count = editor.editTrack((track) => unlinkTrackMarkers(track, ticks)).value;
+    editor.setStatus('markersUnlinked', { count });
+    return count;
+  }
+  /** Links the selected (or all) markers with markers at exactly the same ticks on other tracks. */
+  function relinkMarkers(): number {
+    editor.cancelDraft();
+    const ticks = linkTargets();
+    const trackId = editor.track.trackId;
+    const count = editor.transact((draft) =>
+      relinkTrackMarkers(draft.tracks, trackId, ticks),
+    ).value;
+    editor.setStatus(count ? 'markersRelinked' : 'markersRelinkNone', { count });
+    return count;
+  }
+  function toggleSharedMarkers(): void {
+    editor.sharedMarkers = !editor.sharedMarkers;
+    editor.setStatus(editor.sharedMarkers ? 'sharedMarkersOn' : 'sharedMarkersOff');
+  }
   function reset(): void {
     measureClipboard = null;
     selectionClipboard = null;
@@ -250,6 +303,11 @@ export function createEditorActions(editor: EditorStore) {
     measureCopy,
     measureCut,
     measurePaste,
+    linkMarkersTo,
+    linkMarkersToAllTracks,
+    unlinkMarkers,
+    relinkMarkers,
+    toggleSharedMarkers,
     reset,
   };
 }

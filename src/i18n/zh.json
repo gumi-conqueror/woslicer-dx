@@ -220,7 +220,13 @@
     "keyReserved": "这个按键保留给菜单和对话框，请换一个。",
     "inputSettingsTitle": "输入设置",
     "trackGain": "音轨增益（dB）",
-    "trackMenu": "音轨菜单"
+    "trackMenu": "音轨菜单",
+    "sharedMarkers": "共享切点",
+    "linkTo": "链接到音轨",
+    "markerTracks": "所有音轨的切点",
+    "markerAbsent": "无切点",
+    "markerOwn": "切点",
+    "markerLinked": "已链接的切点"
   },
   "status": {
     "projectOpened": "已打开工程：{name}",
@@ -360,7 +366,13 @@
     "trackRemoved": "已删除音轨 {name}。撤销可恢复。",
     "exportNameConflict": "两条音轨都会写出 {name}。请为音轨设置不同的输出名称。",
     "exportTracksWithoutAudio": "{count} 条没有音频的音轨未导出。",
-    "wosMarkersDropped": ".wos 文件只能容纳 256 小节，之后的 {count} 个切点没有写入。"
+    "wosMarkersDropped": ".wos 文件只能容纳 256 小节，之后的 {count} 个切点没有写入。",
+    "markersLinked": "已把 {count} 个切点链接到 {tracks} 条音轨。",
+    "markersUnlinked": "已解除 {count} 个切点的链接。",
+    "markersRelinked": "已重新链接 {count} 个切点。",
+    "markersRelinkNone": "其他音轨在相同位置没有切点。",
+    "sharedMarkersOn": "共享切点：切点编辑作用于所有音轨。",
+    "sharedMarkersOff": "单轨切点：切点编辑只作用于当前音轨。"
   },
   "menu": {
     "file": "文件",
@@ -405,7 +417,11 @@
     "inputSettings": "输入设置…",
     "track": "音轨",
     "renameTrack": "重命名音轨",
-    "zoomFit": "显示整条时间轴"
+    "zoomFit": "显示整条时间轴",
+    "linkMarkersAll": "链接切点到所有音轨",
+    "unlinkMarkers": "解除切点链接",
+    "relinkMarkers": "重新链接同位置的切点",
+    "sharedMarkers": "在音轨间共享切点"
   },
   "dialogs": {
     "loadAudio": "打开音频",

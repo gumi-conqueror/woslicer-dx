@@ -78,6 +78,8 @@ export const BINDINGS: readonly Binding[] = [
   { layer: 'edit', command: 'select-all', keyboard: [primary('a')] },
   { layer: 'edit', command: 'clear-selection', keyboard: CANCEL, gamepad: ['b'] },
   { layer: 'edit', command: 'clear-markers', keyboard: key('c') },
+  { layer: 'edit', command: 'link-markers-all-tracks', keyboard: key('l') },
+  { layer: 'edit', command: 'unlink-markers', keyboard: [{ key: 'l', shift: true }] },
   { layer: 'edit', command: 'toggle-marker', keyboard: key('z'), gamepad: ['x'] },
   { layer: 'edit', command: 'place-marker', keyboard: CALIBRATION_TAP, gamepad: ['a'] },
   {

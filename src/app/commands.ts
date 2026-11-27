@@ -65,6 +65,8 @@ export function canRecord(state: Pick<CommandState, 'source'>): boolean {
 }
 const hasSource = (state: CommandState) => state.source !== null;
 const hasMarkers = (state: CommandState) => state.ticks.length > 0;
+/** Linking needs markers on the current track and another track. */
+const canLink = (state: CommandState) => hasMarkers(state) && state.document.tracks.length > 1;
 
 /**
  * Every application command. Menus, shortcuts, controllers, YuanCon and the
@@ -238,6 +240,29 @@ export const COMMANDS = {
     label: 'help.clearSelection',
     group: 'edit',
     run: ({ workspace }) => workspace.actions.clearSelection(),
+  },
+  'link-markers-all-tracks': {
+    label: 'menu.linkMarkersAll',
+    group: 'edit',
+    enabled: canLink,
+    run: ({ workspace }) => workspace.actions.linkMarkersToAllTracks(),
+  },
+  'unlink-markers': {
+    label: 'menu.unlinkMarkers',
+    group: 'edit',
+    enabled: (state) => (state.track.slicing.links?.length ?? 0) > 0,
+    run: ({ workspace }) => workspace.actions.unlinkMarkers(),
+  },
+  'relink-markers': {
+    label: 'menu.relinkMarkers',
+    group: 'edit',
+    enabled: canLink,
+    run: ({ workspace }) => workspace.actions.relinkMarkers(),
+  },
+  'toggle-shared-markers': {
+    label: 'menu.sharedMarkers',
+    group: 'edit',
+    run: ({ workspace }) => workspace.actions.toggleSharedMarkers(),
   },
   'clear-markers': {
     label: 'menu.clearMarkers',
