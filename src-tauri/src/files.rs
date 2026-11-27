@@ -171,8 +171,7 @@ impl HostFiles {
         // Version 1 lists media at the project level; later versions keep one per track.
         // The app upgrades older files only when it saves them.
         let version = value["schemaVersion"].as_u64();
-        if value["format"] != "wosdx" || !matches!(version, Some(1..=PROJECT_SCHEMA_VERSION))
-        {
+        if value["format"] != "wosdx" || !matches!(version, Some(1..=PROJECT_SCHEMA_VERSION)) {
             return Err("unsupported project format".into());
         }
         let media: Vec<&serde_json::Value> = if version == Some(1) {
