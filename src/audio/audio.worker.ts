@@ -1,6 +1,6 @@
 import { createAudioProcessor, type AudioRequest } from './audio-jobs';
 
-const process = createAudioProcessor();
+const process = createAudioProcessor((message) => self.postMessage(message));
 // Queue requests: a decode must finish before dependent analysis or rendering.
 let queue = Promise.resolve();
 self.onmessage = (event: MessageEvent<AudioRequest>): void => {

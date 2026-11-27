@@ -19,7 +19,7 @@
 
 - Controller: push the left stick left or right lightly to move by ticks, fully to move by grid steps, and hold a full push to speed up. Left stick up and down zoom. The right stick selects tracks (up, down) and moves the playhead (left, right).
 - In a command wheel kept open by a tap, the D-pad and arrow keys move one slot at a time and pass through the corners.
-- Choosing an audio file no longer shows the loading animation. A new track appears as a loading row while its audio decodes.
+- Choosing an audio file no longer shows the loading animation. A new track appears as a loading row while its audio decodes. When the file states its length, the loading box ends where the audio ends and fills as decoding progresses.
 
 ### Fixed
 

@@ -2,7 +2,7 @@ import { FULL_SCALE, type SourceAudio } from '../core/audio/pcm';
 import { errorMessage } from '../core/messages';
 import { suggestOnsets } from '../core/audio/onsets';
 import type { TimeBase } from '../core/timebase';
-import { decodeAudio } from './decode';
+import { decodeAudio, type DecodeProgress } from './decode';
 import { buildPeakCache, type PeakCache } from '../core/peaks';
 import { analyzeBands, type BandAnalysis } from '../core/bands';
 import { renderSlice, type SliceParams } from '../core/audio/slice';
@@ -31,23 +31,40 @@ export type AudioReply =
   | { kind: 'edges'; id: number; ticks: number[] }
   | { kind: 'error'; id: number; message: string };
 export type DecodedAudio = Extract<AudioReply, { kind: 'decoded' }>;
+/** An interim message of a decode request; the request stays open. */
+export interface DecodingProgress {
+  kind: 'decoding';
+  id: number;
+  progress: DecodeProgress;
+}
 export interface AudioEngine {
-  decode(name: string, bytes: Uint8Array): Promise<DecodedAudio>;
+  decode(
+    name: string,
+    bytes: Uint8Array,
+    progress?: (value: DecodeProgress) => void,
+  ): Promise<DecodedAudio>;
   bands(): Promise<BandAnalysis>;
   detect(params: DetectionParams): Promise<DetectResult>;
   slice(params: SliceParams): Promise<Uint8Array>;
   edges(base: TimeBase): Promise<number[]>;
   dispose(): void;
 }
-/** Pure worker-side dispatcher, also exercised directly by DSP integration tests. */
-export function createAudioProcessor(): (request: AudioRequest) => Promise<AudioReply> {
+/**
+ * Pure worker-side dispatcher, also exercised directly by DSP integration tests.
+ * `progress` receives the interim messages of decode requests.
+ */
+export function createAudioProcessor(
+  progress?: (message: DecodingProgress) => void,
+): (request: AudioRequest) => Promise<AudioReply> {
   let source: SourceAudio | null = null;
   let analysis: BandAnalysis | null = null;
   return async (request) => {
     try {
       switch (request.kind) {
         case 'decode': {
-          source = await decodeAudio(request.bytes);
+          source = await decodeAudio(request.bytes, (value) =>
+            progress?.({ kind: 'decoding', id: request.id, progress: value }),
+          );
           analysis = null;
           return {
             kind: 'decoded',

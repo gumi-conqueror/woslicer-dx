@@ -6,6 +6,7 @@ import { useEditorStore } from '../slicing/editor-store';
 import { useUiPreferencesStore } from '../ui/preferences';
 import { paletteFor } from '../ui/palette';
 import { drawOverview, OVERVIEW_HEIGHT, setupCanvas } from './render';
+import { sampleToTick } from '../core/timebase';
 const overviewHeightCss = `${OVERVIEW_HEIGHT}px`;
 import type { LoadingActivity } from '../workspace/workspace';
 
@@ -38,6 +39,20 @@ const snapshot = computed(() => {
   };
 });
 
+/**
+ * The loading box: as long as the declared audio on the timeline, filled as far
+ * as decoding has come. Without a declared length, it covers the whole row.
+ */
+const loadingBox = computed(() => {
+  const audio = props.loading?.audio;
+  if (!audio?.frames) return null;
+  const { bpm, shiftTicks: shift } = editor.document.timing;
+  const ticks = sampleToTick(audio.frames, { bpm, shift, sampleRate: audio.sampleRate });
+  return {
+    width: `${(100 * Math.min(1, Math.max(0, ticks) / Math.max(editor.timelineTicks, ticks))).toFixed(3)}%`,
+    done: `${(100 * Math.min(1, audio.decoded / audio.frames)).toFixed(3)}%`,
+  };
+});
 function measure(): void {
   width.value = surface.value?.clientWidth ?? 0;
 }
@@ -123,7 +138,14 @@ onBeforeUnmount(() => cancelAnimationFrame(frame));
       aria-live="polite"
       :aria-label="t(`loading.${loading.stage}`)"
       :data-media-id="loading.mediaId"
-    />
+      :style="loadingBox ? { width: loadingBox.width } : undefined"
+    >
+      <div
+        v-if="loadingBox"
+        class="track-loading-done"
+        :style="{ width: loadingBox.done }"
+      />
+    </div>
   </div>
 </template>
 
@@ -138,12 +160,20 @@ onBeforeUnmount(() => cancelAnimationFrame(frame));
   visibility: hidden;
   pointer-events: none;
 }
-/* The effect overlays the existing thumbnail; loading never changes its box. */
+/* The effect overlays the existing thumbnail; loading never changes its box.
+   With a known audio length, the box ends where the audio ends. */
 .track-loading {
   position: absolute;
   inset: 0;
   overflow: hidden;
+  border-right: 1px solid var(--el-color-primary-light-5);
   background: var(--wos-panel-header);
+}
+/* The decoded part of the audio. */
+.track-loading-done {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--el-color-primary-light-8);
 }
 .track-loading::before,
 .track-loading::after {

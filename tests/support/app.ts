@@ -1,4 +1,5 @@
 import { createPinia, disposePinia } from 'pinia';
+import type { DecodeProgress } from '../../src/audio/decode';
 import { createAudioProcessor, type AudioEngine } from '../../src/audio/audio-jobs';
 import { useEditorStore } from '../../src/slicing/editor-store';
 import { createWorkspace, type WorkspaceOptions } from '../../src/workspace/workspace';
@@ -62,16 +63,20 @@ export function silentPlayback(): Playback {
 
 /** Tests use the real DSP dispatcher, replacing only the unavailable browser Worker transport. */
 export function processorEngine(): AudioEngine {
-  const process = createAudioProcessor();
+  // Interim decode messages go to the progress callback of the open decode.
+  let progress: ((value: DecodeProgress) => void) | undefined;
+  const process = createAudioProcessor((message) => progress?.(message.progress));
   let id = 0;
   let disposed = false;
   function active(): void {
     if (disposed) throw new DOMException('Cancelled', 'AbortError');
   }
   return {
-    async decode(name, bytes) {
+    async decode(name, bytes, report) {
       active();
+      progress = report;
       const reply = await process({ kind: 'decode', id: ++id, name, bytes });
+      progress = undefined;
       if (reply.kind !== 'decoded')
         throw new Error(reply.kind === 'error' ? reply.message : 'Unexpected reply');
       return reply;

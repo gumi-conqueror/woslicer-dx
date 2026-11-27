@@ -34,6 +34,7 @@ import type { EditorStore } from '../slicing/editor-store';
 import { createEditorActions } from '../slicing/editor-actions';
 import { createAudioEngine } from '../audio/audio-client';
 import type { AudioEngine } from '../audio/audio-jobs';
+import type { DecodeProgress } from '../audio/decode';
 import { createExporter } from '../export/exporter';
 import { createDetection } from '../detection/detection';
 import { createSessionPersistence } from './persistence';
@@ -63,6 +64,8 @@ export interface LoadingActivity {
   trackId?: string;
   /** The audio becomes a new track; the track list shows a placeholder row for it. */
   newTrack?: boolean;
+  /** While decoding: the declared audio length and the frames decoded so far. */
+  audio?: DecodeProgress;
 }
 export function createWorkspace(options: WorkspaceOptions) {
   const { platform, editor, createEngine = createAudioEngine } = options;
@@ -169,7 +172,10 @@ export function createWorkspace(options: WorkspaceOptions) {
       loading.value = { ...loading.value, stage: 'decoding', name: file.name };
       worker = createEngine();
       pendingEngine = worker;
-      const result = await worker.decode(file.name, file.bytes);
+      const result = await worker.decode(file.name, file.bytes, (audio) => {
+        if (!disposed && request === opening)
+          loading.value = { ...loading.value, stage: 'decoding', audio };
+      });
       if (disposed || request !== opening) return;
       // Parameter and marker edits remain valid during decoding. Only replacing
       // the document invalidates this result; merge audio into the latest state.

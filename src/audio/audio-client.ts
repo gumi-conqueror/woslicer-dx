@@ -1,4 +1,5 @@
-import type { AudioEngine, AudioReply, AudioRequest } from './audio-jobs';
+import type { AudioEngine, AudioReply, AudioRequest, DecodingProgress } from './audio-jobs';
+import type { DecodeProgress } from './decode';
 
 export function createAudioEngine(): AudioEngine {
   const worker = new Worker(new URL('./audio.worker.ts', import.meta.url), { type: 'module' });
@@ -6,16 +7,24 @@ export function createAudioEngine(): AudioEngine {
   let disposed = false;
   const pending = new Map<
     number,
-    { resolve: (reply: AudioReply) => void; reject: (error: Error) => void }
+    {
+      resolve: (reply: AudioReply) => void;
+      reject: (error: Error) => void;
+      progress?: (value: DecodeProgress) => void;
+    }
   >();
   function fail(error: Error): void {
     for (const task of pending.values()) task.reject(error);
     pending.clear();
   }
-  worker.onmessage = (event: MessageEvent<AudioReply>) => {
+  worker.onmessage = (event: MessageEvent<AudioReply | DecodingProgress>) => {
     const reply = event.data;
     const task = pending.get(reply.id);
     if (!task) return;
+    if (reply.kind === 'decoding') {
+      task.progress?.(reply.progress);
+      return;
+    }
     pending.delete(reply.id);
     if (reply.kind === 'error') task.reject(new Error(reply.message));
     else task.resolve(reply);
@@ -30,10 +39,13 @@ export function createAudioEngine(): AudioEngine {
     worker.terminate();
     fail(new Error('Invalid audio worker message'));
   };
-  function request(message: AudioRequest): Promise<AudioReply> {
+  function request(
+    message: AudioRequest,
+    progress?: (value: DecodeProgress) => void,
+  ): Promise<AudioReply> {
     if (disposed) return Promise.reject(new DOMException('Audio task cancelled', 'AbortError'));
     return new Promise((resolve, reject) => {
-      pending.set(message.id, { resolve, reject });
+      pending.set(message.id, { resolve, reject, progress });
       try {
         worker.postMessage(message);
       } catch (error) {
@@ -43,8 +55,8 @@ export function createAudioEngine(): AudioEngine {
     });
   }
   return {
-    async decode(name, bytes) {
-      const reply = await request({ kind: 'decode', id: ++sequence, name, bytes });
+    async decode(name, bytes, progress) {
+      const reply = await request({ kind: 'decode', id: ++sequence, name, bytes }, progress);
       if (reply.kind !== 'decoded') throw new Error('Unexpected decode response');
       return reply;
     },

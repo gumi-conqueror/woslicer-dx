@@ -1,4 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
+import { watch } from 'vue';
 import { audioFile, fixture, processorEngine } from '../support/app';
 import { captureEditorSession } from '../../src/workspace/session';
 import { encodeProject } from '../../src/project/codec';
@@ -183,4 +184,19 @@ it('keeps missing project media editable and cancels a pending media read when c
   await opening;
   expect(f.editor.source).toBeNull();
   expect(f.editor.document.tracks[0].media).toBeNull();
+});
+
+it('reports the declared audio length before the decoded audio arrives', async () => {
+  const f = setup();
+  const reports: unknown[] = [];
+  const stop = watch(
+    () => f.workspace.loading.value?.audio,
+    (audio) => reports.push(audio),
+    { flush: 'sync' },
+  );
+  await f.workspace.loadAudio(audioFile('tone.wav', 24000));
+  stop();
+  // The WAV header declares 24000 frames at 48 kHz before any frame is decoded.
+  expect(reports[0]).toEqual({ sampleRate: 48000, frames: 24000, decoded: 0 });
+  expect(f.workspace.loading.value).toBeNull();
 });
