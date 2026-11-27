@@ -213,7 +213,7 @@ Opening a selected `.wosdx` file resolves its active media through `open_project
 This command accepts the selected project's host reference and a media ID, not a path.
 The host reads the bounded project file and grants access only to that entry's absolute supported audio path.
 The workspace verifies the media metadata and hash before adoption.
-Recovery reuses the persisted host grant. Browser file inputs and drops cannot provide absolute paths and require manual relinking.
+Recovery reuses the persisted host grant. The desktop app grants files that the user drops on its window in the same way as picked files. Browser file inputs and drops cannot provide absolute paths and require manual relinking.
 Projects without paths require one manual relink before saving the path.
 
 Relinking stages and decodes the candidate, then compares size, format,

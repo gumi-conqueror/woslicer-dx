@@ -12,20 +12,25 @@
 - Selecting another track during playback keeps playing from the same time.
 - Linked markers. **Edit → Link markers to all tracks** (L) copies the selected markers, or all markers, to every other track. The Markers panel can also link them to one track. A linked marker moves and disappears together with its copies on the other tracks and has its own color on the waveform. **Unlink markers** (Shift+L) and **Relink markers at the same position** change the links.
 - **Share markers across tracks** (default on; toolbar checkbox **Shared markers**). While it is on, new markers go to every track, a new track starts with linked copies of the current track's markers, and marker edits follow links. While it is off, marker edits change the current track only.
-- The Markers panel lists the markers of all tracks in time order, one row per position, with one cell per track that shows a marker and its link. Click cells to pick points, double-click a cell to pick all markers at that time, and right-click to link or unlink them. With more than eight tracks, the cells continue on a second line.
-- The status bar shows the common controller buttons while you use a controller, and the mouse and keyboard actions of the area under the pointer otherwise. In a narrow window these hints are cut off first.
+- The Markers panel lists the markers of all tracks in time order, one row per position, with one cell per track that shows a marker and its link. Click a cell to select it; a double click adds its linked cells and a triple click the whole row. A middle click unlinks the selected linked markers, or links the selection when none of it is linked. A right click goes to that marker on its track. With more than eight tracks, the cells continue on a second line.
+- The status bar shows the common controller buttons while you use a controller, and the mouse and keyboard actions of the area under the pointer otherwise, with mouse and key icons. In a narrow window these hints are cut off first.
+- Drop several audio files on the window to add a track for each file. The first file fills the current track when it has no audio. This also works in the desktop app, which can reopen dropped files later.
+- The tempo of the first audio in a project without audio or markers is detected and set as the BPM.
+- With several tracks, **Export all slices** opens an export window. Each column is a track's audio and each row a set of markers; tracks with equal markers share a row, and one more row holds the markers linked on all tracks. Check which audio is cut at which markers. Each track uses its own markers by default, and a button per row switches between default, all and none.
 - The timeline has no 256-measure limit: it is as long as the longest audio or the last marker. **View → Show the whole timeline** (0) fits it in the window, and zooming out stops there. Exporting `.wos` keeps the first 256 measures and reports how many later markers were not written.
 
 ### Changed
 
 - Controller: push the left stick left or right lightly to move by ticks, fully to move by grid steps, and hold a full push to speed up. After 1.5 s of a full push, the cursor moves by measures. Left stick up and down zoom. The right stick selects tracks (up, down) and moves the playhead (left, right); after 1.5 s of a full push, it seeks faster.
-- When keys or the controller move the cursor, the view keeps the cursor in the middle.
+- When keys or the controller move the cursor, the view glides to keep the cursor in the middle.
+- Track gain is a slider. Every volume slider moves by 1 dB per mouse-wheel notch.
 - In a command wheel kept open by a tap, the D-pad and arrow keys move one slot at a time and pass through the corners.
-- Choosing an audio file no longer shows the loading animation. A new track appears as a loading row while its audio decodes. When the file states its length, the loading box ends where the audio ends and fills as decoding progresses.
+- Choosing an audio file no longer shows the loading animation. A new track appears as a loading row while its audio decodes. When the file states its length, the loading box ends where the audio ends and fills as decoding progresses, and its animation keeps moving until the track is ready.
 
 ### Fixed
 
 - The window no longer stalls while a long audio file finishes loading.
+- A held stick or key no longer moves the cursor past the end of the timeline.
 
 Projects saved by this version cannot be opened by 2.0.0-alpha.8 or earlier. Older projects open without changes, with shared markers on.
 

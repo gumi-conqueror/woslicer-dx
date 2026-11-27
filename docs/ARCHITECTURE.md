@@ -48,7 +48,10 @@ Each fact below has one owner. Change the fact there; other code reads it.
 | Track audibility (mute, solo, gain) | `trackAmps` in [`editor-store.ts`](../src/slicing/editor-store.ts) |
 | Linked markers: link groups, how marker edits follow links, link copies | [`src/project/marker-links.ts`](../src/project/marker-links.ts); every marker edit goes through `setTicks` in [`editor-store.ts`](../src/slicing/editor-store.ts) |
 | Where a track can hold a marker | `markerAllowed` in [`editor-store.ts`](../src/slicing/editor-store.ts) |
-| Timeline length | `timelineTicks` in [`editor-store.ts`](../src/slicing/editor-store.ts) |
+| Timeline length, also with a track that is still loading | `timelineLength` in [`editor-store.ts`](../src/slicing/editor-store.ts) |
+| Tempo estimate of new audio | `estimateTempo` in [`src/core/tempo.ts`](../src/core/tempo.ts) |
+| Export matrix: marker rows, default selection, job names | [`src/export/export-plan.ts`](../src/export/export-plan.ts) |
+| Dropped files: page drops in the browser, granted native drops on the desktop | `watchDrops` in [`src/platform/`](../src/platform/); `openDroppedFiles` in [`workspace.ts`](../src/workspace/workspace.ts) |
 | Supported audio formats | [`src/core/audio-formats.ts`](../src/core/audio-formats.ts); `src-tauri/src/files.rs` repeats the extensions and a consistency test compares them |
 | Commands, their labels and availability | `COMMANDS` in [`src/app/commands.ts`](../src/app/commands.ts) |
 | Default key, controller and YuanCon bindings | `BINDINGS` in [`src/input/bindings.ts`](../src/input/bindings.ts) |
