@@ -80,6 +80,8 @@ const table: ReadonlyArray<readonly [AppCommand, MenuEditorState, boolean]> = [
   ['seek-backward', withSource, true],
   ['recording-tap', withSource, true],
   ['seek-forward', state(), false],
+  ['seek-backward-fast', state(), false],
+  ['seek-forward-fast', withSource, true],
   ['place-marker', state(), false],
   ['place-marker-free', withSource, true],
   // Marker-wide edits need markers.

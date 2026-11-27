@@ -42,6 +42,53 @@ const CELL_LABELS = {
   linked: 'chrome.markerLinked',
 } as const;
 const current = computed(() => new Set(editor.ticks));
+/** Track cells wrap after this many tracks, so a row stays narrow enough for the panel. */
+const CELLS_PER_LINE = 8;
+const cellLines = computed(() => Math.ceil(columns.value.length / CELLS_PER_LINE));
+const cellGrid = computed(() => ({
+  gridTemplateColumns: `repeat(${Math.min(columns.value.length, CELLS_PER_LINE)}, 14px)`,
+}));
+/**
+ * The points picked for linking: tracks at one tick. Picking a point at
+ * another tick starts a new pick.
+ */
+const picked = shallowRef<{ tick: number; trackIds: ReadonlySet<string> } | null>(null);
+function isPicked(trackId: string, tick: number): boolean {
+  return picked.value?.tick === tick && picked.value.trackIds.has(trackId);
+}
+/** A left click picks or drops one point. */
+function pick(trackId: string, tick: number): void {
+  const ids = new Set(picked.value?.tick === tick ? picked.value.trackIds : []);
+  if (ids.has(trackId)) ids.delete(trackId);
+  else ids.add(trackId);
+  picked.value = ids.size ? { tick, trackIds: ids } : null;
+}
+/** A double click picks every marker at the tick. */
+function pickAll(tick: number): void {
+  const ids = columns.value.filter((column) => column.markers.has(tick)).map((c) => c.trackId);
+  picked.value = { tick, trackIds: new Set(ids) };
+}
+/**
+ * A right click links or unlinks. On a picked point it acts on all picked
+ * points: they unlink when all of them are linked, otherwise they link. On
+ * another point it toggles that point alone, linking it with the other markers
+ * at its tick.
+ */
+function toggleLink(column: (typeof columns.value)[number], tick: number): void {
+  const group = isPicked(column.trackId, tick) && picked.value ? [...picked.value.trackIds] : [];
+  if (group.length) {
+    const linked = columns.value.filter(
+      (item) => group.includes(item.trackId) && item.links.has(tick),
+    );
+    if (linked.length === group.length) workspace.actions.unlinkPoints(tick, group);
+    else workspace.actions.linkPoints(tick, group);
+  } else if (column.links.has(tick)) workspace.actions.unlinkPoints(tick, [column.trackId]);
+  else {
+    const holders = columns.value.filter((item) => item.markers.has(tick)).map((c) => c.trackId);
+    workspace.actions.linkPoints(tick, [...new Set([...holders, column.trackId])]);
+  }
+  picked.value = null;
+}
 const otherTracks = computed(() =>
   columns.value.filter((column) => column.trackId !== editor.track.trackId),
 );
@@ -49,14 +96,13 @@ const otherTracks = computed(() =>
 const viewport = useTemplateRef<HTMLDivElement>('viewport');
 const offset = shallowRef(0);
 const viewportHeight = shallowRef(0);
-// The virtual list positions rows with this height; the row style reads it.
-const rowHeight = 32;
-const rowHeightCss = `${rowHeight}px`;
-const first = computed(() => Math.max(0, Math.floor(offset.value / rowHeight) - 3));
+// The virtual list positions rows with this height. Each extra line of track cells adds 17 px.
+const rowHeight = computed(() => Math.max(32, cellLines.value * 17 + 12));
+const first = computed(() => Math.max(0, Math.floor(offset.value / rowHeight.value) - 3));
 const rows = computed(() =>
   markerRows.value.slice(
     first.value,
-    first.value + Math.ceil(viewportHeight.value / rowHeight) + 6,
+    first.value + Math.ceil(viewportHeight.value / rowHeight.value) + 6,
   ),
 );
 let observer: ResizeObserver | undefined;
@@ -96,7 +142,7 @@ function linkTo(trackId: unknown): void {
 watch(
   () => markerRows.value.length,
   (count) => {
-    if (offset.value > count * rowHeight) {
+    if (offset.value > count * rowHeight.value) {
       offset.value = 0;
       if (viewport.value) viewport.value.scrollTop = 0;
     }
@@ -107,6 +153,7 @@ watch(
 <template>
   <section
     class="marker-list"
+    data-hint-area="markers"
     :aria-label="t('chrome.tabCuts')"
     data-testid="marker-list"
   >
@@ -170,6 +217,7 @@ watch(
     <div
       v-if="multiTrack"
       class="marker-columns"
+      :style="cellGrid"
       :aria-label="t('chrome.markerTracks')"
     >
       <span
@@ -195,34 +243,47 @@ watch(
           class="marker-window"
           :style="{ transform: `translateY(${first * rowHeight}px)` }"
         >
-          <ElButton
+          <div
             v-for="tick in rows"
             :key="tick"
             class="marker-row"
             :class="{ selected: selected.has(tick), elsewhere: !current.has(tick) }"
-            :aria-pressed="selected.has(tick)"
+            :style="{ height: `${rowHeight}px` }"
             @click="choose(tick, $event)"
           >
-            <span class="marker-readout">{{
-              t('chrome.readoutTick', { measure: Math.floor(tick / MEASURE_TICKS) + 1, tick })
-            }}</span>
+            <button
+              type="button"
+              class="marker-readout"
+              :aria-pressed="selected.has(tick)"
+            >
+              {{ t('chrome.readoutTick', { measure: Math.floor(tick / MEASURE_TICKS) + 1, tick }) }}
+            </button>
             <span
               v-if="multiTrack"
               class="marker-cells"
+              :style="cellGrid"
             >
-              <span
+              <button
                 v-for="column in columns"
                 :key="column.trackId"
-                role="img"
+                type="button"
+                tabindex="-1"
                 class="marker-cell"
                 :class="[
                   cellState(column, tick),
-                  { current: column.trackId === editor.track.trackId },
+                  {
+                    current: column.trackId === editor.track.trackId,
+                    picked: isPicked(column.trackId, tick),
+                  },
                 ]"
+                :aria-pressed="isPicked(column.trackId, tick)"
                 :aria-label="`${column.number}: ${t(CELL_LABELS[cellState(column, tick)])}`"
+                @click.stop="pick(column.trackId, tick)"
+                @dblclick.stop="pickAll(tick)"
+                @contextmenu.prevent.stop="toggleLink(column, tick)"
               />
             </span>
-          </ElButton>
+          </div>
         </div>
       </div>
     </div>
@@ -262,25 +323,31 @@ watch(
   inset: 0 0 auto;
 }
 
-/* Row buttons: full-width, square, tabular numerals; selected highlight. */
+/* Rows: the readout fills the width; selected highlight. */
 .marker-row {
   display: flex;
-  width: 100%;
-  height: v-bind(rowHeightCss);
-  margin: 0;
-  border-radius: 0;
-  justify-content: flex-start;
-  font-variant-numeric: tabular-nums;
-}
-.marker-row :deep(> span) {
-  display: flex;
-  width: 100%;
-  justify-content: space-between;
   align-items: center;
   gap: 8px;
+  width: 100%;
+  padding: 0 8px 0 0;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
 }
-.marker-row + .marker-row {
-  margin-left: 0;
+.marker-readout {
+  flex: 1;
+  align-self: stretch;
+  min-width: 0;
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.marker-row:hover {
+  background: var(--el-fill-color-light);
 }
 .marker-row.selected {
   color: var(--el-color-primary);
@@ -291,15 +358,16 @@ watch(
   color: var(--el-text-color-secondary);
 }
 
-/* Track columns: the header numbers and the cells of each row line up from the right. */
+/* Track columns: the header numbers and the cells of each row line up from the right,
+   at most eight per line. */
 .marker-columns,
 .marker-cells {
-  display: flex;
-  justify-content: flex-end;
+  display: grid;
+  justify-content: end;
   gap: 3px;
 }
 .marker-columns {
-  padding: 0 16px 4px 0;
+  padding: 0 24px 4px 0;
   font-size: 11px;
   color: var(--el-text-color-secondary);
 }
@@ -308,6 +376,7 @@ watch(
   justify-content: center;
   width: 14px;
   height: 14px;
+  padding: 0;
   border-radius: 2px;
   font-variant-numeric: tabular-nums;
 }
@@ -316,7 +385,9 @@ watch(
   font-weight: 600;
 }
 .marker-cells .marker-cell {
-  border: 1px solid var(--el-border-color-lighter);
+  border: 1px solid var(--el-border-color);
+  background: transparent;
+  cursor: pointer;
 }
 .marker-cells .marker-cell.own {
   background: v-bind('palette.accent');
@@ -326,8 +397,14 @@ watch(
   background: v-bind('palette.linked');
   border-color: v-bind('palette.linked');
 }
+/* The current track's cell has a thin ring; a picked point a thick one. */
 .marker-cells .marker-cell.current {
   outline: 1px solid var(--el-color-primary);
   outline-offset: 1px;
+}
+.marker-cells .marker-cell.picked {
+  outline: 2px solid var(--el-color-primary);
+  outline-offset: 1px;
+  box-shadow: inset 0 0 0 2px var(--el-bg-color);
 }
 </style>

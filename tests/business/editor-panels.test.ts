@@ -4,6 +4,8 @@ import ElementPlus, { ElCheckbox, ElInput, ElInputNumber } from 'element-plus';
 import { createI18n } from 'vue-i18n';
 import en from '../../src/i18n/en.json';
 import MarkerList from '../../src/slicing/MarkerList.vue';
+import StatusBar from '../../src/app/components/StatusBar.vue';
+import { useInputState } from '../../src/input/state';
 import OutputPanel from '../../src/export/OutputPanel.vue';
 import DetectionPanel from '../../src/detection/DetectionPanel.vue';
 import DocumentOptions from '../../src/app/components/DocumentOptions.vue';
@@ -171,6 +173,78 @@ describe('editor panels with real Element Plus controls', () => {
     f.editor.setPlaying(false);
     await rows[2].trigger('click');
     expect(f.editor.playheadSample).not.toBe(12345);
+  });
+  it('links and unlinks points in the marker list and wraps track cells after eight tracks', async () => {
+    const { f, options } = setup();
+    // Track markers: tick 24 on two tracks, not linked.
+    f.editor.sharedMarkers = false;
+    f.editor.transact((draft) => {
+      const second = structuredClone(draft.tracks[0]);
+      second.trackId = 'second';
+      draft.tracks.push(second);
+    });
+    f.editor.setTicks([24]);
+    f.editor.selectTrack('second');
+    f.editor.setTicks([24]);
+    const wrapper = mount(MarkerList, options);
+    wrappers.push(wrapper);
+    await flushPromises();
+    const links = () => f.editor.document.tracks.map((track) => track.slicing.links ?? []);
+    const cell = (name: string) => wrapper.get(`[aria-label="${name}"]`);
+    // A right click on a point links it with the other markers at its tick.
+    await cell('1: marker').trigger('contextmenu');
+    expect(links()).toEqual([[24], [24]]);
+    // A right click on a linked point unlinks it.
+    await cell('1: linked marker').trigger('contextmenu');
+    expect(links()).toEqual([[], []]);
+    // Left clicks pick points; a right click on a picked point links the picked points.
+    await cell('1: marker').trigger('click');
+    await cell('2: marker').trigger('click');
+    expect(wrapper.findAll('.marker-cell.picked')).toHaveLength(2);
+    await cell('2: marker').trigger('contextmenu');
+    expect(links()).toEqual([[24], [24]]);
+    // A double click picks every marker at the tick; a right click then unlinks them all.
+    await cell('1: linked marker').trigger('dblclick');
+    expect(wrapper.findAll('.marker-cell.picked')).toHaveLength(2);
+    await cell('2: linked marker').trigger('contextmenu');
+    expect(links()).toEqual([[], []]);
+    // Ten tracks need two lines of cells, so rows grow from 32 px to 46 px.
+    f.editor.transact((draft) => {
+      for (let index = 3; index <= 10; index++) {
+        const track = structuredClone(draft.tracks[0]);
+        track.trackId = `track-${index}`;
+        draft.tracks.push(track);
+      }
+    });
+    await flushPromises();
+    expect(wrapper.get('.marker-row').attributes('style')).toContain('height: 46px');
+  });
+  it('shows the actions of the area under the pointer, or the controller buttons, in the status bar', async () => {
+    const { f, options } = setup();
+    const area = document.createElement('div');
+    area.dataset.hintArea = 'track';
+    document.body.append(area);
+    const wrapper = mount(StatusBar, { ...options, props: { identity: null } });
+    wrappers.push(wrapper);
+    area.dispatchEvent(new PointerEvent('pointerover', { bubbles: true }));
+    await flushPromises();
+    const hints = wrapper.get('[role="note"]');
+    expect(hints.text()).toContain('Right-click: track menu');
+    expect(hints.text()).toContain('F2: Rename track');
+    // Moving onto the status bar keeps the hints; an area without hints clears them.
+    wrapper
+      .get('.statusbar')
+      .element.dispatchEvent(new PointerEvent('pointerover', { bubbles: true }));
+    await flushPromises();
+    expect(wrapper.find('[role="note"]').exists()).toBe(true);
+    document.body.dispatchEvent(new PointerEvent('pointerover', { bubbles: true }));
+    await flushPromises();
+    expect(wrapper.find('[role="note"]').exists()).toBe(false);
+    // With a controller, the status bar shows the common controller buttons.
+    useInputState(f.pinia).device = 'gamepad';
+    await flushPromises();
+    expect(wrapper.get('[role="note"]').attributes('aria-label')).toBe('Controller buttons');
+    area.remove();
   });
   it('disables export without audio and exports real WAV bytes through its button', async () => {
     const { f, options } = setup();

@@ -71,6 +71,7 @@ function commit(): void {
 <template>
   <header
     class="track-header"
+    data-hint-area="track"
     :class="{ current }"
     :aria-current="current ? 'true' : undefined"
     @pointerdown="editor.selectTrack(trackId)"

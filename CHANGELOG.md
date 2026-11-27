@@ -12,12 +12,14 @@
 - Selecting another track during playback keeps playing from the same time.
 - Linked markers. **Edit → Link markers to all tracks** (L) copies the selected markers, or all markers, to every other track. The Markers panel can also link them to one track. A linked marker moves and disappears together with its copies on the other tracks and has its own color on the waveform. **Unlink markers** (Shift+L) and **Relink markers at the same position** change the links.
 - **Share markers across tracks** (default on; toolbar checkbox **Shared markers**). While it is on, new markers go to every track, a new track starts with linked copies of the current track's markers, and marker edits follow links. While it is off, marker edits change the current track only.
-- The Markers panel lists the markers of all tracks in time order, one row per position, with one column per track that shows a marker and its link.
+- The Markers panel lists the markers of all tracks in time order, one row per position, with one cell per track that shows a marker and its link. Click cells to pick points, double-click a cell to pick all markers at that time, and right-click to link or unlink them. With more than eight tracks, the cells continue on a second line.
+- The status bar shows the common controller buttons while you use a controller, and the mouse and keyboard actions of the area under the pointer otherwise. In a narrow window these hints are cut off first.
 - The timeline has no 256-measure limit: it is as long as the longest audio or the last marker. **View → Show the whole timeline** (0) fits it in the window, and zooming out stops there. Exporting `.wos` keeps the first 256 measures and reports how many later markers were not written.
 
 ### Changed
 
-- Controller: push the left stick left or right lightly to move by ticks, fully to move by grid steps, and hold a full push to speed up. Left stick up and down zoom. The right stick selects tracks (up, down) and moves the playhead (left, right).
+- Controller: push the left stick left or right lightly to move by ticks, fully to move by grid steps, and hold a full push to speed up. After 1.5 s of a full push, the cursor moves by measures. Left stick up and down zoom. The right stick selects tracks (up, down) and moves the playhead (left, right); after 1.5 s of a full push, it seeks faster.
+- When keys or the controller move the cursor, the view keeps the cursor in the middle.
 - In a command wheel kept open by a tap, the D-pad and arrow keys move one slot at a time and pass through the corners.
 - Choosing an audio file no longer shows the loading animation. A new track appears as a loading row while its audio decodes. When the file states its length, the loading box ends where the audio ends and fills as decoding progresses.
 

@@ -11,10 +11,10 @@ const arrows: Readonly<Record<string, string>> = {
 };
 /** The direction of a D-pad or stick control, if it has one. */
 const direction = computed(
-  () => props.control.match(/^(?:dpad|ls|rs)-(up|down|left|right)(?:-hard)?$/)?.[1],
+  () => props.control.match(/^(?:dpad|ls|rs)-(up|down|left|right)(?:-hard|-long)?$/)?.[1],
 );
-/** A hard stick push draws a solid ring. */
-const hard = computed(() => props.control.endsWith('-hard'));
+/** A hard or long stick push draws a thick ring. */
+const hard = computed(() => props.control.endsWith('-hard') || props.control.endsWith('-long'));
 const stick = computed(() => props.control.match(/^(ls|rs)(?:-|$)/)?.[1]?.toUpperCase());
 </script>
 <template>

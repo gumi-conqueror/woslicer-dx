@@ -247,6 +247,7 @@ onBeforeUnmount(() => {
     <canvas
       ref="ruler"
       class="timeline-ruler"
+      data-hint-area="ruler"
       @pointerdown="seek"
       @wheel="wheel($event, true)"
     />
@@ -254,6 +255,7 @@ onBeforeUnmount(() => {
     <div
       ref="viewport"
       class="timeline-viewport"
+      data-hint-area="timeline"
       :aria-busy="!!loading"
       tabindex="0"
       :style="{ cursor }"

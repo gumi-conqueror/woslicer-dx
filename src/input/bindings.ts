@@ -140,9 +140,14 @@ export const BINDINGS: readonly Binding[] = [
     layer: 'edit',
     command: 'cursor-previous-measure',
     keyboard: key('ArrowUp'),
-    gamepad: ['lb'],
+    gamepad: ['lb', 'ls-left-long'],
   },
-  { layer: 'edit', command: 'cursor-next-measure', keyboard: key('ArrowDown'), gamepad: ['rb'] },
+  {
+    layer: 'edit',
+    command: 'cursor-next-measure',
+    keyboard: key('ArrowDown'),
+    gamepad: ['rb', 'ls-right-long'],
+  },
   {
     layer: 'edit',
     command: 'previous-track',
@@ -158,6 +163,8 @@ export const BINDINGS: readonly Binding[] = [
   // The right stick moves the playhead in editing; recording seeks with the left stick's rotation.
   { layer: 'edit', command: 'seek-backward', gamepad: ['rs-left', 'rs-left-hard'] },
   { layer: 'edit', command: 'seek-forward', gamepad: ['rs-right', 'rs-right-hard'] },
+  { layer: 'edit', command: 'seek-backward-fast', gamepad: ['rs-left-long'] },
+  { layer: 'edit', command: 'seek-forward-fast', gamepad: ['rs-right-long'] },
   { layer: 'edit', command: 'rename-track', keyboard: key('F2') },
   { layer: 'edit', command: 'toggle-track-mute', keyboard: [{ key: 'm', shift: true }] },
   { layer: 'edit', command: 'toggle-track-solo', keyboard: [{ key: 's', shift: true }] },

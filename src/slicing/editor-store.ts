@@ -431,6 +431,15 @@ export const useEditorStore = defineStore('editor', () => {
     if (Number.isFinite(tick))
       cursorTick.value = Math.max(0, Math.min(MAX_TICKS - 1, Math.round(tick)));
   }
+  /**
+   * Moves the cursor from a key, a controller or a seek, and keeps it in the
+   * middle of the view. Pointer clicks use `setCursorTick` and do not scroll.
+   */
+  function moveCursorTo(tick: number): void {
+    setCursorTick(tick);
+    if (viewportWidth.value > 0)
+      setScrollTick(cursorTick.value - viewportWidth.value / pxPerTick.value / 2);
+  }
   function setSelectedTicks(value: readonly number[]): void {
     selectedTicks.value = normalizeSelection(value).filter((t) => ticks.value.includes(t));
   }
@@ -640,6 +649,7 @@ export const useEditorStore = defineStore('editor', () => {
     tickBeyondEnd,
     legalTick,
     setCursorTick,
+    moveCursorTo,
     setSelectedTicks,
     setSelection,
     setScrollTick,

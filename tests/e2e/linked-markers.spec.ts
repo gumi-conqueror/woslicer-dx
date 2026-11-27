@@ -25,8 +25,8 @@ test('shares markers with a new track and lists the markers of all tracks', asyn
   await page.getByRole('button', { name: 'Markers', exact: true }).click();
   const list = page.getByTestId('marker-list');
   await expect(list.locator('.marker-row')).toHaveCount(1);
-  await expect(list.getByRole('img', { name: '1: linked marker' })).toBeVisible();
-  await expect(list.getByRole('img', { name: '2: linked marker' })).toBeVisible();
+  await expect(list.getByRole('button', { name: '1: linked marker' })).toBeVisible();
+  await expect(list.getByRole('button', { name: '2: linked marker' })).toBeVisible();
   // Track markers: a new marker stays on the current track.
   await page.locator('label').filter({ hasText: 'Shared markers' }).click();
   await expect(page.getByRole('checkbox', { name: 'Shared markers' })).not.toBeChecked();
@@ -34,8 +34,8 @@ test('shares markers with a new track and lists the markers of all tracks', asyn
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('z');
   await expect(list.locator('.marker-row')).toHaveCount(2);
-  await expect(list.getByRole('img', { name: '1: no marker' })).toBeVisible();
-  await expect(list.getByRole('img', { name: '2: marker' })).toBeVisible();
+  await expect(list.getByRole('button', { name: '1: no marker' })).toBeVisible();
+  await expect(list.getByRole('button', { name: '2: marker' })).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('linked-markers.png') });
   expect(errors).toEqual([]);
 });

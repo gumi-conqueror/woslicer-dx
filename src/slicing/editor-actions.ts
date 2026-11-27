@@ -11,6 +11,7 @@ import type { EditorStore } from './editor-store';
 import type { MarkerKey } from '../project/schema';
 import { remapMarkerKeys, type MarkerKeys } from '../project/marker-keys';
 import {
+  linkAt,
   linkMarkersTo as copyLinkedMarkers,
   relinkMarkers as relinkTrackMarkers,
   unlinkMarkers as unlinkTrackMarkers,
@@ -276,6 +277,28 @@ export function createEditorActions(editor: EditorStore) {
     editor.setStatus(count ? 'markersRelinked' : 'markersRelinkNone', { count });
     return count;
   }
+  /** Links the markers of the given tracks at one tick, adding markers where a track has none. */
+  function linkPoints(tick: number, trackIds: readonly string[]): number {
+    editor.cancelDraft();
+    const count =
+      editor.transact((draft) => linkAt(draft.tracks, tick, trackIds, editor.markerAllowed))
+        .value ?? 0;
+    if (count) editor.setStatus('markersLinkedAt', { count, tick });
+    else editor.setStatus('markersRelinkNone');
+    return count;
+  }
+  /** Removes the markers of the given tracks at one tick from their link group. */
+  function unlinkPoints(tick: number, trackIds: readonly string[]): number {
+    editor.cancelDraft();
+    const count =
+      editor.transact((draft) =>
+        draft.tracks
+          .filter((item) => trackIds.includes(item.trackId))
+          .reduce((sum, item) => sum + unlinkTrackMarkers(item, [tick]), 0),
+      ).value ?? 0;
+    editor.setStatus('markersUnlinked', { count });
+    return count;
+  }
   function toggleSharedMarkers(): void {
     editor.sharedMarkers = !editor.sharedMarkers;
     editor.setStatus(editor.sharedMarkers ? 'sharedMarkersOn' : 'sharedMarkersOff');
@@ -308,6 +331,8 @@ export function createEditorActions(editor: EditorStore) {
     unlinkMarkers,
     relinkMarkers,
     toggleSharedMarkers,
+    linkPoints,
+    unlinkPoints,
     reset,
   };
 }

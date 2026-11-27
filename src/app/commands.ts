@@ -8,7 +8,7 @@ import {
   tickToSampleExport,
 } from '../core/timebase';
 import { formatRate, stepPlaybackRate } from '../core/rate';
-import { RECORDING_SEEK_SECONDS, type RecordingInput } from '../input/recording';
+import { FAST_SEEK_SECONDS, RECORDING_SEEK_SECONDS, type RecordingInput } from '../input/recording';
 import type { EditorStore } from '../slicing/editor-store';
 import { FIELD_RANGES } from '../project/schema';
 import type { Workspace } from '../workspace/workspace';
@@ -351,6 +351,18 @@ export const COMMANDS = {
     enabled: canRecord,
     run: (context) => seekBy(context, RECORDING_SEEK_SECONDS),
   },
+  'seek-backward-fast': {
+    label: 'recording.backwardFast',
+    group: 'playback',
+    enabled: canRecord,
+    run: (context) => seekBy(context, -FAST_SEEK_SECONDS),
+  },
+  'seek-forward-fast': {
+    label: 'recording.forwardFast',
+    group: 'playback',
+    enabled: canRecord,
+    run: (context) => seekBy(context, FAST_SEEK_SECONDS),
+  },
   'zoom-in': {
     label: 'menu.zoomIn',
     group: 'navigation',
@@ -371,32 +383,32 @@ export const COMMANDS = {
   'cursor-left-grid': {
     label: 'help.cursorLeftGrid',
     group: 'navigation',
-    run: ({ editor }) => editor.setCursorTick(editor.cursorTick - gridStepTicks(editor.grid)),
+    run: ({ editor }) => editor.moveCursorTo(editor.cursorTick - gridStepTicks(editor.grid)),
   },
   'cursor-right-grid': {
     label: 'help.cursorRightGrid',
     group: 'navigation',
-    run: ({ editor }) => editor.setCursorTick(editor.cursorTick + gridStepTicks(editor.grid)),
+    run: ({ editor }) => editor.moveCursorTo(editor.cursorTick + gridStepTicks(editor.grid)),
   },
   'cursor-left-tick': {
     label: 'help.cursorLeftTick',
     group: 'navigation',
-    run: ({ editor }) => editor.setCursorTick(editor.cursorTick - 1),
+    run: ({ editor }) => editor.moveCursorTo(editor.cursorTick - 1),
   },
   'cursor-right-tick': {
     label: 'help.cursorRightTick',
     group: 'navigation',
-    run: ({ editor }) => editor.setCursorTick(editor.cursorTick + 1),
+    run: ({ editor }) => editor.moveCursorTo(editor.cursorTick + 1),
   },
   'cursor-previous-measure': {
     label: 'help.cursorUpMeasure',
     group: 'navigation',
-    run: ({ editor }) => editor.setCursorTick(editor.cursorTick - MEASURE_TICKS),
+    run: ({ editor }) => editor.moveCursorTo(editor.cursorTick - MEASURE_TICKS),
   },
   'cursor-next-measure': {
     label: 'help.cursorDownMeasure',
     group: 'navigation',
-    run: ({ editor }) => editor.setCursorTick(editor.cursorTick + MEASURE_TICKS),
+    run: ({ editor }) => editor.moveCursorTo(editor.cursorTick + MEASURE_TICKS),
   },
   'export-slice': {
     label: 'menu.exportSlice',
@@ -510,7 +522,7 @@ function seekBy({ editor, playback }: CommandContext, seconds: number): void {
     Math.min(source.length, playback.currentSample() + seconds * source.sampleRate),
   );
   playback.seekSample(sample);
-  if (editor.timeBase) editor.setCursorTick(sampleToTickNearest(sample, editor.timeBase));
+  if (editor.timeBase) editor.moveCursorTo(sampleToTickNearest(sample, editor.timeBase));
 }
 function placeMarker(
   { editor, workspace, playback }: CommandContext,

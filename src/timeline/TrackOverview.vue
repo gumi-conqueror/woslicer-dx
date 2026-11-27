@@ -120,6 +120,7 @@ onBeforeUnmount(() => cancelAnimationFrame(frame));
   <div
     ref="surface"
     class="track-overview-container"
+    data-hint-area="overview"
     :class="{ 'is-loading': !!loading }"
   >
     <canvas

@@ -29,7 +29,6 @@ import { handleKeyDown } from '../input/keyboard';
 import { routeGamepad, type InputContext, type WheelAction } from '../input/router';
 import { useCommandWheel } from '../input/use-wheel';
 import CommandWheel from './components/CommandWheel.vue';
-import GamepadHints from './components/GamepadHints.vue';
 import { openDataFolder } from '../platform/app-data';
 import { useInputState } from '../input/state';
 import YuanconDialog from './components/YuanconDialog.vue';
@@ -403,7 +402,6 @@ onUnmounted(() => {
         </div>
         <WorkspacePanels :key="panelGeneration" />
       </section>
-      <GamepadHints v-if="input.device === 'gamepad'" />
       <!-- status bar -->
       <StatusBar
         :identity="identity"

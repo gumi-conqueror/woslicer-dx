@@ -8,6 +8,7 @@ import { useEditorStore } from '../../slicing/editor-store';
 import { useInputState } from '../../input/state';
 import AppIcon from '../../ui/AppIcon.vue';
 import YuanconIcon from '../../ui/YuanconIcon.vue';
+import StatusHints from './StatusHints.vue';
 const input = useInputState();
 defineProps<{ identity: BuildIdentity | null }>();
 const emit = defineEmits<{ about: [] }>();
@@ -33,14 +34,15 @@ const status = computed(() =>
       :title="status"
       >{{ status }}</span
     >
+    <StatusHints />
     <!-- cursor readout and marker count -->
-    <span>{{
+    <span class="status-cursor">{{
       t('chrome.readoutTick', {
         measure: Math.floor(editor.cursorTick / MEASURE_TICKS) + 1,
         tick: editor.cursorTick,
       })
     }}</span>
-    <span>{{ t('chrome.tabCuts') }}: {{ editor.ticks.length }}</span>
+    <span class="status-markers">{{ t('chrome.tabCuts') }}: {{ editor.ticks.length }}</span>
     <!-- about entry, shown only with build identity -->
     <span
       class="input-device"
@@ -63,10 +65,10 @@ const status = computed(() =>
   </footer>
 </template>
 <style scoped>
-/* Status bar strip: wraps on narrow windows. */
+/* Status bar strip: one row. The input hints shrink first, then the message wraps. */
 .statusbar {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 4px 16px;
   min-height: 28px;
@@ -80,9 +82,13 @@ const status = computed(() =>
 
 /* Status message fills the remaining width; error state recolors it. */
 .status-message {
-  flex: 1 1 300px;
-  min-width: 0;
+  flex: 1 1 240px;
+  min-width: 160px;
   overflow-wrap: anywhere;
+}
+.statusbar > :not(.status-message, .status-hints) {
+  flex: none;
+  white-space: nowrap;
 }
 .status-error .status-message {
   color: var(--el-color-danger);
