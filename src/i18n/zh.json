@@ -373,7 +373,8 @@
     "markersRelinked": "已重新链接 {count} 个切点。",
     "markersRelinkNone": "其他音轨在相同位置没有切点。",
     "sharedMarkersOn": "共享切点：切点编辑作用于所有音轨。",
-    "sharedMarkersOff": "单轨切点：切点编辑只作用于当前音轨。"
+    "sharedMarkersOff": "单轨切点：切点编辑只作用于当前音轨。",
+    "tempoDetected": "识别到速度：{bpm} BPM"
   },
   "menu": {
     "file": "文件",

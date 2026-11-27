@@ -99,6 +99,12 @@ export function processorEngine(): AudioEngine {
       if (reply.kind !== 'slice') throw new Error('Unexpected reply');
       return reply.bytes;
     },
+    async tempo() {
+      active();
+      const reply = await process({ kind: 'tempo', id: ++id });
+      if (reply.kind !== 'tempo') throw new Error('Unexpected reply');
+      return reply.bpm;
+    },
     async edges(base) {
       active();
       const reply = await process({ kind: 'edges', id: ++id, base });

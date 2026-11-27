@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest';
 import { createTestApp as setup, audioFile } from '../support/app';
+import { wavFile } from '../support/audio';
 
 it('adds tracks with their own audio, markers and output names', async () => {
   const f = setup();
@@ -143,4 +144,25 @@ it('adds dropped audio files as tracks and fills an empty current track first', 
   await f.workspace.openDroppedFiles([dropped('hat.wav')]);
   expect(f.editor.document.tracks.map((track) => track.name)).toEqual(['kick', 'snare', 'hat']);
   expect(f.editor.track.name).toBe('hat');
+});
+
+it('presets the BPM from the first audio of an empty project only', async () => {
+  // Clicks at 150 BPM for 20 seconds.
+  const beat = (60 / 150) * 48000;
+  const pcm = new Int16Array(48000 * 20);
+  for (let start = 0; start + 600 < pcm.length; start += beat)
+    for (let index = 0; index < 600; index++)
+      pcm[Math.round(start) + index] = Math.round(
+        20000 * Math.exp(-index / 200) * (index % 2 ? 1 : -1),
+      );
+  const clicks = (name: string) => ({ name, reference: `/audio/${name}`, bytes: wavFile([pcm]) });
+  const f = setup();
+  await f.workspace.loadAudio(clicks('beat.wav'));
+  expect(f.editor.document.timing.bpm).toBe(150);
+  expect(f.editor.status.segments.map((segment) => segment.key)).toContain('tempoDetected');
+  // Markers keep the BPM: another BPM would move them in time.
+  const g = setup();
+  g.workspace.actions.setMarker(96);
+  await g.workspace.loadAudio(clicks('beat.wav'));
+  expect(g.editor.document.timing.bpm).toBe(120);
 });

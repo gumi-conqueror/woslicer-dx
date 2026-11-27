@@ -11,7 +11,7 @@ import {
   projectToWos,
   markersBeyondWos,
 } from '../project/codec';
-import { PROJECT_MAX_TRACKS, type ProjectDocument } from '../project/schema';
+import { FIELD_RANGES, inRange, PROJECT_MAX_TRACKS, type ProjectDocument } from '../project/schema';
 import {
   identifyAudio,
   projectFileName,
@@ -208,6 +208,17 @@ export function createWorkspace(options: WorkspaceOptions) {
         expected || !single
           ? null
           : projectWithAudio(editor.document, file, identity, result, preserveBaseName, trackId);
+      // The first audio of a project without audio or markers presets the BPM.
+      // Existing markers keep the BPM, because another BPM would move them in time.
+      const fresh =
+        next !== null &&
+        !preserveBaseName &&
+        editor.document.tracks.every((item) => !item.media && !item.slicing.markers.length);
+      const bpm = fresh ? await worker.tempo() : null;
+      if (disposed || request !== opening) return;
+      if (documentGeneration !== editor.documentGeneration)
+        throw new Error('Project changed during audio loading; select the audio again');
+      if (next && bpm !== null && inRange(bpm, FIELD_RANGES.bpm)) next.timing.bpm = bpm;
       // Validate the replacement before releasing the current decoder or source.
       if (next) parseProject(next);
       pendingEngine = null;
@@ -252,11 +263,13 @@ export function createWorkspace(options: WorkspaceOptions) {
       // The binding survives failed reopens; only a real replacement writes or clears it.
       editor.setLastFile(file.reference ? { reference: file.reference, name } : null, trackId);
       editor.setPhase({ kind: 'ready' }, trackId);
-      editor.setStatus('readySource', {
-        name,
-        rate: result.source.sampleRate,
-        channels: result.source.channels,
-      });
+      const ready = {
+        key: 'readySource' as const,
+        params: { name, rate: result.source.sampleRate, channels: result.source.channels },
+      };
+      editor.setStatus(
+        next && bpm !== null ? [ready, { key: 'tempoDetected', params: { bpm } }] : [ready],
+      );
     } catch (error) {
       if (disposed || request !== opening) return;
       editor.setPhase(previousPhase, trackId);

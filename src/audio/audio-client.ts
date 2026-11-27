@@ -75,6 +75,11 @@ export function createAudioEngine(): AudioEngine {
       if (reply.kind !== 'slice') throw new Error('Unexpected slice response');
       return reply.bytes;
     },
+    async tempo() {
+      const reply = await request({ kind: 'tempo', id: ++sequence });
+      if (reply.kind !== 'tempo') throw new Error('Unexpected tempo response');
+      return reply.bpm;
+    },
     async edges(base) {
       const reply = await request({ kind: 'edges', id: ++sequence, base });
       if (reply.kind !== 'edges') throw new Error('Unexpected edge response');

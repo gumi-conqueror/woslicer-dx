@@ -3,6 +3,7 @@ import { errorMessage } from '../core/messages';
 import { suggestOnsets } from '../core/audio/onsets';
 import type { TimeBase } from '../core/timebase';
 import { decodeAudio, type DecodeProgress } from './decode';
+import { estimateTempo } from '../core/tempo';
 import { buildPeakCache, type PeakCache } from '../core/peaks';
 import { analyzeBands, type BandAnalysis } from '../core/bands';
 import { renderSlice, type SliceParams } from '../core/audio/slice';
@@ -15,6 +16,7 @@ export type AudioRequest =
   | { kind: 'decode'; id: number; name: string; bytes: Uint8Array }
   | { kind: 'bands'; id: number }
   | { kind: 'edges'; id: number; base: TimeBase }
+  | { kind: 'tempo'; id: number }
   | { kind: 'detect'; id: number; params: DetectionParams }
   | { kind: 'slice'; id: number; params: SliceParams };
 export type AudioReply =
@@ -29,6 +31,7 @@ export type AudioReply =
   | { kind: 'slice'; id: number; bytes: Uint8Array }
   | { kind: 'detected'; id: number; result: DetectResult }
   | { kind: 'edges'; id: number; ticks: number[] }
+  | { kind: 'tempo'; id: number; bpm: number | null }
   | { kind: 'error'; id: number; message: string };
 export type DecodedAudio = Extract<AudioReply, { kind: 'decoded' }>;
 /** An interim message of a decode request; the request stays open. */
@@ -47,6 +50,8 @@ export interface AudioEngine {
   detect(params: DetectionParams): Promise<DetectResult>;
   slice(params: SliceParams): Promise<Uint8Array>;
   edges(base: TimeBase): Promise<number[]>;
+  /** The estimated tempo of the decoded audio in BPM, or null without a clear beat. */
+  tempo(): Promise<number | null>;
   dispose(): void;
 }
 /**
@@ -80,6 +85,11 @@ export function createAudioProcessor(
           if (!source) throw new Error('No source loaded');
           analysis ??= analyzeBands(source.data, source.sampleRate);
           return { kind: 'bands', id: request.id, analysis };
+        }
+        case 'tempo': {
+          if (!source) throw new Error('No source loaded');
+          const bpm = estimateTempo(source.data, source.sampleRate, source.length);
+          return { kind: 'tempo', id: request.id, bpm };
         }
         case 'edges': {
           if (!source) throw new Error('No source loaded');

@@ -373,7 +373,8 @@
     "markersRelinked": "Relinked {count} markers.",
     "markersRelinkNone": "No other track has a marker at the same position.",
     "sharedMarkersOn": "Shared markers: marker edits apply to all tracks.",
-    "sharedMarkersOff": "Track markers: marker edits apply to the current track only."
+    "sharedMarkersOff": "Track markers: marker edits apply to the current track only.",
+    "tempoDetected": "Tempo detected: {bpm} BPM"
   },
   "menu": {
     "file": "File",

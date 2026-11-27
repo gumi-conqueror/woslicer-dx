@@ -373,7 +373,8 @@
     "markersRelinked": "分割点 {count} 個を再リンク。",
     "markersRelinkNone": "他のトラックの同じ位置に分割点なし。",
     "sharedMarkersOn": "分割点共有：分割点の編集は全トラックに適用。",
-    "sharedMarkersOff": "トラック単独：分割点の編集は現在のトラックのみに適用。"
+    "sharedMarkersOff": "トラック単独：分割点の編集は現在のトラックのみに適用。",
+    "tempoDetected": "テンポを検出：{bpm} BPM"
   },
   "menu": {
     "file": "ファイル",

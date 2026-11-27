@@ -373,7 +373,8 @@
     "markersRelinked": "분할점 {count}개 다시 링크함.",
     "markersRelinkNone": "다른 트랙의 같은 위치에 분할점 없음.",
     "sharedMarkersOn": "분할점 공유: 분할점 편집이 모든 트랙에 적용됨.",
-    "sharedMarkersOff": "트랙 단독: 분할점 편집이 현재 트랙에만 적용됨."
+    "sharedMarkersOff": "트랙 단독: 분할점 편집이 현재 트랙에만 적용됨.",
+    "tempoDetected": "템포 감지: {bpm} BPM"
   },
   "menu": {
     "file": "파일",
