@@ -70,7 +70,7 @@ jobs:
           name: validation-environment-${{ github.sha }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/validation-environment.json
           if-no-files-found: error
-          retention-days: 2
+          retention-days: 1
       - name: Select the browser image from the dependency lockfile
         id: browser
         run: |
@@ -113,7 +113,7 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           overwrite: true
-          retention-days: 14
+          retention-days: 1
       - name: Upload web diagnostics
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -124,7 +124,7 @@ jobs:
             test-results/
             playwright-report/
           if-no-files-found: ignore
-          retention-days: 7
+          retention-days: 1
 
   windows-x64:
     name: Windows x64 (required)
