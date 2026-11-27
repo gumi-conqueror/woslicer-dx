@@ -17,10 +17,24 @@ pub(crate) struct AppDataFolder {
     path: PathBuf,
 }
 
+/// Owns the directory for recovery data and file grants. Debug builds accept
+/// `WOSLICER_DX_DEBUG_DATA_DIR` so native UI checks never touch the user's
+/// data: `APPDATA` does not redirect the Known Folder API that Tauri uses.
+/// Release builds always use the platform directory.
+pub(crate) fn data_dir(app: &AppHandle) -> tauri::Result<PathBuf> {
+    #[cfg(debug_assertions)]
+    if let Some(directory) =
+        std::env::var_os("WOSLICER_DX_DEBUG_DATA_DIR").filter(|value| !value.is_empty())
+    {
+        return Ok(PathBuf::from(directory));
+    }
+    app.path().app_data_dir()
+}
+
 fn folder_path(app: &AppHandle, kind: FolderKind) -> Result<PathBuf, String> {
     let resolver = app.path();
     match kind {
-        FolderKind::Data => resolver.app_data_dir(),
+        FolderKind::Data => data_dir(app),
         FolderKind::Local => resolver.app_local_data_dir(),
         FolderKind::Config => resolver.app_config_dir(),
         FolderKind::Cache => resolver.app_cache_dir(),

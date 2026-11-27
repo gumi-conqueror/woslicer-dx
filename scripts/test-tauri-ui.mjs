@@ -36,6 +36,11 @@ if (!existsSync(exe)) {
   );
   process.exit(1);
 }
+if (selected.profile === 'release') {
+  console.warn(
+    'release builds ignore WOSLICER_DX_DEBUG_DATA_DIR: this run reads and writes the real application data directory',
+  );
+}
 
 const artifactsDir = resolve('test-artifacts/tauri-ui');
 mkdirSync(artifactsDir, { recursive: true });
@@ -61,7 +66,8 @@ process.exit(process.exitCode ?? 0);
 async function runProfile(profile, exe, runDir) {
   const port = await freePort();
   // Isolate WebView2 user data explicitly. APPDATA overrides do not redirect
-  // Windows Known Folder APIs used by native recovery storage.
+  // Windows Known Folder APIs used by native recovery storage, so debug builds
+  // also take the app data directory from WOSLICER_DX_DEBUG_DATA_DIR.
   const localRoot = join(runDir, 'appdata-local');
   const roamingRoot = join(runDir, 'appdata-roaming');
   mkdirSync(localRoot, { recursive: true });
@@ -75,6 +81,7 @@ async function runProfile(profile, exe, runDir) {
       ...process.env,
       LOCALAPPDATA: localRoot,
       APPDATA: roamingRoot,
+      WOSLICER_DX_DEBUG_DATA_DIR: join(roamingRoot, 'io.github.rirko.woslicer-dx'),
       WEBVIEW2_USER_DATA_FOLDER: join(localRoot, 'webview2'),
       WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: browserArgs,
     },

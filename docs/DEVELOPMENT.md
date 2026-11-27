@@ -129,8 +129,10 @@ After a commit or version change, regenerate identity with `node scripts/tauri-b
 On Windows, run `npm run test:desktop` and `npm run test:ipc` against the built executable.
 The desktop UI runner checks native window decorations, file permissions, About links, audio decoding, menu visibility and canvas sizing.
 It uses WebView2 at the host's natural scale and DPR 2, with a 30-second deadline per profile.
-Its WebView2 directories are separate, but native recovery storage can still use the user's Windows data directory.
-Run these checks with disposable application state. Native UI checks report skipped on other operating systems.
+Each profile gets its own WebView2 directories and its own application data directory.
+Debug builds read `WOSLICER_DX_DEBUG_DATA_DIR` for recovery data and file grants, and the runner sets it per profile.
+Release builds ignore this variable. A release run and `npm run test:ipc` use the user's application data directory.
+Run those checks with disposable application state. Native UI checks report skipped on other operating systems.
 
 For font changes, run `node scripts/verify-fonts.mjs` after the web build.
 It checks four languages at 100%, 125% and 150% scale, including 12px text in light and dark themes.
