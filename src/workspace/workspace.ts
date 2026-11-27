@@ -24,7 +24,7 @@ import { readWos, writeWos } from '@gumi-conqueror/wos-file';
 import { linkMarkersTo } from '../project/marker-links';
 import { markerTickAllowed } from '../core/timebase';
 import { buildBmseClipboard, parseBmseClipboard } from '../core/formats/bmse';
-import type { DroppedFile, Platform, OpenedFile } from '../platform/contracts';
+import type { ChosenFile, Platform, OpenedFile } from '../platform/contracts';
 import type { EditorStore } from '../slicing/editor-store';
 import { createEditorActions } from '../slicing/editor-actions';
 import { createAudioEngine } from '../audio/audio-client';
@@ -280,7 +280,10 @@ export function createWorkspace(options: WorkspaceOptions) {
       worker?.dispose();
     }
   }
-  /** Adds a track with audio that the user chooses. */
+  /**
+   * Adds tracks with audio that the user chooses; several files add several
+   * tracks. An empty current track takes the first file.
+   */
   async function addTrack(): Promise<void> {
     if (recoveryBlock && !(await releaseRecoveryBlock())) return;
     if (editor.document.tracks.length >= PROJECT_MAX_TRACKS) {
@@ -289,21 +292,17 @@ export function createWorkspace(options: WorkspaceOptions) {
     }
     const documentGeneration = editor.documentGeneration,
       request = beginOpening({ stage: 'opening' });
+    let files: ChosenFile[] = [];
     try {
-      const file = await platform.openFile('audio');
-      if (
-        file &&
-        !disposed &&
-        documentGeneration === editor.documentGeneration &&
-        request === opening
-      )
-        await loadAudio(file, false, { newTrack: true });
+      files = await platform.openFiles('audio');
     } catch (error) {
       if (!disposed && request === opening)
         editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
     } finally {
       finishOpening(request);
     }
+    if (!disposed && documentGeneration === editor.documentGeneration && request === opening)
+      await openChosenFiles(files);
   }
   /** Removes the current track in one undoable edit; the last track stays. */
   function removeTrack(): void {
@@ -482,15 +481,15 @@ export function createWorkspace(options: WorkspaceOptions) {
     }
   }
   /**
-   * Opens dropped files. A project replaces the current project, and the other
+   * Opens dropped or picked files. A project replaces the current project, and the other
    * files are ignored. Audio files become tracks: the first one fills the
    * current track when it has no audio, and every further file adds a track.
    */
-  async function openDroppedFiles(files: readonly DroppedFile[]): Promise<void> {
+  async function openChosenFiles(files: readonly ChosenFile[]): Promise<void> {
     if (recoveryBlock && !(await releaseRecoveryBlock())) return;
     const project = files.find((file) => /\.wosdx$/i.test(file.name));
     if (project) {
-      await openDropped(project, (opened) => acceptProject(opened), true);
+      await openChosen(project, (opened) => acceptProject(opened), true);
       return;
     }
     // Filling an empty track starts a new project; another replacement stops the loop.
@@ -502,15 +501,15 @@ export function createWorkspace(options: WorkspaceOptions) {
         editor.setStatus('trackLimit', { count: PROJECT_MAX_TRACKS }, true);
         return;
       }
-      await openDropped(file, (opened) =>
+      await openChosen(file, (opened) =>
         loadAudio(opened, false, fill ? { trackId: editor.track.trackId } : { newTrack: true }),
       );
       if (fill) documentGeneration = editor.documentGeneration;
     }
   }
-  /** Reads one dropped file and opens it, unless the document changed meanwhile. */
-  async function openDropped(
-    file: DroppedFile,
+  /** Reads one chosen file and opens it, unless the document changed meanwhile. */
+  async function openChosen(
+    file: ChosenFile,
     open: (opened: OpenedFile) => Promise<void>,
     project = false,
   ): Promise<void> {
@@ -743,7 +742,7 @@ export function createWorkspace(options: WorkspaceOptions) {
     openProject,
     saveProject,
     relinkAudio,
-    openDroppedFiles,
+    openChosenFiles,
     loadAudio,
     reopen,
     importWosSettings,

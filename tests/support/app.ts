@@ -126,7 +126,10 @@ export function fixture(createEngine = processorEngine) {
   const saved: OutputFile[] = [],
     exported: OutputFile[] = [];
   let session: unknown = null;
-  let opened: OpenedFile | null = null;
+  /** What the next picker returns: one file, or several for a multiple choice. */
+  let opened: OpenedFile | readonly OpenedFile[] | null = null;
+  const pickedFiles = (): readonly OpenedFile[] =>
+    opened === null ? [] : 'name' in opened ? [opened] : opened;
   let clipboard = '';
   const platform: Platform = {
     kind: 'browser',
@@ -134,10 +137,16 @@ export function fixture(createEngine = processorEngine) {
       return Promise.resolve(null);
     },
     openFile() {
-      return Promise.resolve(opened);
+      return Promise.resolve(pickedFiles()[0] ?? null);
+    },
+    openFiles() {
+      return Promise.resolve(
+        pickedFiles().map((file) => ({ name: file.name, open: () => Promise.resolve(file) })),
+      );
     },
     reopenFile(reference) {
-      if (opened?.reference === reference) return Promise.resolve(opened);
+      const file = pickedFiles().find((item) => item.reference === reference);
+      if (file) return Promise.resolve(file);
       return Promise.reject(new Error('Missing source'));
     },
     watchDrops() {
@@ -201,7 +210,7 @@ export function fixture(createEngine = processorEngine) {
     set session(value: unknown) {
       session = value;
     },
-    set opened(value: OpenedFile | null) {
+    set opened(value: OpenedFile | readonly OpenedFile[] | null) {
       opened = value;
     },
     async dispose() {

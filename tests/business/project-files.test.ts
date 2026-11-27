@@ -8,7 +8,7 @@ import { projectToWos } from '../../src/project/codec';
 import { writeWos } from '@gumi-conqueror/wos-file';
 import { wavFile } from '../support/audio';
 import { createBrowserPlatform } from '../../src/platform/browser';
-import type { DroppedFile } from '../../src/platform/contracts';
+import type { ChosenFile } from '../../src/platform/contracts';
 
 describe('portable project workflow', () => {
   it('saves absolute media paths and opens project media through the project grant', async () => {
@@ -405,7 +405,7 @@ describe('portable project workflow', () => {
     const read = vi.spyOn(file, 'arrayBuffer');
     const original = f.editor.document;
     // The browser reports drops from page events.
-    let dropped: DroppedFile[] = [];
+    let dropped: ChosenFile[] = [];
     const stop = createBrowserPlatform().watchDrops({
       active: () => {},
       dropped: (files) => {
@@ -418,7 +418,7 @@ describe('portable project workflow', () => {
     window.dispatchEvent(drop);
     stop();
     expect(dropped.map((item) => item.name)).toEqual(['large.wosdx']);
-    await f.workspace.openDroppedFiles(dropped);
+    await f.workspace.openChosenFiles(dropped);
     expect(read).not.toHaveBeenCalled();
     expect(f.editor.document).toBe(original);
     expect(f.editor.status.segments[0]?.key).toBe('dropFailed');

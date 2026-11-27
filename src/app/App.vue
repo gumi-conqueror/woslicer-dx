@@ -8,7 +8,7 @@ import { createCommands, provideCommandRunner } from './commands';
 import ApplicationMenu from './components/ApplicationMenu.vue';
 import WindowTitlebar from './components/WindowTitlebar.vue';
 import { getPlatform, getBuildIdentity } from '../platform';
-import type { BuildIdentity, DroppedFile } from '../platform/contracts';
+import type { BuildIdentity, ChosenFile } from '../platform/contracts';
 import { useEditorStore } from '../slicing/editor-store';
 import { useBmhelperStore } from '../bmhelper/store';
 import { createWorkspace, provideWorkspace } from '../workspace/workspace';
@@ -335,11 +335,11 @@ async function closeWorkspace(): Promise<void> {
   }
 }
 // Dropped audio files become tracks; a dropped project replaces the current one after confirmation.
-async function dropFiles(files: DroppedFile[]): Promise<void> {
+async function dropFiles(files: ChosenFile[]): Promise<void> {
   if (files.some((file) => /\.wosdx$/i.test(file.name)) && !(await confirmProjectReplacement()))
     return;
   calibrating.value = false;
-  await workspace.openDroppedFiles(files);
+  await workspace.openChosenFiles(files);
 }
 let stopDrops: (() => void) | undefined;
 // Lifecycle.

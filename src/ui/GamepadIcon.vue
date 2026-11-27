@@ -3,11 +3,12 @@ import { computed } from 'vue';
 import { GAMEPAD_CONTROLS, type GamepadControl } from '../input/gamepad';
 const props = defineProps<{ control: GamepadControl }>();
 const label = computed(() => GAMEPAD_CONTROLS.find((item) => item.id === props.control)?.label);
+/** Direction arrows at the edge of the icon, clear of the stick label. */
 const arrows: Readonly<Record<string, string>> = {
-  up: 'm12 7-3 4h6Z',
-  down: 'm12 17-3-4h6Z',
-  left: 'm7 12 4-3v6Z',
-  right: 'm17 12-4-3v6Z',
+  up: 'M12 3.4 9.8 6h4.4Z',
+  down: 'M12 20.6 9.8 18h4.4Z',
+  left: 'M3.4 12 6 9.8v4.4Z',
+  right: 'M20.6 12 18 9.8v4.4Z',
 };
 /** The direction of a D-pad or stick control, if it has one. */
 const direction = computed(
@@ -71,15 +72,13 @@ const stick = computed(() => props.control.match(/^(ls|rs)(?:-|$)/)?.[1]?.toUppe
       <path
         v-if="direction"
         :d="arrows[direction]"
-        transform="translate(12 12) scale(1.35) translate(-12 -12)"
         fill="currentColor"
-        opacity="0.8"
       />
       <text
         x="12"
         y="15.5"
         text-anchor="middle"
-        font-size="9"
+        :font-size="direction ? 8 : 9"
         font-weight="600"
         fill="currentColor"
       >

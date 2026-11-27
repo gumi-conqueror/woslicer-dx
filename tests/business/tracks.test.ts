@@ -134,14 +134,14 @@ it('adds dropped audio files as tracks and fills an empty current track first', 
     name,
     open: () => Promise.resolve(audioFile(name, frames)),
   });
-  await f.workspace.openDroppedFiles([
+  await f.workspace.openChosenFiles([
     dropped('kick.wav'),
     dropped('notes.txt'),
     dropped('snare.wav', 24000),
   ]);
   expect(f.editor.document.tracks.map((track) => track.name)).toEqual(['kick', 'snare']);
   // With audio on the current track, every dropped file adds a track.
-  await f.workspace.openDroppedFiles([dropped('hat.wav')]);
+  await f.workspace.openChosenFiles([dropped('hat.wav')]);
   expect(f.editor.document.tracks.map((track) => track.name)).toEqual(['kick', 'snare', 'hat']);
   expect(f.editor.track.name).toBe('hat');
 });
@@ -165,4 +165,24 @@ it('presets the BPM from the first audio of an empty project only', async () => 
   g.workspace.actions.setMarker(96);
   await g.workspace.loadAudio(clicks('beat.wav'));
   expect(g.editor.document.timing.bpm).toBe(120);
+});
+
+it('adds a track for each of several picked audio files', async () => {
+  const f = setup();
+  // In an empty project the first picked file fills the empty track.
+  f.opened = [audioFile('kick.wav'), audioFile('snare.wav', 24000)];
+  await f.run('add-track');
+  expect(f.editor.document.tracks.map((track) => track.name)).toEqual(['kick', 'snare']);
+  f.opened = [audioFile('hat.wav'), audioFile('clap.wav')];
+  await f.run('add-track');
+  expect(f.editor.document.tracks.map((track) => track.name)).toEqual([
+    'kick',
+    'snare',
+    'hat',
+    'clap',
+  ]);
+  // Cancelling the picker adds nothing.
+  f.opened = [];
+  await f.run('add-track');
+  expect(f.editor.document.tracks).toHaveLength(4);
 });

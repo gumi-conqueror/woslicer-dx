@@ -370,6 +370,24 @@ pub(crate) fn drag_drop(window: &tauri::Window, event: &tauri::DragDropEvent) {
     }
 }
 #[tauri::command]
+pub(crate) async fn open_files(
+    kind: FileKind,
+    state: State<'_, HostFiles>,
+) -> Result<Vec<OpenedFile>, String> {
+    let Some(files) = rfd::AsyncFileDialog::new()
+        .add_filter("Supported files", kind.extensions())
+        .pick_files()
+        .await
+    else {
+        return Ok(Vec::new());
+    };
+    files
+        .iter()
+        .filter(|file| kind.accepts(file.path()))
+        .map(|file| state.grant(file.path()))
+        .collect()
+}
+#[tauri::command]
 pub(crate) fn reopen_file(
     reference: String,
     state: State<'_, HostFiles>,

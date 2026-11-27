@@ -81,10 +81,12 @@ const keyPositions = [
   flex: none;
   vertical-align: middle;
 }
-/* Bodies carry a light tint of the outline color; active parts a strong one. */
+/* Bodies carry a light tint of the outline color. Active parts take the accent
+   color with a light fill, so arrows and key numbers on them stay readable. */
 .active {
-  fill: currentColor;
-  fill-opacity: 0.6;
+  fill: var(--el-color-primary);
+  fill-opacity: 0.3;
+  stroke: var(--el-color-primary);
   stroke-width: 2;
 }
 </style>

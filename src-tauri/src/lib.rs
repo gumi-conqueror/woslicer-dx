@@ -77,6 +77,7 @@ pub fn run() {
             app_data::app_data_folders,
             app_data::open_data_folder,
             files::open_file,
+            files::open_files,
             files::reopen_file,
             files::open_project_media,
             files::begin_read,
