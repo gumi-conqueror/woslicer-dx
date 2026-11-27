@@ -216,7 +216,7 @@ function drawTrack(
     context.stroke();
     // The second channel uses the bright variants; band overlays dim the waveform.
     const second = channel > 0;
-    const data = source.data[channel];
+    const data = source.floatData[channel];
     if (data && track.peaks)
       drawWaveLane(
         context,

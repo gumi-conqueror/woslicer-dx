@@ -58,6 +58,8 @@ export interface LoadingActivity {
   mediaId?: string;
   /** The track that receives the audio; absent before a target is known. */
   trackId?: string;
+  /** The audio becomes a new track; the track list shows a placeholder row for it. */
+  newTrack?: boolean;
 }
 export function createWorkspace(options: WorkspaceOptions) {
   const { platform, editor, createEngine = createAudioEngine } = options;
@@ -145,7 +147,8 @@ export function createWorkspace(options: WorkspaceOptions) {
       ? `${editor.document.projectId}:track:${crypto.randomUUID()}`
       : target.trackId;
     const request = beginOpening({
-        trackId: newTrack ? undefined : trackId,
+        trackId,
+        newTrack,
         stage: 'verifying',
         name: file.name,
         mediaId: preserveBaseName ? editor.track.media?.mediaId : undefined,

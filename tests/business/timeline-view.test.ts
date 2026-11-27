@@ -132,6 +132,8 @@ async function flushFrame() {
   await nextTick();
 }
 
+const normalized = (data: Int16Array) => Float32Array.from(data, (value) => value / 32768);
+
 describe('waveform drawing algorithms', () => {
   it('sizes backing canvases using fractional DPR and CSS viewport size', () => {
     const { canvas, record } = canvasFixture();
@@ -144,7 +146,7 @@ describe('waveform drawing algorithms', () => {
   it('places one-device-pixel sample dots within their channel', () => {
     const { context, record } = canvasFixture();
     const data = Int16Array.of(1000, 8192, -16384, 4096, 0);
-    drawWaveLane(context, view, data, { center: 20, halfHeight: 16 }, colors, true);
+    drawWaveLane(context, view, normalized(data), { center: 20, halfHeight: 16 }, colors, true);
     expect(record.fills).toHaveLength(4);
     expect(
       record.fills.every(
@@ -165,7 +167,7 @@ describe('waveform drawing algorithms', () => {
     drawWaveLane(
       context,
       { ...view, scrollTick: 0, pxPerTick: 500 },
-      data,
+      normalized(data),
       { center: 20, halfHeight: 16 },
       colors,
       true,
@@ -182,7 +184,7 @@ describe('waveform drawing algorithms', () => {
     drawWaveLane(
       context,
       { ...view, scrollTick: 0, pxPerTick: 1 },
-      data,
+      normalized(data),
       { center: 20, halfHeight: 16 },
       colors,
       true,
@@ -194,7 +196,7 @@ describe('waveform drawing algorithms', () => {
     drawWaveLane(
       context,
       { ...view, scrollTick: 0, pxPerTick: 1 },
-      data,
+      normalized(data),
       { center: 20, halfHeight: 16 },
       colors,
       false,
@@ -207,7 +209,7 @@ describe('waveform drawing algorithms', () => {
     drawWaveLane(
       context,
       { ...view, dpr: 1, scrollTick: 0, pxPerTick: 10 },
-      data,
+      normalized(data),
       { center: 20, halfHeight: 16 },
       colors,
       false,

@@ -10,7 +10,11 @@ const arrows: Readonly<Record<string, string>> = {
   right: 'm17 12-4-3v6Z',
 };
 /** The direction of a D-pad or stick control, if it has one. */
-const direction = computed(() => props.control.match(/^(?:dpad|ls|rs)-(up|down|left|right)$/)?.[1]);
+const direction = computed(
+  () => props.control.match(/^(?:dpad|ls|rs)-(up|down|left|right)(?:-hard)?$/)?.[1],
+);
+/** A hard stick push draws a solid ring. */
+const hard = computed(() => props.control.endsWith('-hard'));
 const stick = computed(() => props.control.match(/^(ls|rs)(?:-|$)/)?.[1]?.toUpperCase());
 </script>
 <template>
@@ -60,6 +64,7 @@ const stick = computed(() => props.control.match(/^(ls|rs)(?:-|$)/)?.[1]?.toUppe
         fill="none"
         stroke="currentColor"
         :stroke-dasharray="direction ? undefined : '2 2'"
+        :stroke-width="hard ? 2.5 : 1"
       />
       <path
         v-if="direction"

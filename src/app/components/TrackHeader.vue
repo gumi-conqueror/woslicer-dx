@@ -18,9 +18,12 @@ const { t } = useI18n();
 const track = computed(() => editor.document.tracks.find((item) => item.trackId === props.trackId));
 const current = computed(() => editor.track.trackId === props.trackId);
 const session = computed(() => editor.sessions.get(props.trackId));
-// Loading without a target track belongs to the current track.
+// Loading without a target track belongs to the current track. While the user
+// is still choosing a file (`opening`), nothing is loading yet.
 const loading = computed(() =>
-  props.loading && (props.loading.trackId ?? editor.track.trackId) === props.trackId
+  props.loading &&
+  props.loading.stage !== 'opening' &&
+  (props.loading.trackId ?? editor.track.trackId) === props.trackId
     ? props.loading
     : null,
 );
@@ -80,7 +83,10 @@ function commit(): void {
           @dblclick="rename"
           >{{ name }}</span
         >
-        <span class="track-mix">
+        <span
+          v-if="track"
+          class="track-mix"
+        >
           <input
             class="track-gain"
             type="number"

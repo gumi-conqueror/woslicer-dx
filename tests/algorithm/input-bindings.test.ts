@@ -76,7 +76,7 @@ describe('controller bindings', () => {
     expect(gamepadBinding('rt', 'edit')?.command).toBe('play-pause');
     expect(gamepadBinding('rt', 'recording')?.command).toBe('play-pause');
     expect(gamepadBinding('lt', 'recording')?.command).toBe('open-wheel');
-    expect(gamepadBinding('rs-up', 'recording')?.command).toBe('zoom-in');
+    expect(gamepadBinding('rs-up', 'recording')?.command).toBe('previous-track');
     expect(gamepadBinding('view', 'recording')?.command).toBe('help');
   });
   it('lets the recording layer hide editing bindings', () => {
@@ -86,7 +86,9 @@ describe('controller bindings', () => {
     expect(gamepadBinding('ls-left', 'recording')).toBeUndefined();
     expect(gamepadControls('place-marker', 'recording')).toEqual([]);
     expect(gamepadControls('cursor-left-grid', 'recording')).toEqual([]);
-    expect(gamepadControls('zoom-in', 'recording')).toEqual(['rs-up']);
+    // The left stick seeks by rotation while recording, so zoom has no controller control there.
+    expect(gamepadControls('zoom-in', 'recording')).toEqual([]);
+    expect(gamepadControls('zoom-in')).toEqual(['ls-up', 'ls-up-hard']);
     expect(gamepadControls('rate-down', 'recording')).toEqual(['lb']);
   });
   it('maps the YuanCon keys and turntable in order', () => {
@@ -151,7 +153,7 @@ describe('input routing', () => {
       { kind: 'command', command: 'help' },
     ]);
   });
-  it('holds the wheel with its control and points with directions only', () => {
+  it('holds the wheel with its control, steps with the D-pad and points with sticks', () => {
     expect(routeGamepad([press('lt')], 'edit', 0)).toEqual([{ kind: 'wheel', action: 'hold' }]);
     expect(
       routeGamepad(
@@ -160,6 +162,7 @@ describe('input routing', () => {
         0,
       ),
     ).toEqual([
+      { kind: 'wheel', action: 'step-left' },
       { kind: 'wheel', action: 'next' },
       { kind: 'wheel', action: 'confirm' },
       { kind: 'wheel', action: 'release' },

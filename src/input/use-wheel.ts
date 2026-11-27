@@ -9,6 +9,12 @@ import type { Pointing } from './gamepad';
 export const WHEEL_VIEWPORT_SHARE = 2 / 3;
 /** Distance from the center to each slot, as a share of the diameter. A mouse pointer there has full travel. */
 export const WHEEL_SLOT_RADIUS_SHARE = 0.34;
+const ARROWS: Partial<Record<string, 'up' | 'right' | 'down' | 'left'>> = {
+  ArrowUp: 'up',
+  ArrowRight: 'right',
+  ArrowDown: 'down',
+  ArrowLeft: 'left',
+};
 export function wheelDiameter(): number {
   return Math.min(window.innerWidth, window.innerHeight) * WHEEL_VIEWPORT_SHARE;
 }
@@ -62,8 +68,15 @@ export function useCommandWheel(options: {
   let lastPointing: Pointing['from'] = null;
   function pointController({ x, y, from }: Pointing): void {
     if (!state.value.open) return;
+    // A wheel kept open by a tap moves with D-pad steps instead; see `step`.
+    if (from === 'dpad' && state.value.mode === 'sticky') return;
     if (from) lastPointing = from;
     send({ type: 'point', x, y, keepAtCenter: !from && lastPointing === 'dpad' });
+  }
+  /** Moves the selection of a wheel kept open by a tap one slot toward a direction. */
+  function step(direction: 'up' | 'right' | 'down' | 'left'): void {
+    if (!state.value.open || state.value.mode !== 'sticky') return;
+    send({ type: 'step', toward: { up: 0, right: 2, down: 4, left: 6 }[direction] });
   }
   function page(delta: number): void {
     send({ type: 'page', delta, pages: wheels.value.length });
@@ -86,7 +99,9 @@ export function useCommandWheel(options: {
     event.preventDefault();
     event.stopImmediatePropagation();
     if (event.repeat) return;
-    if (event.key === 'Escape') send({ type: 'cancel' });
+    const arrow = ARROWS[event.key];
+    if (arrow) step(arrow);
+    else if (event.key === 'Escape') send({ type: 'cancel' });
     else if (event.key === 'Enter') send({ type: 'confirm' });
     else if ((event.code || event.key) === holdCode) send({ type: 'open', time: event.timeStamp });
   }
@@ -130,6 +145,7 @@ export function useCommandWheel(options: {
     openPage,
     send,
     page,
+    step,
     cancel,
     holdFromController,
     holdFromKey,

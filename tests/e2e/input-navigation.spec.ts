@@ -122,7 +122,7 @@ test('navigates menus during audio loading and keeps the help input view manual'
   await press(15);
   const view = page.getByRole('menu', { name: 'View', exact: true });
   await expect(view).toBeVisible();
-  await expect(view.getByRole('img', { name: 'RS ↑', exact: true })).toBeVisible();
+  await expect(view.getByRole('img', { name: 'LS ↑', exact: true })).toBeVisible();
   // Unmapped editor buttons cannot leak through menu mode.
   await press(2);
   await expect(view).toBeVisible();

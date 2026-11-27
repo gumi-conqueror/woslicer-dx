@@ -479,7 +479,7 @@
     "previousItem": "Previous item",
     "nextItem": "Next item",
     "altNavigation": "Press and release Alt to focus the menu bar. Press a marked letter to open its menu, or use Alt+letter. Arrow keys move, Enter selects, Esc returns, and Alt exits. Menu letters are the same in all languages.",
-    "gamepadScope": "Focus this window. A adds a marker, X toggles the marker at the cursor, Y previews and RT plays. The left stick or D-pad moves the cursor; the right stick zooms and moves by ticks. LB and RB move by measures. Hold a direction to repeat. Use the buttons above to switch between keyboard and controller controls.",
+    "gamepadScope": "Focus this window. A adds a marker, X toggles the marker at the cursor, Y previews and RT plays. Push the left stick left or right lightly to move by ticks, or fully to move by grid steps; holding a full push speeds up. Left stick up and down zoom. The right stick selects tracks (up, down) and moves the playhead (left, right). The D-pad moves by grid steps and changes the grid; LB and RB move by measures. Use the buttons above to switch between keyboard and controller controls.",
     "dialogNavigation": "These buttons are fixed. In menus and dialogs, the D-pad or left stick selects, A activates and B goes back. LT and RT scroll the help and troubleshooting pages.",
     "yuancon": "YuanCon",
     "navigation": "Menus and dialogs",

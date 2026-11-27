@@ -249,11 +249,21 @@ function inputContext(): InputContext {
 function recordingActive(): boolean {
   return inputContext() === 'recording';
 }
+const STEPS: Partial<Record<WheelAction, 'up' | 'right' | 'down' | 'left'>> = {
+  'step-up': 'up',
+  'step-right': 'right',
+  'step-down': 'down',
+  'step-left': 'left',
+};
 function wheelAction(action: WheelAction, time: number): void {
   if (action === 'hold') wheel.holdFromController(time);
   else if (action === 'release') wheel.send({ type: 'release', time });
   else if (action === 'previous' || action === 'next') wheel.page(action === 'next' ? 1 : -1);
-  else wheel.send({ type: action });
+  else if (action === 'confirm' || action === 'cancel') wheel.send({ type: action });
+  else {
+    const direction = STEPS[action];
+    if (direction) wheel.step(direction);
+  }
 }
 const yuancon = useYuanconRecording({
   active: recordingActive,

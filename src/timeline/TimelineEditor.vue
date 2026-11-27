@@ -210,6 +210,15 @@ onBeforeUnmount(() => {
         :viewport-width="dimensions.width"
         :loading="loading"
       />
+      <!-- A new track that is still decoding -->
+      <TrackHeader
+        v-if="loading?.newTrack && loading.trackId && loading.stage !== 'opening'"
+        role="listitem"
+        :track-id="loading.trackId"
+        :index="editor.document.tracks.length"
+        :viewport-width="dimensions.width"
+        :loading="loading"
+      />
     </div>
     <!-- ruler: click to seek, wheel zooms -->
     <canvas
