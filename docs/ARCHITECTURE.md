@@ -102,6 +102,7 @@ Opus, APE audio, WavPack and HE-AAC are not enabled. See the [decoder repository
 ## Native host and input
 
 The Rust host provides file transfers (`files.rs`), clipboard access (`clipboard.rs`), HID input (`input.rs`), recovery (`session.rs`) and window setup (`lib.rs`).
+`app_data.rs` owns the application data directory for recovery data and file grants. Only debug builds accept the `WOSLICER_DX_DEBUG_DATA_DIR` override.
 Audio processing and editing rules remain in the shared frontend.
 Native commands are constrained by Tauri capabilities. About links use fixed identifiers, not arbitrary URLs.
 Both application variants keep user data local and bundle runtime assets. Their CSP definitions are in `src/app/index.html`, `vite.config.mts` and `src-tauri/tauri.conf.json`.
