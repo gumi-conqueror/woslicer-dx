@@ -4,6 +4,23 @@
 
 ## Unreleased
 
+### Added
+
+- Right-click a track to open the track menu: add, rename, remove, move, mute, solo, open or relink audio, and export.
+- A **Track** menu in the menu bar collects the track commands. Add audio track, Remove current track, Relink audio and Export slices of all tracks moved there from the Project menu.
+- F2 renames the current track; Shift+M and Shift+S mute and solo it.
+- Selecting another track during playback keeps playing from the same time.
+
+### Changed
+
+- Controller: push the left stick left or right lightly to move by ticks, fully to move by grid steps, and hold a full push to speed up. Left stick up and down zoom. The right stick selects tracks (up, down) and moves the playhead (left, right).
+- In a command wheel kept open by a tap, the D-pad and arrow keys move one slot at a time and pass through the corners.
+- Choosing an audio file no longer shows the loading animation. A new track appears as a loading row while its audio decodes.
+
+### Fixed
+
+- The window no longer stalls while a long audio file finishes loading.
+
 ## 2.0.0-alpha.8 — 2026-11-27
 
 ### Added

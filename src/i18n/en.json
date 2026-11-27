@@ -219,7 +219,8 @@
     "pressControl": "Press the controller button to use. Menu cancels.",
     "keyReserved": "This key is reserved for menus and dialogs. Press another key.",
     "inputSettingsTitle": "Input settings",
-    "trackGain": "Track gain (dB)"
+    "trackGain": "Track gain (dB)",
+    "trackMenu": "Track menu"
   },
   "status": {
     "projectOpened": "Opened project: {name}",
@@ -400,7 +401,9 @@
     "addTrack": "Add audio track…",
     "removeTrack": "Remove current track",
     "exportAllTracks": "Export slices of all tracks…",
-    "inputSettings": "Input settings…"
+    "inputSettings": "Input settings…",
+    "track": "Track",
+    "renameTrack": "Rename track"
   },
   "dialogs": {
     "loadAudio": "Open audio",

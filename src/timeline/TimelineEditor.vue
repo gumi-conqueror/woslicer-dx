@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { CANCEL, matchesChords } from '../input/bindings';
 import TrackHeader from '../app/components/TrackHeader.vue';
+import CommandMenu from '../app/components/CommandMenu.vue';
+import { TRACK_MENU } from '../app/menu';
+import { useCommandRunner } from '../app/commands';
 import { computed, onBeforeUnmount, onMounted, shallowRef, useTemplateRef, watch } from 'vue';
 import { useDevicePixelRatio, useResizeObserver } from '@vueuse/core';
 import { ElSlider } from 'element-plus';
@@ -29,6 +32,8 @@ const wave = useTemplateRef<HTMLCanvasElement>('wave');
 const overlay = useTemplateRef<HTMLCanvasElement>('overlay');
 const { pixelRatio } = useDevicePixelRatio();
 const dimensions = shallowRef({ width: 0, height: 0 });
+const trackMenu = shallowRef<{ x: number; y: number } | null>(null);
+const runCommand = useCommandRunner();
 // Gestures own pointer semantics; this component owns the DOM, RAF and observer lifecycle.
 const gestures = createTimelineGestures(editor);
 const { ghost, cursor } = gestures;
@@ -209,6 +214,7 @@ onBeforeUnmount(() => {
         :index="index"
         :viewport-width="dimensions.width"
         :loading="loading"
+        @menu="trackMenu = $event"
       />
       <!-- A new track that is still decoding -->
       <TrackHeader
@@ -220,6 +226,16 @@ onBeforeUnmount(() => {
         :loading="loading"
       />
     </div>
+    <CommandMenu
+      v-if="trackMenu"
+      :commands="TRACK_MENU"
+      :x="trackMenu.x"
+      :y="trackMenu.y"
+      :state="editor"
+      :label="t('chrome.trackMenu')"
+      @run="(command) => runCommand?.(command)"
+      @close="trackMenu = null"
+    />
     <!-- ruler: click to seek, wheel zooms -->
     <canvas
       ref="ruler"

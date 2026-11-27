@@ -219,7 +219,8 @@
     "pressControl": "使用するコントローラーのボタンを押す。Menu で取消。",
     "keyReserved": "このキーはメニューとダイアログ用。別のキーを押す。",
     "inputSettingsTitle": "入力設定",
-    "trackGain": "トラックのゲイン（dB）"
+    "trackGain": "トラックのゲイン（dB）",
+    "trackMenu": "トラックメニュー"
   },
   "status": {
     "projectOpened": "プロジェクトを開いた：{name}",
@@ -400,7 +401,9 @@
     "addTrack": "オーディオトラックを追加…",
     "removeTrack": "現在のトラックを削除",
     "exportAllTracks": "全トラックの区間を書き出す…",
-    "inputSettings": "入力設定…"
+    "inputSettings": "入力設定…",
+    "track": "トラック",
+    "renameTrack": "トラック名を変更"
   },
   "dialogs": {
     "loadAudio": "音声を開く",

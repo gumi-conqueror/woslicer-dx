@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, useTemplateRef } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useEditorStore } from '../../slicing/editor-store';
 import { FIELD_RANGES } from '../../project/schema';
@@ -30,15 +30,29 @@ const loading = computed(() =>
 const name = computed(
   () => loading.value?.name ?? (track.value?.media ? track.value.name : t('chrome.emptyTitle')),
 );
-const renaming = ref(false);
+const renaming = computed(() => editor.renamingTrackId === props.trackId);
 const draft = ref('');
 const input = useTemplateRef<HTMLInputElement>('input');
+// The rename command opens this field; fill and select the current name.
+watch(renaming, async (open) => {
+  if (!open || !track.value) return;
+  draft.value = track.value.name;
+  await nextTick();
+  input.value?.select();
+});
 async function rename(): Promise<void> {
   if (!track.value?.media) return;
   draft.value = track.value.name;
-  renaming.value = true;
+  editor.renamingTrackId = props.trackId;
   await nextTick();
   input.value?.select();
+}
+const emit = defineEmits<{ menu: [position: { x: number; y: number }] }>();
+/** A right click makes the track current, then opens the track menu at the pointer. */
+function openMenu(event: MouseEvent): void {
+  if (!track.value) return;
+  editor.selectTrack(props.trackId);
+  emit('menu', { x: event.clientX, y: event.clientY });
 }
 /** Track gain in whole dB, committed once per change. */
 function setGain(event: Event): void {
@@ -49,7 +63,7 @@ function setGain(event: Event): void {
 }
 function commit(): void {
   if (!renaming.value) return;
-  renaming.value = false;
+  editor.renamingTrackId = null;
   editor.renameTrack(props.trackId, draft.value);
 }
 </script>
@@ -60,6 +74,7 @@ function commit(): void {
     :class="{ current }"
     :aria-current="current ? 'true' : undefined"
     @pointerdown="editor.selectTrack(trackId)"
+    @contextmenu.prevent="openMenu"
   >
     <span class="track-number">{{ String(index + 1).padStart(2, '0') }}</span>
     <div class="track-body">
@@ -73,7 +88,7 @@ function commit(): void {
           :aria-label="t('chrome.trackName')"
           maxlength="512"
           @keydown.enter.prevent="commit"
-          @keydown.esc.prevent="renaming = false"
+          @keydown.esc.prevent="editor.renamingTrackId = null"
           @blur="commit"
         />
         <span

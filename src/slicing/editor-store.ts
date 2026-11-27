@@ -290,6 +290,8 @@ export const useEditorStore = defineStore('editor', () => {
   function editTrack<T>(edit: (draft: ProjectTrack) => T, trackId = track.value.trackId) {
     return transact((draft) => edit(currentTrack(draft, trackId)));
   }
+  /** The track whose name field is open for editing. */
+  const renamingTrackId = shallowRef<string | null>(null);
   /** Renames a track in one undoable edit; a blank name is ignored. */
   function renameTrack(trackId: string, name: string): void {
     const value = name.trim();
@@ -561,6 +563,7 @@ export const useEditorStore = defineStore('editor', () => {
     editTrack,
     selectTrack,
     renameTrack,
+    renamingTrackId,
     replaceDocument,
     undo,
     redo,

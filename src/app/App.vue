@@ -4,7 +4,7 @@ import { errorMessage } from '../core/messages';
 import { ElConfigProvider, ElMessageBox } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { pinia, localization } from './runtime';
-import { createCommands } from './commands';
+import { createCommands, provideCommandRunner } from './commands';
 import ApplicationMenu from './components/ApplicationMenu.vue';
 import WindowTitlebar from './components/WindowTitlebar.vue';
 import { getPlatform, getBuildIdentity } from '../platform';
@@ -148,6 +148,7 @@ function report(error: unknown): void {
   if (!disposed) editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
 }
 const execute = commands.run;
+provideCommandRunner(execute);
 // Confirmation dialogs; the shared closing lock rejects reentry.
 // Shared boolean-confirmation protocol: one closing lock, one MessageBox call,
 // cancellation filtered from error reporting. Callers pass pre-translated text.

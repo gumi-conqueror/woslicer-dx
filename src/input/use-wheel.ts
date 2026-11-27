@@ -68,9 +68,9 @@ export function useCommandWheel(options: {
   let lastPointing: Pointing['from'] = null;
   function pointController({ x, y, from }: Pointing): void {
     if (!state.value.open) return;
+    if (from) lastPointing = from;
     // A wheel kept open by a tap moves with D-pad steps instead; see `step`.
     if (from === 'dpad' && state.value.mode === 'sticky') return;
-    if (from) lastPointing = from;
     send({ type: 'point', x, y, keepAtCenter: !from && lastPointing === 'dpad' });
   }
   /** Moves the selection of a wheel kept open by a tap one slot toward a direction. */

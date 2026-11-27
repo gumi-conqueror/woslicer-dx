@@ -118,6 +118,8 @@ test('navigates menus during audio loading and keeps the help input view manual'
   await expect(guide).toBeHidden();
   await press(9);
   await expect(page.getByRole('menu', { name: 'Project', exact: true })).toBeVisible();
+  // Project, Edit, Track, View.
+  await press(15);
   await press(15);
   await press(15);
   const view = page.getByRole('menu', { name: 'View', exact: true });

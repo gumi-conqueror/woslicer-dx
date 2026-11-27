@@ -89,6 +89,11 @@ const table: ReadonlyArray<readonly [AppCommand, MenuEditorState, boolean]> = [
   ['open-wheel', state(), true],
   // A project keeps at least one track.
   ['add-track', state(), true],
+  ['rename-track', state(), true],
+  ['toggle-track-mute', state(), true],
+  ['toggle-track-solo', state(), true],
+  ['previous-track', state(), true],
+  ['next-track', state(), true],
   // One track cannot move.
   ['move-track-up', state(), false],
   ['move-track-down', state(), false],

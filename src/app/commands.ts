@@ -1,3 +1,4 @@
+import { inject, provide, type InjectionKey } from 'vue';
 import { GRID_DENSITIES, gridStepTicks } from '../core/gridlines';
 import { latencySamples } from '../core/calibration';
 import {
@@ -102,6 +103,23 @@ export const COMMANDS = {
     group: 'project',
     enabled: (state) => state.document.tracks.length > 1,
     run: ({ workspace }) => workspace.removeTrack(),
+  },
+  'rename-track': {
+    label: 'menu.renameTrack',
+    group: 'project',
+    run: ({ editor }) => {
+      editor.renamingTrackId = editor.track.trackId;
+    },
+  },
+  'toggle-track-mute': {
+    label: 'chrome.muteTrack',
+    group: 'playback',
+    run: ({ editor }) => editor.setTrackMix(editor.track.trackId, { muted: !editor.track.muted }),
+  },
+  'toggle-track-solo': {
+    label: 'chrome.soloTrack',
+    group: 'playback',
+    run: ({ editor }) => editor.setTrackMix(editor.track.trackId, { solo: !editor.track.solo }),
   },
   'previous-track': {
     label: 'help.previousTrack',
@@ -443,6 +461,15 @@ export function createCommands(options: {
   return { run };
 }
 export type RunCommand = ReturnType<typeof createCommands>['run'];
+const runnerKey: InjectionKey<RunCommand> = Symbol('run-command');
+/** Lets components below the app shell run commands through the one execution entry. */
+export function provideCommandRunner(run: RunCommand): void {
+  provide(runnerKey, run);
+}
+/** The provided runner; `null` where no app shell provides one, as in component tests. */
+export function useCommandRunner(): RunCommand | null {
+  return inject(runnerKey, null);
+}
 
 /** Moves the playhead by whole seconds within the source; the cursor follows it. */
 function seekBy({ editor, playback }: CommandContext, seconds: number): void {
