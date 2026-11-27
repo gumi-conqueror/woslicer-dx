@@ -443,12 +443,34 @@ describe('Vue timeline ownership', () => {
     expect(editor.cueVolume).toBeCloseTo(dbToAmp(sliderToDb(30)), 12);
     expect(editor.volume).toBeCloseTo(dbToAmp(sliderToDb(42)), 12);
     // Range payloads never enter the draft, so the release re-commits the
-    // bound position instead of a stale range value.
+    // bound position instead of a stale range value. The bound position comes
+    // from the last render, as between two real input events.
+    await nextTick();
     master.vm.$emit('update:modelValue', [10, 20]);
     master.vm.$emit('change', 5);
     expect(setVolume).toHaveBeenCalledTimes(2);
     expect(editor.volume).toBeCloseTo(dbToAmp(sliderToDb(42)), 12);
     expect(setCueVolume).toHaveBeenCalledOnce();
+  });
+  it('moves a volume slider by 1 dB per wheel notch and commits once when the wheel rests', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(800);
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(200);
+    const { wrapper, editor } = componentFixture();
+    const controls = wrapper.getComponent(PlaybackControls);
+    await nextTick();
+    const setVolume = vi.spyOn(editor, 'setVolume');
+    const before = editor.document.global.masterGainDb;
+    const master = controls.get('.volume-slider').element;
+    for (let notch = 0; notch < 3; notch++)
+      master.dispatchEvent(new WheelEvent('wheel', { deltaY: -100, cancelable: true }));
+    // The wheel previews at once; the document changes only after it rests.
+    expect(editor.masterAmp).toBeCloseTo(dbToAmp(before + 3), 9);
+    expect(setVolume).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(400);
+    expect(setVolume).toHaveBeenCalledOnce();
+    expect(editor.document.global.masterGainDb).toBeCloseTo(before + 3, 9);
+    vi.useRealTimers();
   });
   it('returns sliders to the bound value after undo clears the draft', async () => {
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(800);

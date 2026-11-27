@@ -147,13 +147,22 @@ export const useEditorStore = defineStore('editor', () => {
   const trackAmps = computed<ReadonlyMap<string, number>>(() => {
     const tracks = document.value.tracks;
     const soloing = tracks.some((item) => item.solo && !item.muted);
+    const preview = trackGainPreview.value;
     return new Map(
-      tracks.map((item) => [
-        item.trackId,
-        item.muted || (soloing && !item.solo) ? 0 : dbToAmp(clampGainDb(item.gainDb)),
-      ]),
+      tracks.map((item) => {
+        const gain = preview?.trackId === item.trackId ? preview.db : item.gainDb;
+        return [
+          item.trackId,
+          item.muted || (soloing && !item.solo) ? 0 : dbToAmp(clampGainDb(gain)),
+        ];
+      }),
     );
   });
+  /** A track gain while its slider is dragged; monitoring follows it without an undo entry. */
+  const trackGainPreview = shallowRef<{ trackId: string; db: number } | null>(null);
+  function setTrackGainPreview(value: { trackId: string; db: number } | null): void {
+    trackGainPreview.value = value && Number.isFinite(value.db) ? value : null;
+  }
   /** Mute, solo and gain of a track, as one undoable edit. */
   function setTrackMix(
     trackId: string,
@@ -278,6 +287,7 @@ export const useEditorStore = defineStore('editor', () => {
   function cancelDraft(): void {
     volumePreview.value = null;
     cueVolumePreview.value = null;
+    trackGainPreview.value = null;
     cancelActiveDraft?.();
     previewTicks.value = null;
   }
@@ -645,6 +655,7 @@ export const useEditorStore = defineStore('editor', () => {
     masterAmp,
     trackAmps,
     setTrackMix,
+    setTrackGainPreview,
     cueAmp,
     setVolumePreview,
     setCueVolumePreview,

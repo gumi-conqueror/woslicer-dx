@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import VolumeSlider from '../../playback/VolumeSlider.vue';
+import { VOLUME_SLIDER_RANGE_DB } from '../../core/volume';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useEditorStore } from '../../slicing/editor-store';
@@ -54,13 +56,11 @@ function openMenu(event: MouseEvent): void {
   editor.selectTrack(props.trackId);
   emit('menu', { x: event.clientX, y: event.clientY });
 }
-/** Track gain in whole dB, committed once per change. */
-function setGain(event: Event): void {
-  if (!(event.target instanceof HTMLInputElement)) return;
-  const value = Number(event.target.value);
-  if (Number.isFinite(value)) editor.setTrackMix(props.trackId, { gainDb: Math.round(value) });
-  event.target.value = String(track.value?.gainDb ?? 0);
-}
+/**
+ * The track gain slider covers -60 dB to the gain limit in whole dB. A file
+ * with a lower gain shows it at -60 dB until the slider moves.
+ */
+const TRACK_GAIN_MIN_DB = -VOLUME_SLIDER_RANGE_DB;
 function commit(): void {
   if (!renaming.value) return;
   editor.renamingTrackId = null;
@@ -103,17 +103,17 @@ function commit(): void {
           v-if="track"
           class="track-mix"
         >
-          <input
+          <VolumeSlider
             class="track-gain"
-            type="number"
-            step="1"
-            :min="FIELD_RANGES.gainDb.min"
+            :value="Math.max(TRACK_GAIN_MIN_DB, track?.gainDb ?? 0)"
+            :min="TRACK_GAIN_MIN_DB"
             :max="FIELD_RANGES.gainDb.max"
-            :value="track?.gainDb ?? 0"
-            :aria-label="t('chrome.trackGain')"
-            :title="t('chrome.trackGain')"
+            :wheel-step="1"
+            :format-tooltip="(db: number) => `${db} dB`"
+            :label="t('chrome.trackGain')"
             @pointerdown.stop
-            @change="setGain"
+            @preview="(db) => editor.setTrackGainPreview(db === null ? null : { trackId, db })"
+            @commit="(db) => editor.setTrackMix(trackId, { gainDb: db })"
           />
           <button
             type="button"
@@ -218,16 +218,15 @@ function commit(): void {
   gap: 2px;
 }
 .track-gain {
-  width: 46px;
-  height: 18px;
-  padding: 0 2px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 3px;
-  background: var(--el-fill-color-blank);
-  color: var(--el-text-color-regular);
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
+  width: 72px;
+  padding: 0 6px;
+}
+.track-gain :deep(.el-slider__runway) {
+  height: 4px;
+}
+.track-gain :deep(.el-slider__button) {
+  width: 12px;
+  height: 12px;
 }
 .track-toggle {
   width: 20px;

@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue';
-import { ElButton, ElCheckbox, ElOption, ElSelect, ElSlider } from 'element-plus';
+import { computed, useTemplateRef, watch } from 'vue';
+import { ElButton, ElCheckbox, ElOption, ElSelect } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { useEditorStore } from '../slicing/editor-store';
 import { CUE_MODES, type CueMode } from '../project/schema';
 import { PLAYBACK_RATES, formatRate } from '../core/rate';
-import { ampToDb, dbToAmp, dbToSlider, sliderToDb } from '../core/volume';
+import { ampToDb, dbToAmp, dbToSlider, sliderToDb, VOLUME_SLIDER_RANGE_DB } from '../core/volume';
 import { usePlayback } from './index';
-import { useSliderDraft } from './use-slider-draft';
+import VolumeSlider from './VolumeSlider.vue';
 import { shortcutLabel } from '../input/bindings';
 import AppIcon from '../ui/AppIcon.vue';
 import { useInputState } from '../input/state';
@@ -26,40 +26,16 @@ const disabled = computed(() => !editor.source);
 // The store keeps linear amplitudes; sliders show a 0..100 position over a -60..0 dB fader.
 const volume = computed(() => dbToSlider(ampToDb(editor.volume)));
 const cueVolume = computed(() => dbToSlider(ampToDb(editor.cueVolume)));
-// ElSlider re-emits the stale modelValue with its change event under a one-way
-// binding, so drags are tracked locally and committed once on release.
-// The shared draft helper manages slider positions only; dB/amp conversion
-// stays here, and each call below keeps an independent draft per slider.
-const {
-  displayValue: volumeDisplay,
-  onUpdate: onVolumeUpdate,
-  commit: commitVolume,
-  reset: resetVolume,
-} = useSliderDraft(
-  () => volume.value,
-  (position) => {
-    editor.setVolume(dbToAmp(sliderToDb(position)));
-  },
-  (position) => editor.setVolumePreview(position === null ? null : dbToAmp(sliderToDb(position))),
-);
-const {
-  displayValue: cueDisplay,
-  onUpdate: onCueVolumeUpdate,
-  commit: commitCueVolume,
-  reset: resetCueVolume,
-} = useSliderDraft(
-  () => cueVolume.value,
-  (position) => {
-    editor.setCueVolume(dbToAmp(sliderToDb(position)));
-  },
-  (position) =>
-    editor.setCueVolumePreview(position === null ? null : dbToAmp(sliderToDb(position))),
-);
+// Drags preview the live audio route; release or a resting wheel commits one document edit.
+const masterSlider = useTemplateRef<InstanceType<typeof VolumeSlider>>('masterSlider');
+const cueSlider = useTemplateRef<InstanceType<typeof VolumeSlider>>('cueSlider');
+/** One wheel notch moves a volume slider by 1 dB. */
+const WHEEL_STEP = dbToSlider(-VOLUME_SLIDER_RANGE_DB + 1);
 watch(
   () => [editor.docRevision, editor.documentGeneration, editor.source],
   () => {
-    resetVolume();
-    resetCueVolume();
+    masterSlider.value?.reset();
+    cueSlider.value?.reset();
   },
   { flush: 'sync' },
 );
@@ -114,14 +90,17 @@ const formatVolume = (position: number) => `${sliderToDb(position).toFixed(1)} d
       ><AppIcon name="stop" />{{ t('chrome.stop') }}</ElButton
     >
     <!-- Drag previews the live audio route; release creates one document edit. -->
-    <ElSlider
-      class="volume-slider"
-      :model-value="volumeDisplay"
+    <VolumeSlider
+      ref="masterSlider"
+      :value="volume"
+      :wheel-step="WHEEL_STEP"
       :format-tooltip="formatVolume"
-      :aria-label="t('chrome.titleVolume')"
-      :title="t('chrome.titleVolume')"
-      @update:model-value="onVolumeUpdate"
-      @change="commitVolume"
+      :label="t('chrome.titleVolume')"
+      @preview="
+        (position) =>
+          editor.setVolumePreview(position === null ? null : dbToAmp(sliderToDb(position)))
+      "
+      @commit="(position) => editor.setVolume(dbToAmp(sliderToDb(position)))"
     />
     <!-- playback rate select (monitoring only) -->
     <label class="control-label"
@@ -157,15 +136,18 @@ const formatVolume = (position: number) => `${sliderToDb(position).toFixed(1)} d
         />
       </ElSelect>
     </label>
-    <!-- cue volume: same draft protocol as the master slider, independent draft -->
-    <ElSlider
-      class="volume-slider"
-      :model-value="cueDisplay"
+    <!-- cue volume: same protocol as the master slider, independent draft -->
+    <VolumeSlider
+      ref="cueSlider"
+      :value="cueVolume"
+      :wheel-step="WHEEL_STEP"
       :format-tooltip="formatVolume"
-      :aria-label="t('chrome.titleCueVolume')"
-      :title="t('chrome.titleCueVolume')"
-      @update:model-value="onCueVolumeUpdate"
-      @change="commitCueVolume"
+      :label="t('chrome.titleCueVolume')"
+      @preview="
+        (position) =>
+          editor.setCueVolumePreview(position === null ? null : dbToAmp(sliderToDb(position)))
+      "
+      @commit="(position) => editor.setCueVolume(dbToAmp(sliderToDb(position)))"
     />
     <!-- follow playhead toggle (session preference on the editor store) -->
     <ElCheckbox
