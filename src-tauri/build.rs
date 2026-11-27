@@ -39,6 +39,7 @@ fn main() {
             "app_data_folders",
             "open_data_folder",
             "open_file",
+            "open_files",
             "reopen_file",
             "open_project_media",
             "begin_read",

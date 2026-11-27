@@ -16,7 +16,7 @@ An offline audio slicer for BMS, based on wosderge's woslicerIII.
 - Variable-speed playback, cue sounds and tap calibration.
 - Record markers with a keyboard, Xbox or YuanCon controller. Save key numbers and chords in `.wosdx` projects.
 - Run frequent commands from a command wheel: hold LT on a controller or R on the keyboard.
-- Several audio tracks per project, each with its own markers, detection and output settings.
+- Several audio tracks per project, each with its own markers, detection and output settings. Markers can be shared and linked across tracks.
 - Frequency-band display and automatic marker detection.
 - Built-in BMHelper divides key-sound MIDI into a recording sequence with WAVE definitions. Apply its markers to the timeline.
 - Open and save original BMHelper beta 4′ `.bmh` files. DX projects preserve Unicode division names. BMH export uses the original CP932 character substitutions and warns when names change.

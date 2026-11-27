@@ -1,7 +1,7 @@
 {
   "name": "woslicer-dx",
   "productName": "woslicer-dx",
-  "version": "2.0.0-alpha.8",
+  "version": "2.0.0-alpha.9",
   "description": "Offline BMS audio slicer with compatible .wos and original .bmh formats",
   "private": true,
   "engines": {
@@ -65,7 +65,7 @@
     "vue-tsc": "^3.3.14"
   },
   "dependencies": {
-    "@gumi-conqueror/audio-decode": "https://github.com/gumi-conqueror/audio-decode/releases/download/v0.1.0/gumi-conqueror-audio-decode-0.1.0.tgz",
+    "@gumi-conqueror/audio-decode": "https://github.com/gumi-conqueror/audio-decode/releases/download/v0.2.0/gumi-conqueror-audio-decode-0.2.0.tgz",
     "@gumi-conqueror/bmh-file": "git+https://github.com/gumi-conqueror/bmh-file.git#22b1d1caf15524c33b489eb7d181bbc1d90bd892",
     "@gumi-conqueror/wos-file": "git+https://github.com/gumi-conqueror/wos-file.git#16d87d40d9cf099beef3a5783744f8d1cf9e292c",
     "@tauri-apps/api": "2.12",

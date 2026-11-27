@@ -105,9 +105,10 @@ describe('marker editing actions', () => {
     { ticks: [10, 20, 30], delta: 1000, applied: 1000, expected: [1010, 1020, 1030] },
     {
       ticks: [10, 20, 30],
+      // Without audio the timeline has no end.
       delta: 999999,
-      applied: MAX_TICKS - 1 - 30,
-      expected: [MAX_TICKS - 21, MAX_TICKS - 11, MAX_TICKS - 1],
+      applied: 999999,
+      expected: [1000009, 1000019, 1000029],
     },
     { ticks: [100, 150], delta: -1000, applied: -100, expected: [0, 50] },
   ])(
@@ -287,14 +288,27 @@ describe('selection clipboard actions', () => {
     expect(editor.canUndo).toBe(false);
   });
 
-  it('rejects the whole group when any target leaves the timeline', () => {
-    const { editor, actions } = fixture([100, 124]);
-    editor.setSelectedTicks([100, 124]);
+  it('rejects the whole group when any target leaves the audio', () => {
+    const { editor, actions } = fixture([10, 34]);
+    // One second at 48 kHz and 120 BPM: the audio ends at tick 96.
+    editor.setSource({
+      name: 'second',
+      reference: null,
+      sampleRate: 48000,
+      channels: 1,
+      length: 48000,
+      data: [new Int16Array(48000)],
+      sourceFormat: { kind: 'pcm' as const, bits: 16 },
+      floatData: [new Float32Array(48000)],
+    });
+    editor.setSelectedTicks([10, 34]);
     actions.copySelection();
-    editor.setCursorTick(MAX_TICKS - 10);
+    // Targets 80 and 104: the second one is after the audio.
+    editor.setCursorTick(80);
     expect(actions.pasteSelection()).toBe(false);
-    expect(editor.ticks).toEqual([100, 124]);
+    expect(editor.ticks).toEqual([10, 34]);
     expect(editor.canUndo).toBe(false);
+    expect(editor.status.segments[0]?.key).toBe('cutBeyondEnd');
   });
 
   it('rejects an empty clipboard without editing', () => {

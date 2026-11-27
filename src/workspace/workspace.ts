@@ -1,5 +1,6 @@
 import { inject, provide, readonly, shallowRef, type InjectionKey } from 'vue';
 import { errorMessage } from '../core/messages';
+import { audioFileFormat } from '../core/audio-formats';
 import {
   createEmptyTrack,
   currentTrack,
@@ -8,14 +9,9 @@ import {
   parseProject,
   projectFromWos,
   projectToWos,
+  markersBeyondWos,
 } from '../project/codec';
-import {
-  byteLimitText,
-  MEDIA_FILE_MAX_BYTES,
-  PROJECT_FILE_MAX_BYTES,
-  PROJECT_MAX_TRACKS,
-  type ProjectDocument,
-} from '../project/schema';
+import { FIELD_RANGES, inRange, PROJECT_MAX_TRACKS, type ProjectDocument } from '../project/schema';
 import {
   identifyAudio,
   projectFileName,
@@ -25,12 +21,15 @@ import {
   setTrackAudio,
 } from './project-media';
 import { readWos, writeWos } from '@gumi-conqueror/wos-file';
+import { linkMarkersTo } from '../project/marker-links';
+import { markerTickAllowed } from '../core/timebase';
 import { buildBmseClipboard, parseBmseClipboard } from '../core/formats/bmse';
-import type { Platform, OpenedFile } from '../platform/contracts';
+import type { ChosenFile, Platform, OpenedFile } from '../platform/contracts';
 import type { EditorStore } from '../slicing/editor-store';
 import { createEditorActions } from '../slicing/editor-actions';
 import { createAudioEngine } from '../audio/audio-client';
 import type { AudioEngine } from '../audio/audio-jobs';
+import type { DecodeProgress } from '../audio/decode';
 import { createExporter } from '../export/exporter';
 import { createDetection } from '../detection/detection';
 import { createSessionPersistence } from './persistence';
@@ -58,6 +57,10 @@ export interface LoadingActivity {
   mediaId?: string;
   /** The track that receives the audio; absent before a target is known. */
   trackId?: string;
+  /** The audio becomes a new track; the track list shows a placeholder row for it. */
+  newTrack?: boolean;
+  /** While decoding: the declared audio length and the frames decoded so far. */
+  audio?: DecodeProgress;
 }
 export function createWorkspace(options: WorkspaceOptions) {
   const { platform, editor, createEngine = createAudioEngine } = options;
@@ -145,7 +148,8 @@ export function createWorkspace(options: WorkspaceOptions) {
       ? `${editor.document.projectId}:track:${crypto.randomUUID()}`
       : target.trackId;
     const request = beginOpening({
-        trackId: newTrack ? undefined : trackId,
+        trackId,
+        newTrack,
         stage: 'verifying',
         name: file.name,
         mediaId: preserveBaseName ? editor.track.media?.mediaId : undefined,
@@ -158,12 +162,18 @@ export function createWorkspace(options: WorkspaceOptions) {
     editor.setStatus('parsingSourceFile');
     let worker: AudioEngine | null = null;
     try {
-      const identity = await identifyAudio(file);
-      if (disposed || request !== opening) return;
+      // Hashing and decoding run at the same time, so the audio length shows
+      // early. Both read their own copy of the bytes.
       loading.value = { ...loading.value, stage: 'decoding', name: file.name };
       worker = createEngine();
       pendingEngine = worker;
-      const result = await worker.decode(file.name, file.bytes);
+      const [identity, result] = await Promise.all([
+        identifyAudio(file),
+        worker.decode(file.name, file.bytes, (audio) => {
+          if (!disposed && request === opening)
+            loading.value = { ...loading.value, stage: 'decoding', audio };
+        }),
+      ]);
       if (disposed || request !== opening) return;
       // Parameter and marker edits remain valid during decoding. Only replacing
       // the document invalidates this result; merge audio into the latest state.
@@ -198,6 +208,17 @@ export function createWorkspace(options: WorkspaceOptions) {
         expected || !single
           ? null
           : projectWithAudio(editor.document, file, identity, result, preserveBaseName, trackId);
+      // The first audio of a project without audio or markers presets the BPM.
+      // Existing markers keep the BPM, because another BPM would move them in time.
+      const fresh =
+        next !== null &&
+        !preserveBaseName &&
+        editor.document.tracks.every((item) => !item.media && !item.slicing.markers.length);
+      const bpm = fresh ? await worker.tempo() : null;
+      if (disposed || request !== opening) return;
+      if (documentGeneration !== editor.documentGeneration)
+        throw new Error('Project changed during audio loading; select the audio again');
+      if (next && bpm !== null && inRange(bpm, FIELD_RANGES.bpm)) next.timing.bpm = bpm;
       // Validate the replacement before releasing the current decoder or source.
       if (next) parseProject(next);
       pendingEngine = null;
@@ -210,8 +231,25 @@ export function createWorkspace(options: WorkspaceOptions) {
       } else if (newTrack) {
         const track = createEmptyTrack(trackId, file.name);
         setTrackAudio(track, file, identity, result);
+        const base = {
+          bpm: editor.document.timing.bpm,
+          shift: editor.document.timing.shiftTicks,
+          sampleRate: result.source.sampleRate,
+        };
+        const fits = (_: string, tick: number) =>
+          markerTickAllowed(tick, { base, length: result.source.length });
+        const from = editor.track.trackId;
         editor.transact((draft) => {
           draft.tracks.push(track);
+          // With shared markers, a new track starts with linked copies of the current track's markers.
+          if (draft.global.sharedMarkers)
+            linkMarkersTo(
+              draft.tracks,
+              from,
+              currentTrack(draft, from).slicing.markers,
+              [trackId],
+              fits,
+            );
         });
         editor.selectTrack(trackId);
       } else if (!expected)
@@ -225,11 +263,13 @@ export function createWorkspace(options: WorkspaceOptions) {
       // The binding survives failed reopens; only a real replacement writes or clears it.
       editor.setLastFile(file.reference ? { reference: file.reference, name } : null, trackId);
       editor.setPhase({ kind: 'ready' }, trackId);
-      editor.setStatus('readySource', {
-        name,
-        rate: result.source.sampleRate,
-        channels: result.source.channels,
-      });
+      const ready = {
+        key: 'readySource' as const,
+        params: { name, rate: result.source.sampleRate, channels: result.source.channels },
+      };
+      editor.setStatus(
+        next && bpm !== null ? [ready, { key: 'tempoDetected', params: { bpm } }] : [ready],
+      );
     } catch (error) {
       if (disposed || request !== opening) return;
       editor.setPhase(previousPhase, trackId);
@@ -240,7 +280,10 @@ export function createWorkspace(options: WorkspaceOptions) {
       worker?.dispose();
     }
   }
-  /** Adds a track with audio that the user chooses. */
+  /**
+   * Adds tracks with audio that the user chooses; several files add several
+   * tracks. An empty current track takes the first file.
+   */
   async function addTrack(): Promise<void> {
     if (recoveryBlock && !(await releaseRecoveryBlock())) return;
     if (editor.document.tracks.length >= PROJECT_MAX_TRACKS) {
@@ -249,21 +292,17 @@ export function createWorkspace(options: WorkspaceOptions) {
     }
     const documentGeneration = editor.documentGeneration,
       request = beginOpening({ stage: 'opening' });
+    let files: ChosenFile[] = [];
     try {
-      const file = await platform.openFile('audio');
-      if (
-        file &&
-        !disposed &&
-        documentGeneration === editor.documentGeneration &&
-        request === opening
-      )
-        await loadAudio(file, false, { newTrack: true });
+      files = await platform.openFiles('audio');
     } catch (error) {
       if (!disposed && request === opening)
         editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
     } finally {
       finishOpening(request);
     }
+    if (!disposed && documentGeneration === editor.documentGeneration && request === opening)
+      await openChosenFiles(files);
   }
   /** Removes the current track in one undoable edit; the last track stays. */
   function removeTrack(): void {
@@ -441,27 +480,51 @@ export function createWorkspace(options: WorkspaceOptions) {
         editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
     }
   }
-  async function openDroppedFile(file: File): Promise<void> {
+  /**
+   * Opens dropped or picked files. A project replaces the current project, and the other
+   * files are ignored. Audio files become tracks: the first one fills the
+   * current track when it has no audio, and every further file adds a track.
+   */
+  async function openChosenFiles(files: readonly ChosenFile[]): Promise<void> {
     if (recoveryBlock && !(await releaseRecoveryBlock())) return;
-    const project = /\.wosdx$/i.test(file.name);
+    const project = files.find((file) => /\.wosdx$/i.test(file.name));
+    if (project) {
+      await openChosen(project, (opened) => acceptProject(opened), true);
+      return;
+    }
+    // Filling an empty track starts a new project; another replacement stops the loop.
+    let documentGeneration = editor.documentGeneration;
+    for (const [index, file] of files.filter((item) => audioFileFormat(item.name)).entries()) {
+      if (disposed || documentGeneration !== editor.documentGeneration) return;
+      const fill = index === 0 && !editor.track.media && !editor.source;
+      if (!fill && editor.document.tracks.length >= PROJECT_MAX_TRACKS) {
+        editor.setStatus('trackLimit', { count: PROJECT_MAX_TRACKS }, true);
+        return;
+      }
+      await openChosen(file, (opened) =>
+        loadAudio(opened, false, fill ? { trackId: editor.track.trackId } : { newTrack: true }),
+      );
+      if (fill) documentGeneration = editor.documentGeneration;
+    }
+  }
+  /** Reads one chosen file and opens it, unless the document changed meanwhile. */
+  async function openChosen(
+    file: ChosenFile,
+    open: (opened: OpenedFile) => Promise<void>,
+    project = false,
+  ): Promise<void> {
     const request = beginOpening({ stage: 'reading', name: file.name }),
       revision = editor.docRevision,
       documentGeneration = editor.documentGeneration;
     try {
-      const limit = project ? PROJECT_FILE_MAX_BYTES : MEDIA_FILE_MAX_BYTES;
-      if (file.size > limit)
-        throw new Error(`${project ? 'Project' : 'Audio'} exceeds ${byteLimitText(limit)}`);
-      const bytes = new Uint8Array(await file.arrayBuffer());
+      const opened = await file.open();
       if (
         !disposed &&
         request === opening &&
         documentGeneration === editor.documentGeneration &&
         (!project || revision === editor.docRevision)
-      ) {
-        const opened = { name: file.name, bytes, reference: null };
-        if (project) await acceptProject(opened);
-        else await loadAudio(opened);
-      }
+      )
+        await open(opened);
     } catch (error) {
       if (!disposed && request === opening)
         editor.setStatus('dropFailed', { message: errorMessage(error) }, true);
@@ -538,9 +601,18 @@ export function createWorkspace(options: WorkspaceOptions) {
     const version = generation;
     try {
       const bytes = writeWos(projectToWos(editor.document, editor.currentTrackId));
+      const dropped = markersBeyondWos(editor.document, editor.currentTrackId);
       const name = `${editor.source?.name ?? 'untitled'}.wos`;
       if ((await platform.saveFile('wos', name, bytes)) && !disposed && version === generation)
-        editor.setStatus('savedWos', { file: name });
+        if (dropped)
+          editor.setStatus(
+            [
+              { key: 'savedWos', params: { file: name } },
+              { key: 'wosMarkersDropped', params: { count: dropped } },
+            ],
+            true,
+          );
+        else editor.setStatus('savedWos', { file: name });
     } catch (error) {
       if (!disposed && version === generation)
         editor.setStatus('wosSaveFailed', { message: errorMessage(error) }, true);
@@ -670,7 +742,7 @@ export function createWorkspace(options: WorkspaceOptions) {
     openProject,
     saveProject,
     relinkAudio,
-    openDroppedFile,
+    openChosenFiles,
     loadAudio,
     reopen,
     importWosSettings,

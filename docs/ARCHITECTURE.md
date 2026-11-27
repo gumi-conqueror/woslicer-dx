@@ -3,6 +3,7 @@
 woslicer-dx edits audio markers and exports WAV slices for BMS charts.
 The browser and Tauri desktop application share the Vue interface, project model and audio Worker.
 A project has one or more tracks, each with its own audio, markers and output settings.
+Markers at the same tick on several tracks can be linked; edits of a linked marker then apply to all of them.
 The editor works on one current track. `currentTrackId` and `track` in the editor store select it;
 `currentTrack` in `src/project/codec.ts` finds a track in a document.
 Decoded audio, peaks, band analysis and loading state are per-track `sessions` in the editor store.
@@ -45,11 +46,19 @@ Each fact below has one owner. Change the fact there; other code reads it.
 | A track's time base | `timeBaseOf` in [`editor-store.ts`](../src/slicing/editor-store.ts) |
 | Slice processing of a track (a disabled noise gate renders as 0 dB) | `sliceProcessingOf` in [`editor-store.ts`](../src/slicing/editor-store.ts) |
 | Track audibility (mute, solo, gain) | `trackAmps` in [`editor-store.ts`](../src/slicing/editor-store.ts) |
+| Linked markers: link groups, how marker edits follow links, link copies | [`src/project/marker-links.ts`](../src/project/marker-links.ts); every marker edit goes through `setTicks` in [`editor-store.ts`](../src/slicing/editor-store.ts) |
+| Where a track can hold a marker | `markerAllowed` in [`editor-store.ts`](../src/slicing/editor-store.ts) |
+| Timeline length, also with a track that is still loading | `timelineLength` in [`editor-store.ts`](../src/slicing/editor-store.ts) |
+| Tempo estimate of new audio | `estimateTempo` in [`src/core/tempo.ts`](../src/core/tempo.ts) |
+| Export matrix: marker rows, default selection, job names | [`src/export/export-plan.ts`](../src/export/export-plan.ts) |
+| Dropped files: page drops in the browser, granted native drops on the desktop | `watchDrops` in [`src/platform/`](../src/platform/); `openDroppedFiles` in [`workspace.ts`](../src/workspace/workspace.ts) |
 | Supported audio formats | [`src/core/audio-formats.ts`](../src/core/audio-formats.ts); `src-tauri/src/files.rs` repeats the extensions and a consistency test compares them |
 | Commands, their labels and availability | `COMMANDS` in [`src/app/commands.ts`](../src/app/commands.ts) |
 | Default key, controller and YuanCon bindings | `BINDINGS` in [`src/input/bindings.ts`](../src/input/bindings.ts) |
 | The user's binding changes (local preference) and the one-control-one-command rule | [`src/input/binding-overrides.ts`](../src/input/binding-overrides.ts) |
 | Fixed controller navigation | `UI_NAVIGATION` in [`src/input/gamepad.ts`](../src/input/gamepad.ts) |
+| Status bar input hints: areas and their mouse and keyboard actions | `HINT_AREAS` in [`src/app/hint-areas.ts`](../src/app/hint-areas.ts); controller hints in [`GamepadHints.vue`](../src/app/components/GamepadHints.vue) |
+| Which cursor moves keep the cursor centered | `moveCursorTo` in [`editor-store.ts`](../src/slicing/editor-store.ts) |
 | Controller thresholds and repeat timing | top of [`src/input/gamepad.ts`](../src/input/gamepad.ts) |
 | Command wheel travel and size; default slots | [`src/input/wheel.ts`](../src/input/wheel.ts), [`use-wheel.ts`](../src/input/use-wheel.ts) |
 | The user's wheel layouts (local preference) | [`src/input/wheel-layout.ts`](../src/input/wheel-layout.ts) |
@@ -102,6 +111,7 @@ Opus, APE audio, WavPack and HE-AAC are not enabled. See the [decoder repository
 ## Native host and input
 
 The Rust host provides file transfers (`files.rs`), clipboard access (`clipboard.rs`), HID input (`input.rs`), recovery (`session.rs`) and window setup (`lib.rs`).
+`app_data.rs` owns the application data directory for recovery data and file grants. Only debug builds accept the `WOSLICER_DX_DEBUG_DATA_DIR` override.
 Audio processing and editing rules remain in the shared frontend.
 Native commands are constrained by Tauri capabilities. About links use fixed identifiers, not arbitrary URLs.
 Both application variants keep user data local and bundle runtime assets. Their CSP definitions are in `src/app/index.html`, `vite.config.mts` and `src-tauri/tauri.conf.json`.

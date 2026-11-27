@@ -4,11 +4,11 @@ import { errorMessage } from '../core/messages';
 import { ElConfigProvider, ElMessageBox } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { pinia, localization } from './runtime';
-import { createCommands } from './commands';
+import { createCommands, provideCommandRunner } from './commands';
 import ApplicationMenu from './components/ApplicationMenu.vue';
 import WindowTitlebar from './components/WindowTitlebar.vue';
 import { getPlatform, getBuildIdentity } from '../platform';
-import type { BuildIdentity } from '../platform/contracts';
+import type { BuildIdentity, ChosenFile } from '../platform/contracts';
 import { useEditorStore } from '../slicing/editor-store';
 import { useBmhelperStore } from '../bmhelper/store';
 import { createWorkspace, provideWorkspace } from '../workspace/workspace';
@@ -29,14 +29,13 @@ import { handleKeyDown } from '../input/keyboard';
 import { routeGamepad, type InputContext, type WheelAction } from '../input/router';
 import { useCommandWheel } from '../input/use-wheel';
 import CommandWheel from './components/CommandWheel.vue';
-import GamepadHints from './components/GamepadHints.vue';
 import { openDataFolder } from '../platform/app-data';
 import { useInputState } from '../input/state';
 import YuanconDialog from './components/YuanconDialog.vue';
 import InputSettingsDialog from './components/InputSettingsDialog.vue';
+import ExportDialog from '../export/ExportDialog.vue';
 import { reservedControl, useBindingOverrides } from '../input/binding-overrides';
 import { useYuanconRecording } from '../input/yuancon/use-recording';
-import { audioFileFormat } from '../core/audio-formats';
 
 // Assembly: platform, stores, workspace and playback providers.
 const platform = getPlatform();
@@ -63,6 +62,7 @@ const helpOpen = ref(false);
 const troubleshootOpen = ref(false);
 const yuanconOpen = ref(false);
 const inputSettingsOpen = ref(false);
+const exportOpen = ref(false);
 const applicationMenu = useTemplateRef<InstanceType<typeof ApplicationMenu>>('applicationMenu');
 const closing = ref(false);
 // Every app-owned dialog and the close lock: while one is open, app input does nothing.
@@ -74,6 +74,7 @@ const modalOpen = computed(
     troubleshootOpen.value ||
     yuanconOpen.value ||
     inputSettingsOpen.value ||
+    exportOpen.value ||
     closing.value,
 );
 const dragActive = ref(false);
@@ -107,6 +108,9 @@ const commands = createCommands({
     },
     inputSettings: () => {
       inputSettingsOpen.value = true;
+    },
+    exportSlices: () => {
+      exportOpen.value = true;
     },
     openWheel: () => {
       // Opened without a held control, the wheel stays open like after a tap.
@@ -148,6 +152,7 @@ function report(error: unknown): void {
   if (!disposed) editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
 }
 const execute = commands.run;
+provideCommandRunner(execute);
 // Confirmation dialogs; the shared closing lock rejects reentry.
 // Shared boolean-confirmation protocol: one closing lock, one MessageBox call,
 // cancellation filtered from error reporting. Callers pass pre-translated text.
@@ -249,11 +254,21 @@ function inputContext(): InputContext {
 function recordingActive(): boolean {
   return inputContext() === 'recording';
 }
+const STEPS: Partial<Record<WheelAction, 'up' | 'right' | 'down' | 'left'>> = {
+  'step-up': 'up',
+  'step-right': 'right',
+  'step-down': 'down',
+  'step-left': 'left',
+};
 function wheelAction(action: WheelAction, time: number): void {
   if (action === 'hold') wheel.holdFromController(time);
   else if (action === 'release') wheel.send({ type: 'release', time });
   else if (action === 'previous' || action === 'next') wheel.page(action === 'next' ? 1 : -1);
-  else wheel.send({ type: action });
+  else if (action === 'confirm' || action === 'cancel') wheel.send({ type: action });
+  else {
+    const direction = STEPS[action];
+    if (direction) wheel.step(direction);
+  }
 }
 const yuancon = useYuanconRecording({
   active: recordingActive,
@@ -319,20 +334,21 @@ async function closeWorkspace(): Promise<void> {
     closing.value = false;
   }
 }
-// Drag and drop of project or audio files.
-async function drop(event: DragEvent): Promise<void> {
-  event.preventDefault();
-  dragActive.value = false;
-  const file = event.dataTransfer?.files[0];
-  if (file && (audioFileFormat(file.name) || /\.wosdx$/i.test(file.name))) {
-    if (/\.wosdx$/i.test(file.name) && !(await confirmProjectReplacement())) return;
-    calibrating.value = false;
-    await workspace.openDroppedFile(file);
-  }
+// Dropped audio files become tracks; a dropped project replaces the current one after confirmation.
+async function dropFiles(files: ChosenFile[]): Promise<void> {
+  if (files.some((file) => /\.wosdx$/i.test(file.name)) && !(await confirmProjectReplacement()))
+    return;
+  calibrating.value = false;
+  await workspace.openChosenFiles(files);
 }
+let stopDrops: (() => void) | undefined;
 // Lifecycle.
 onMounted(() => {
   stopAppearance = localization.syncAppearance(platform, report);
+  stopDrops = platform.watchDrops({
+    active: (value) => (dragActive.value = value),
+    dropped: (files) => void dropFiles(files).catch(report),
+  });
   window.addEventListener('keydown', keydown);
   void getBuildIdentity()
     .then((value) => {
@@ -342,6 +358,7 @@ onMounted(() => {
   void workspace.restoreSession().catch(report);
 });
 onUnmounted(() => {
+  stopDrops?.();
   disposed = true;
   input.recording = false;
   window.removeEventListener('keydown', keydown);
@@ -356,13 +373,7 @@ onUnmounted(() => {
     :locale="elementLocale"
     size="small"
   >
-    <main
-      class="app-shell"
-      @dragenter.prevent="dragActive = true"
-      @dragover.prevent
-      @dragleave.self="dragActive = false"
-      @drop="drop"
-    >
+    <main class="app-shell">
       <!-- menu -->
       <WindowTitlebar
         :before-close="beforeWindowClose"
@@ -392,7 +403,6 @@ onUnmounted(() => {
         </div>
         <WorkspacePanels :key="panelGeneration" />
       </section>
-      <GamepadHints v-if="input.device === 'gamepad'" />
       <!-- status bar -->
       <StatusBar
         :identity="identity"
@@ -412,6 +422,10 @@ onUnmounted(() => {
         :connection="yuancon"
       />
       <InputSettingsDialog v-model="inputSettingsOpen" />
+      <ExportDialog
+        v-model="exportOpen"
+        @export="(jobs) => void workspace.exportTracks(jobs)"
+      />
       <TroubleshootDialog
         v-model="troubleshootOpen"
         :identity="identity"
@@ -429,7 +443,7 @@ onUnmounted(() => {
         v-if="dragActive"
         class="drop-overlay"
       >
-        {{ t('chrome.emptySub') }}
+        {{ t('chrome.dropFiles') }}
       </div>
     </main>
   </ElConfigProvider>

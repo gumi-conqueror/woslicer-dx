@@ -2,7 +2,7 @@ import { peakRange, type PeakCache } from '../core/peaks';
 import { BAND_DRAW_MIN_ABS } from '../core/bands';
 import { tickToSample, type TimeBase } from '../core/timebase';
 import { drawWaveform } from './waveform/canvas';
-import { FULL_SCALE, type PcmChannel } from '../core/audio/pcm';
+import { FULL_SCALE } from '../core/audio/pcm';
 
 export interface WaveViewport {
   width: number;
@@ -16,25 +16,21 @@ export interface ChannelArea {
   center: number;
   halfHeight: number;
 }
-// Source buffers are immutable after decoding. Weak keys release converted data with the source.
-const drawingSamples = new WeakMap<PcmChannel, Float32Array>();
 
-/** Draw one lane on the existing timeline canvas. */
+/**
+ * Draws one channel on the timeline canvas. `samples` are the decoded floats in
+ * -1..1 (`floatData`), so drawing never converts a whole channel on the main thread.
+ */
 export function drawWaveLane(
   context: CanvasRenderingContext2D,
   view: WaveViewport,
-  data: PcmChannel,
+  samples: Float32Array,
   area: ChannelArea,
   colors: { outer: string; rms: string },
   rmsVisible: boolean,
 ): void {
   const { center, halfHeight } = area;
-  if (!data.length || view.width <= 0 || halfHeight <= 0) return;
-  let samples = drawingSamples.get(data);
-  if (!samples) {
-    samples = Float32Array.from(data, (value) => value / FULL_SCALE);
-    drawingSamples.set(data, samples);
-  }
+  if (!samples.length || view.width <= 0 || halfHeight <= 0) return;
   drawWaveform(
     context,
     [samples],

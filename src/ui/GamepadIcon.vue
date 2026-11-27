@@ -3,14 +3,19 @@ import { computed } from 'vue';
 import { GAMEPAD_CONTROLS, type GamepadControl } from '../input/gamepad';
 const props = defineProps<{ control: GamepadControl }>();
 const label = computed(() => GAMEPAD_CONTROLS.find((item) => item.id === props.control)?.label);
+/** Direction arrows at the edge of the icon, clear of the stick label. */
 const arrows: Readonly<Record<string, string>> = {
-  up: 'm12 7-3 4h6Z',
-  down: 'm12 17-3-4h6Z',
-  left: 'm7 12 4-3v6Z',
-  right: 'm17 12-4-3v6Z',
+  up: 'M12 3.4 9.8 6h4.4Z',
+  down: 'M12 20.6 9.8 18h4.4Z',
+  left: 'M3.4 12 6 9.8v4.4Z',
+  right: 'M20.6 12 18 9.8v4.4Z',
 };
 /** The direction of a D-pad or stick control, if it has one. */
-const direction = computed(() => props.control.match(/^(?:dpad|ls|rs)-(up|down|left|right)$/)?.[1]);
+const direction = computed(
+  () => props.control.match(/^(?:dpad|ls|rs)-(up|down|left|right)(?:-hard|-long)?$/)?.[1],
+);
+/** A hard or long stick push draws a thick ring. */
+const hard = computed(() => props.control.endsWith('-hard') || props.control.endsWith('-long'));
 const stick = computed(() => props.control.match(/^(ls|rs)(?:-|$)/)?.[1]?.toUpperCase());
 </script>
 <template>
@@ -43,6 +48,7 @@ const stick = computed(() => props.control.match(/^(ls|rs)(?:-|$)/)?.[1]?.toUppe
     </template>
     <template v-else-if="control.startsWith('dpad-') && direction">
       <path
+        class="body"
         d="M8 3h8v5h5v8h-5v5H8v-5H3V8h5Z"
         fill="none"
         stroke="currentColor"
@@ -54,25 +60,25 @@ const stick = computed(() => props.control.match(/^(ls|rs)(?:-|$)/)?.[1]?.toUppe
     </template>
     <template v-else-if="stick">
       <circle
+        class="body"
         cx="12"
         cy="12"
         r="10"
         fill="none"
         stroke="currentColor"
         :stroke-dasharray="direction ? undefined : '2 2'"
+        :stroke-width="hard ? 2.5 : 1"
       />
       <path
         v-if="direction"
         :d="arrows[direction]"
-        transform="translate(12 12) scale(1.35) translate(-12 -12)"
         fill="currentColor"
-        opacity="0.45"
       />
       <text
         x="12"
         y="15.5"
         text-anchor="middle"
-        font-size="9"
+        :font-size="direction ? 8 : 9"
         font-weight="600"
         fill="currentColor"
       >
@@ -81,6 +87,7 @@ const stick = computed(() => props.control.match(/^(ls|rs)(?:-|$)/)?.[1]?.toUppe
     </template>
     <template v-else-if="control === 'menu' || control === 'view'">
       <circle
+        class="body"
         cx="12"
         cy="12"
         r="10"
@@ -96,6 +103,7 @@ const stick = computed(() => props.control.match(/^(ls|rs)(?:-|$)/)?.[1]?.toUppe
     <template v-else>
       <rect
         v-if="control.length > 1"
+        class="body"
         x="1"
         y="4"
         width="22"
@@ -106,6 +114,7 @@ const stick = computed(() => props.control.match(/^(ls|rs)(?:-|$)/)?.[1]?.toUppe
       />
       <circle
         v-else
+        class="body"
         cx="12"
         cy="12"
         r="10"
@@ -132,6 +141,12 @@ const stick = computed(() => props.control.match(/^(ls|rs)(?:-|$)/)?.[1]?.toUppe
   height: 23px;
   flex: none;
   vertical-align: middle;
+}
+/* Control bodies are filled with a tint of their outline color, so they read
+   as solid in both themes. */
+.body {
+  fill: currentColor;
+  fill-opacity: 0.16;
 }
 .a {
   color: var(--el-color-success);

@@ -1,4 +1,5 @@
 import { createPinia, disposePinia } from 'pinia';
+import type { DecodeProgress } from '../../src/audio/decode';
 import { createAudioProcessor, type AudioEngine } from '../../src/audio/audio-jobs';
 import { useEditorStore } from '../../src/slicing/editor-store';
 import { createWorkspace, type WorkspaceOptions } from '../../src/workspace/workspace';
@@ -62,16 +63,20 @@ export function silentPlayback(): Playback {
 
 /** Tests use the real DSP dispatcher, replacing only the unavailable browser Worker transport. */
 export function processorEngine(): AudioEngine {
-  const process = createAudioProcessor();
+  // Interim decode messages go to the progress callback of the open decode.
+  let progress: ((value: DecodeProgress) => void) | undefined;
+  const process = createAudioProcessor((message) => progress?.(message.progress));
   let id = 0;
   let disposed = false;
   function active(): void {
     if (disposed) throw new DOMException('Cancelled', 'AbortError');
   }
   return {
-    async decode(name, bytes) {
+    async decode(name, bytes, report) {
       active();
+      progress = report;
       const reply = await process({ kind: 'decode', id: ++id, name, bytes });
+      progress = undefined;
       if (reply.kind !== 'decoded')
         throw new Error(reply.kind === 'error' ? reply.message : 'Unexpected reply');
       return reply;
@@ -94,6 +99,12 @@ export function processorEngine(): AudioEngine {
       if (reply.kind !== 'slice') throw new Error('Unexpected reply');
       return reply.bytes;
     },
+    async tempo() {
+      active();
+      const reply = await process({ kind: 'tempo', id: ++id });
+      if (reply.kind !== 'tempo') throw new Error('Unexpected reply');
+      return reply.bpm;
+    },
     async edges(base) {
       active();
       const reply = await process({ kind: 'edges', id: ++id, base });
@@ -115,7 +126,10 @@ export function fixture(createEngine = processorEngine) {
   const saved: OutputFile[] = [],
     exported: OutputFile[] = [];
   let session: unknown = null;
-  let opened: OpenedFile | null = null;
+  /** What the next picker returns: one file, or several for a multiple choice. */
+  let opened: OpenedFile | readonly OpenedFile[] | null = null;
+  const pickedFiles = (): readonly OpenedFile[] =>
+    opened === null ? [] : 'name' in opened ? [opened] : opened;
   let clipboard = '';
   const platform: Platform = {
     kind: 'browser',
@@ -123,11 +137,20 @@ export function fixture(createEngine = processorEngine) {
       return Promise.resolve(null);
     },
     openFile() {
-      return Promise.resolve(opened);
+      return Promise.resolve(pickedFiles()[0] ?? null);
+    },
+    openFiles() {
+      return Promise.resolve(
+        pickedFiles().map((file) => ({ name: file.name, open: () => Promise.resolve(file) })),
+      );
     },
     reopenFile(reference) {
-      if (opened?.reference === reference) return Promise.resolve(opened);
+      const file = pickedFiles().find((item) => item.reference === reference);
+      if (file) return Promise.resolve(file);
       return Promise.reject(new Error('Missing source'));
+    },
+    watchDrops() {
+      return () => {};
     },
     saveFile(_kind, name, bytes) {
       saved.push({ name, bytes });
@@ -187,7 +210,7 @@ export function fixture(createEngine = processorEngine) {
     set session(value: unknown) {
       session = value;
     },
-    set opened(value: OpenedFile | null) {
+    set opened(value: OpenedFile | readonly OpenedFile[] | null) {
       opened = value;
     },
     async dispose() {

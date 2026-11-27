@@ -10,6 +10,18 @@ export interface OpenedFile {
   absolutePath?: string;
 }
 
+/** A file the user dropped or picked: its name, and a reader that loads it when its turn comes. */
+export interface ChosenFile {
+  name: string;
+  open(): Promise<OpenedFile>;
+}
+/** Receivers of file drops on the window. */
+export interface DropHandlers {
+  /** Files hover over the window, or stop hovering. */
+  active: (value: boolean) => void;
+  dropped: (files: ChosenFile[]) => void;
+}
+
 export interface OutputFile {
   name: string;
   bytes: Uint8Array;
@@ -28,7 +40,11 @@ export interface BuildIdentity {
 export interface Platform {
   readonly kind: 'browser' | 'tauri';
   openFile(kind: FileKind): Promise<OpenedFile | null>;
+  /** Picks several files at once; an empty list means the user cancelled. */
+  openFiles(kind: FileKind): Promise<ChosenFile[]>;
   reopenFile(reference: string): Promise<OpenedFile>;
+  /** Reports files dropped on the window until the returned function stops it. */
+  watchDrops(handlers: DropHandlers): () => void;
   /** Resolve media from a host-authorized project, never from a renderer-supplied path. */
   openProjectMedia(projectReference: string, mediaId: string): Promise<OpenedFile | null>;
   saveFile(

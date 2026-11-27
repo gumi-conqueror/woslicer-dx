@@ -66,6 +66,11 @@ function setGrid(value: unknown): void {
       :title="t('chrome.titleSnap')"
       >{{ t('chrome.snap') }}</ElCheckbox
     >
+    <ElCheckbox
+      v-model="editor.sharedMarkers"
+      :title="t('menu.sharedMarkers')"
+      >{{ t('chrome.sharedMarkers') }}</ElCheckbox
+    >
     <label
       >{{ t('chrome.shiftLabel')
       }}<ElInputNumber

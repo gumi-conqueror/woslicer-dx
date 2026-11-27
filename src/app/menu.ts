@@ -14,17 +14,13 @@ export const APPLICATION_MENU = [
     commands: [
       { id: 'open-project', mnemonic: 'o' },
       { id: 'save-project', mnemonic: 's' },
-      { id: 'relink-audio', mnemonic: 'r' },
       { id: 'open-audio', mnemonic: 'a' },
-      { id: 'add-track', mnemonic: 'k' },
-      { id: 'remove-track', mnemonic: 'm' },
       { id: 'new-project-wos', mnemonic: 'n' },
       { id: 'import-wos', mnemonic: 'i' },
       { id: 'export-wos', mnemonic: 'w' },
       { id: 'close-project', mnemonic: 'c' },
       { id: 'export-slice', mnemonic: 'e' },
       { id: 'export-all', mnemonic: 'x' },
-      { id: 'export-all-tracks', mnemonic: 'l' },
     ],
   },
   {
@@ -38,6 +34,27 @@ export const APPLICATION_MENU = [
       { id: 'copy-selection', mnemonic: 'c' },
       { id: 'cut-selection', mnemonic: 't' },
       { id: 'paste-selection', mnemonic: 'p' },
+      { id: 'link-markers-all-tracks', mnemonic: 'l' },
+      { id: 'unlink-markers', mnemonic: 'k' },
+      { id: 'relink-markers', mnemonic: 'i' },
+      { id: 'toggle-shared-markers', mnemonic: 'h' },
+    ],
+  },
+  {
+    label: 'menu.track',
+    mnemonic: 'k',
+    commands: [
+      { id: 'add-track', mnemonic: 'a' },
+      { id: 'rename-track', mnemonic: 'r' },
+      { id: 'remove-track', mnemonic: 'd' },
+      { id: 'move-track-up', mnemonic: 'u' },
+      { id: 'move-track-down', mnemonic: 'w' },
+      { id: 'previous-track', mnemonic: 'p' },
+      { id: 'next-track', mnemonic: 'n' },
+      { id: 'toggle-track-mute', mnemonic: 'm' },
+      { id: 'toggle-track-solo', mnemonic: 's' },
+      { id: 'relink-audio', mnemonic: 'l' },
+      { id: 'export-all-tracks', mnemonic: 'x' },
     ],
   },
   {
@@ -46,6 +63,7 @@ export const APPLICATION_MENU = [
     commands: [
       { id: 'zoom-in', mnemonic: 'i' },
       { id: 'zoom-out', mnemonic: 'o' },
+      { id: 'zoom-fit', mnemonic: 'f' },
     ],
   },
   {
@@ -69,3 +87,27 @@ export const APPLICATION_MENU = [
     ],
   },
 ] as const satisfies readonly MenuGroup[];
+
+/** The context menu of a track row; `null` separates groups. */
+export const TRACK_MENU = [
+  'add-track',
+  'rename-track',
+  'remove-track',
+  null,
+  'move-track-up',
+  'move-track-down',
+  null,
+  'toggle-track-mute',
+  'toggle-track-solo',
+  null,
+  'open-audio',
+  'relink-audio',
+  null,
+  'export-all',
+  'export-all-tracks',
+  null,
+  'link-markers-all-tracks',
+  'unlink-markers',
+  'relink-markers',
+  'toggle-shared-markers',
+] as const satisfies readonly (AppCommand | null)[];

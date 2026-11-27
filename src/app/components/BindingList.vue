@@ -5,7 +5,7 @@ import { useI18n } from 'vue-i18n';
 import {
   activeBindings,
   bindingId,
-  formatChords,
+  primaryPressed,
   type Binding,
   type InputLayer,
   type KeyChord,
@@ -18,6 +18,7 @@ import {
 import { commandLabel } from '../commands';
 import { APPLICATION_MENU } from '../menu';
 import GamepadIcon from '../../ui/GamepadIcon.vue';
+import KeyCaps from '../../ui/KeyCaps.vue';
 
 const props = defineProps<{ device: RebindableDevice }>();
 const { t } = useI18n();
@@ -46,7 +47,7 @@ function chordOf(event: KeyboardEvent, recording: boolean): KeyChord {
   const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
   return {
     key,
-    ...(event.ctrlKey || event.metaKey ? { primary: true } : {}),
+    ...(primaryPressed(event) ? { primary: true } : {}),
     ...(event.altKey ? { alt: true } : {}),
     ...(event.shiftKey ? { shift: true } : {}),
   };
@@ -116,9 +117,10 @@ watch(layer, () => {
         <dd>
           <span class="binding-controls">
             <template v-if="device === 'keyboard'">
-              <kbd v-if="overrides.keyboard(row).length">{{
-                formatChords(overrides.keyboard(row))
-              }}</kbd>
+              <KeyCaps
+                v-if="overrides.keyboard(row).length"
+                :chords="overrides.keyboard(row)"
+              />
             </template>
             <template v-else>
               <GamepadIcon

@@ -10,6 +10,14 @@ import {
 import type { EditorStore } from './editor-store';
 import type { MarkerKey } from '../project/schema';
 import { remapMarkerKeys, type MarkerKeys } from '../project/marker-keys';
+import { currentTrack } from '../project/codec';
+import {
+  applyMarkerEdit,
+  linkAt,
+  linkMarkersTo as copyLinkedMarkers,
+  relinkMarkers as relinkTrackMarkers,
+  unlinkMarkers as unlinkTrackMarkers,
+} from '../project/marker-links';
 
 /**
  * The delta that a group of markers can move by: as close to `delta` as the
@@ -39,12 +47,20 @@ export function groupMoveDelta(
 export function moveMarkers(editor: EditorStore, ticks: readonly number[], delta: number): number {
   const applied = groupMoveDelta(editor, ticks, delta);
   if (!applied) return 0;
+  const target = (tick: number) => (ticks.includes(tick) ? tick + applied : tick);
   editor.setTicks(
     [...editor.ticks.filter((t) => !ticks.includes(t)), ...ticks.map((t) => t + applied)],
-    remapMarkerKeys(editor.markerKeys, (tick) => (ticks.includes(tick) ? tick + applied : tick)),
+    remapMarkerKeys(editor.markerKeys, target),
+    target,
   );
   editor.setSelectedTicks(ticks.map((t) => t + applied));
   return applied;
+}
+
+/** Markers of some tracks at one tick. */
+export interface LinkPoints {
+  tick: number;
+  trackIds: readonly string[];
 }
 
 export function createEditorActions(editor: EditorStore) {
@@ -144,9 +160,11 @@ export function createEditorActions(editor: EditorStore) {
       return false;
     }
     const destinations = new Map(selected.map((tick, index) => [tick, targets[index] ?? tick]));
+    const target = (tick: number) => destinations.get(tick) ?? tick;
     const changed = editor.setTicks(
       [...editor.ticks.filter((t) => !selected.includes(t)), ...targets],
-      remapMarkerKeys(editor.markerKeys, (tick) => destinations.get(tick) ?? tick),
+      remapMarkerKeys(editor.markerKeys, target),
+      target,
     );
     editor.setSelectedTicks(targets);
     return changed;
@@ -167,9 +185,11 @@ export function createEditorActions(editor: EditorStore) {
       (delta > 0 && editor.ticks.some((t) => editor.tickBeyondEnd(t + delta)))
     )
       return false;
+    const target = (tick: number) => tick + delta;
     return editor.setTicks(
-      normalizeSelection(editor.ticks.map((t) => t + delta)),
-      remapMarkerKeys(editor.markerKeys, (tick) => tick + delta),
+      normalizeSelection(editor.ticks.map(target)),
+      remapMarkerKeys(editor.markerKeys, target),
+      target,
     );
   }
   function undo(): boolean {
@@ -227,6 +247,113 @@ export function createEditorActions(editor: EditorStore) {
       ...remapMarkerKeys(measureClipboard.keys, (tick) => tick + base),
     ]);
   }
+  /** The selected markers, or all markers of the current track when none are selected. */
+  function linkTargets(): number[] {
+    return editor.selectedTicks.length ? [...editor.selectedTicks] : [...editor.ticks];
+  }
+  /** Copies the selected (or all) markers to other tracks as linked markers. */
+  function linkMarkersTo(trackIds: readonly string[]): number {
+    editor.cancelDraft();
+    const source = editor.track.trackId;
+    const targets = trackIds.filter((id) => id !== source);
+    const count =
+      editor.transact((draft) =>
+        copyLinkedMarkers(draft.tracks, source, linkTargets(), targets, editor.markerAllowed),
+      ).value ?? 0;
+    editor.setStatus('markersLinked', { count, tracks: targets.length });
+    return count;
+  }
+  function linkMarkersToAllTracks(): number {
+    return linkMarkersTo(editor.document.tracks.map((item) => item.trackId));
+  }
+  /** Removes the selected (or all) markers of the current track from their link groups. */
+  function unlinkMarkers(): number {
+    editor.cancelDraft();
+    const ticks = linkTargets();
+    const count = editor.editTrack((track) => unlinkTrackMarkers(track, ticks)).value;
+    editor.setStatus('markersUnlinked', { count });
+    return count;
+  }
+  /** Links the selected (or all) markers with markers at exactly the same ticks on other tracks. */
+  function relinkMarkers(): number {
+    editor.cancelDraft();
+    const ticks = linkTargets();
+    const trackId = editor.track.trackId;
+    const count = editor.transact((draft) =>
+      relinkTrackMarkers(draft.tracks, trackId, ticks),
+    ).value;
+    editor.setStatus(count ? 'markersRelinked' : 'markersRelinkNone', { count });
+    return count;
+  }
+  /**
+   * Links the markers of the given tracks at each tick, adding markers where a
+   * track has none, in one undoable edit. A tick needs at least two tracks.
+   */
+  function linkPoints(points: readonly LinkPoints[]): number {
+    editor.cancelDraft();
+    const count =
+      editor.transact((draft) =>
+        points.reduce(
+          (sum, { tick, trackIds }) =>
+            sum + linkAt(draft.tracks, tick, trackIds, editor.markerAllowed),
+          0,
+        ),
+      ).value ?? 0;
+    editor.setStatus(count ? 'markersLinked' : 'markersRelinkNone', {
+      count,
+      tracks: new Set(points.flatMap((point) => point.trackIds)).size,
+    });
+    return count;
+  }
+  /** Removes the markers of the given tracks at each tick from their link groups, in one undoable edit. */
+  function unlinkPoints(points: readonly LinkPoints[]): number {
+    editor.cancelDraft();
+    const count =
+      editor.transact((draft) =>
+        points.reduce(
+          (sum, { tick, trackIds }) =>
+            sum +
+            draft.tracks
+              .filter((item) => trackIds.includes(item.trackId))
+              .reduce((total, item) => total + unlinkTrackMarkers(item, [tick]), 0),
+          0,
+        ),
+      ).value ?? 0;
+    editor.setStatus('markersUnlinked', { count });
+    return count;
+  }
+  /**
+   * Adds or removes one track's marker at a tick, on that track only, even
+   * with shared markers. A removed linked marker leaves its link.
+   */
+  function toggleTrackMarker(trackId: string, tick: number): boolean {
+    editor.cancelDraft();
+    const track = editor.document.tracks.find((item) => item.trackId === trackId);
+    if (!track) return false;
+    const present = track.slicing.markers.includes(tick);
+    if (!present && !editor.markerAllowed(trackId, tick)) {
+      editor.setStatus('cutBeyondEnd', true);
+      return false;
+    }
+    return editor.transact((draft) => {
+      const { slicing } = currentTrack(draft, trackId);
+      applyMarkerEdit(
+        draft.tracks,
+        trackId,
+        {
+          markers: present ? slicing.markers.filter((t) => t !== tick) : [...slicing.markers, tick],
+          keys: slicing.markerKeys ?? [],
+          target: (value) => value,
+        },
+        false,
+        editor.markerAllowed,
+      );
+    }).changed;
+  }
+  function toggleSharedMarkers(): void {
+    editor.sharedMarkers = !editor.sharedMarkers;
+    editor.setStatus(editor.sharedMarkers ? 'sharedMarkersOn' : 'sharedMarkersOff');
+  }
   function reset(): void {
     measureClipboard = null;
     selectionClipboard = null;
@@ -250,6 +377,14 @@ export function createEditorActions(editor: EditorStore) {
     measureCopy,
     measureCut,
     measurePaste,
+    linkMarkersTo,
+    linkMarkersToAllTracks,
+    unlinkMarkers,
+    relinkMarkers,
+    toggleSharedMarkers,
+    linkPoints,
+    unlinkPoints,
+    toggleTrackMarker,
     reset,
   };
 }

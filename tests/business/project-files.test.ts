@@ -6,6 +6,9 @@ import { captureEditorSession } from '../../src/workspace/session';
 import { ampToDb } from '../../src/core/volume';
 import { projectToWos } from '../../src/project/codec';
 import { writeWos } from '@gumi-conqueror/wos-file';
+import { wavFile } from '../support/audio';
+import { createBrowserPlatform } from '../../src/platform/browser';
+import type { ChosenFile } from '../../src/platform/contracts';
 
 describe('portable project workflow', () => {
   it('saves absolute media paths and opens project media through the project grant', async () => {
@@ -401,9 +404,24 @@ describe('portable project workflow', () => {
     Object.defineProperty(file, 'size', { value: 64 * 1024 * 1024 + 1 });
     const read = vi.spyOn(file, 'arrayBuffer');
     const original = f.editor.document;
-    await f.workspace.openDroppedFile(file);
+    // The browser reports drops from page events.
+    let dropped: ChosenFile[] = [];
+    const stop = createBrowserPlatform().watchDrops({
+      active: () => {},
+      dropped: (files) => {
+        dropped = files;
+      },
+    });
+    // The test DOM keeps no DataTransfer on events, so the drop carries a stand-in.
+    const drop = new Event('drop', { cancelable: true });
+    Object.defineProperty(drop, 'dataTransfer', { value: { types: ['Files'], files: [file] } });
+    window.dispatchEvent(drop);
+    stop();
+    expect(dropped.map((item) => item.name)).toEqual(['large.wosdx']);
+    await f.workspace.openChosenFiles(dropped);
     expect(read).not.toHaveBeenCalled();
     expect(f.editor.document).toBe(original);
+    expect(f.editor.status.segments[0]?.key).toBe('dropFailed');
     await f.workspace.loadAudio(audioFile());
     f.editor.transact((draft) => {
       const media = draft.tracks[0].media;
@@ -442,4 +460,24 @@ describe('portable project workflow', () => {
     await loading;
     expect(f.editor.source).toBeNull();
   });
+});
+
+it('keeps markers past 256 measures in the project and drops them only from .wos export', async () => {
+  const f = setup();
+  // 300 measures of silence at 120 BPM: 600 s at 8 kHz.
+  await f.workspace.loadAudio({
+    name: 'long.wav',
+    reference: null,
+    bytes: wavFile([new Int16Array(8000 * 600)], 8000),
+  });
+  f.workspace.actions.setMarker(192 * 10);
+  f.workspace.actions.setMarker(192 * 280);
+  expect(f.editor.ticks).toEqual([1920, 53760]);
+  expect(f.editor.timelineTicks).toBeGreaterThan(192 * 280);
+  await f.workspace.saveWos();
+  expect(f.editor.status.segments.map((segment) => segment.key)).toEqual([
+    'savedWos',
+    'wosMarkersDropped',
+  ]);
+  expect(f.editor.status.segments[1]?.params).toEqual({ count: 1 });
 });

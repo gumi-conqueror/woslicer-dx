@@ -2,11 +2,11 @@
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useDevicePixelRatio, useResizeObserver } from '@vueuse/core';
 import { useI18n } from 'vue-i18n';
-import { MAX_TICKS } from '../core/timebase';
 import { useEditorStore } from '../slicing/editor-store';
 import { useUiPreferencesStore } from '../ui/preferences';
 import { paletteFor } from '../ui/palette';
 import { drawOverview, OVERVIEW_HEIGHT, setupCanvas } from './render';
+import { sampleToTick } from '../core/timebase';
 const overviewHeightCss = `${OVERVIEW_HEIGHT}px`;
 import type { LoadingActivity } from '../workspace/workspace';
 
@@ -35,9 +35,29 @@ const snapshot = computed(() => {
     timeBase: editor.timeBaseOf(props.trackId),
     scrollTick: editor.scrollTick,
     pxPerTick: editor.pxPerTick,
+    timelineTicks: editor.timelineTicks,
   };
 });
 
+/**
+ * The loading box: as long as the declared audio on the timeline that the
+ * project will have with it, filled as far as decoding has come. Without a
+ * declared length, it covers the whole row.
+ */
+const loadingBox = computed(() => {
+  const audio = props.loading?.audio;
+  if (!audio?.frames) return null;
+  const { bpm, shiftTicks: shift } = editor.document.timing;
+  const ticks = Math.max(
+    0,
+    sampleToTick(audio.frames, { bpm, shift, sampleRate: audio.sampleRate }),
+  );
+  const timeline = editor.timelineLength({ trackId: props.trackId, ticks });
+  return {
+    width: `${(100 * Math.min(1, ticks / timeline)).toFixed(3)}%`,
+    done: `${(100 * Math.min(1, audio.decoded / audio.frames)).toFixed(3)}%`,
+  };
+});
 function measure(): void {
   width.value = surface.value?.clientWidth ?? 0;
 }
@@ -83,7 +103,7 @@ function seek(event: PointerEvent): void {
   if (props.loading || !canvas.value || width.value <= 0) return;
   const ratio = (event.clientX - canvas.value.getBoundingClientRect().left) / width.value;
   const span = props.viewportWidth / editor.pxPerTick;
-  editor.setScrollTick(Math.max(0, Math.min(MAX_TICKS - span, ratio * MAX_TICKS - span / 2)));
+  editor.setScrollTick(ratio * editor.timelineTicks - span / 2);
 }
 function down(event: PointerEvent): void {
   if (props.loading || event.button !== 0 || pointer !== null || !current.value) return;
@@ -105,6 +125,7 @@ onBeforeUnmount(() => cancelAnimationFrame(frame));
   <div
     ref="surface"
     class="track-overview-container"
+    data-hint-area="overview"
     :class="{ 'is-loading': !!loading }"
   >
     <canvas
@@ -123,7 +144,14 @@ onBeforeUnmount(() => cancelAnimationFrame(frame));
       aria-live="polite"
       :aria-label="t(`loading.${loading.stage}`)"
       :data-media-id="loading.mediaId"
-    />
+      :style="loadingBox ? { width: loadingBox.width } : undefined"
+    >
+      <div
+        v-if="loadingBox"
+        class="track-loading-done"
+        :style="{ width: loadingBox.done }"
+      />
+    </div>
   </div>
 </template>
 
@@ -138,17 +166,28 @@ onBeforeUnmount(() => cancelAnimationFrame(frame));
   visibility: hidden;
   pointer-events: none;
 }
-/* The effect overlays the existing thumbnail; loading never changes its box. */
+/* The effect overlays the existing thumbnail; loading never changes its box.
+   With a known audio length, the box ends where the audio ends. */
 .track-loading {
   position: absolute;
   inset: 0;
   overflow: hidden;
+  border-right: 1px solid var(--el-color-primary-light-5);
   background: var(--wos-panel-header);
+}
+/* The decoded part of the audio, under the animation, which keeps moving until the track is ready. */
+.track-loading-done {
+  position: absolute;
+  z-index: 0;
+  inset: 0 auto 0 0;
+  border-right: 2px solid var(--el-color-primary);
+  background: rgba(var(--el-color-primary-rgb), 0.18);
 }
 .track-loading::before,
 .track-loading::after {
   content: '';
   position: absolute;
+  z-index: 1;
   inset: 0;
 }
 .track-loading::before {

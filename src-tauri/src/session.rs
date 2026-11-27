@@ -5,7 +5,7 @@ use std::{
     io::{Read, Write},
     path::{Path, PathBuf},
 };
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 use tempfile::NamedTempFile;
 
 // Recovery wraps the project with local bindings and UI settings.
@@ -26,9 +26,7 @@ pub(crate) fn atomic_write(path: &Path, bytes: &[u8]) -> Result<(), String> {
     Ok(())
 }
 fn session_path(app: &AppHandle) -> Result<PathBuf, String> {
-    Ok(app
-        .path()
-        .app_data_dir()
+    Ok(super::app_data::data_dir(app)
         .map_err(|error| error.to_string())?
         .join("session-v2.json"))
 }

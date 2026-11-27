@@ -1,7 +1,7 @@
 import { Zip, ZipPassThrough } from 'fflate';
 import { isPortableFileName } from './file-names';
 import { byteLimitText, MEDIA_FILE_MAX_BYTES, PROJECT_FILE_MAX_BYTES } from '../project/schema';
-import type { FileKind, OpenedFile, OutputFile, Platform } from './contracts';
+import type { FileKind, OpenedFile, OutputFile, Platform, ChosenFile } from './contracts';
 import { AUDIO_EXTENSIONS } from '../core/audio-formats';
 
 const SESSION_KEY = 'woslicer.vue.session.v2';
@@ -15,18 +15,19 @@ const extensions: Record<FileKind, string> = {
   bmh: '.bmh',
 };
 
-function pickFile(accept: string): Promise<File | null> {
+function pickFiles(accept: string, multiple = false): Promise<File[]> {
   return new Promise((resolve, reject) => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = accept;
+    input.multiple = multiple;
     input.hidden = true;
-    const finish = (file: File | null) => {
+    const finish = (files: File[]) => {
       input.remove();
-      resolve(file);
+      resolve(files);
     };
-    input.addEventListener('change', () => finish(input.files?.[0] ?? null), { once: true });
-    input.addEventListener('cancel', () => finish(null), { once: true });
+    input.addEventListener('change', () => finish(Array.from(input.files ?? [])), { once: true });
+    input.addEventListener('cancel', () => finish([]), { once: true });
     document.body.append(input);
     try {
       input.click();
@@ -35,6 +36,17 @@ function pickFile(accept: string): Promise<File | null> {
       reject(error instanceof Error ? error : new Error(String(error)));
     }
   });
+}
+/** A browser file that is read only when it is opened, within the size limits. */
+function chosenFile(file: File): ChosenFile {
+  return {
+    name: file.name,
+    async open(): Promise<OpenedFile> {
+      const limit = /\.wosdx$/i.test(file.name) ? PROJECT_FILE_MAX_BYTES : MEDIA_FILE_MAX_BYTES;
+      if (file.size > limit) throw new Error(`File exceeds ${byteLimitText(limit)}`);
+      return { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()), reference: null };
+    },
+  };
 }
 
 interface Destination {
@@ -206,7 +218,7 @@ export function createBrowserPlatform(): Platform {
   return {
     kind: 'browser',
     async openFile(kind): Promise<OpenedFile | null> {
-      const file = await pickFile(extensions[kind]);
+      const [file] = await pickFiles(extensions[kind]);
       if (!file) return null;
       if (
         !extensions[kind]
@@ -219,6 +231,49 @@ export function createBrowserPlatform(): Platform {
       if (kind === 'wosdx' && file.size > PROJECT_FILE_MAX_BYTES)
         throw new Error(`Project exceeds ${byteLimitText(PROJECT_FILE_MAX_BYTES)}`);
       return { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()), reference: null };
+    },
+    async openFiles(kind) {
+      const accepted = extensions[kind].split(',');
+      return (await pickFiles(extensions[kind], true))
+        .filter((file) => accepted.some((extension) => file.name.toLowerCase().endsWith(extension)))
+        .map(chosenFile);
+    },
+    watchDrops({ active, dropped }) {
+      const files = (event: DragEvent) =>
+        Array.from(event.dataTransfer?.types ?? []).includes('Files');
+      // Enter and leave also fire between child elements; count them to know when files leave the page.
+      let depth = 0;
+      const enter = (event: DragEvent) => {
+        if (!files(event)) return;
+        event.preventDefault();
+        depth++;
+        active(true);
+      };
+      const over = (event: DragEvent) => {
+        if (files(event)) event.preventDefault();
+      };
+      const leave = (event: DragEvent) => {
+        if (!files(event)) return;
+        depth = Math.max(0, depth - 1);
+        if (!depth) active(false);
+      };
+      const drop = (event: DragEvent) => {
+        if (!files(event)) return;
+        event.preventDefault();
+        depth = 0;
+        active(false);
+        dropped(Array.from(event.dataTransfer?.files ?? [], chosenFile));
+      };
+      window.addEventListener('dragenter', enter);
+      window.addEventListener('dragover', over);
+      window.addEventListener('dragleave', leave);
+      window.addEventListener('drop', drop);
+      return () => {
+        window.removeEventListener('dragenter', enter);
+        window.removeEventListener('dragover', over);
+        window.removeEventListener('dragleave', leave);
+        window.removeEventListener('drop', drop);
+      };
     },
     openProjectMedia() {
       return Promise.resolve(null);

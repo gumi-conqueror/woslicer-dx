@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { CANCEL, matchesChords } from '../input/bindings';
+import { CANCEL, matchesChords, primaryPressed } from '../input/bindings';
 import TrackHeader from '../app/components/TrackHeader.vue';
+import CommandMenu from '../app/components/CommandMenu.vue';
+import { TRACK_MENU } from '../app/menu';
+import { useCommandRunner } from '../app/commands';
 import { computed, onBeforeUnmount, onMounted, shallowRef, useTemplateRef, watch } from 'vue';
 import { useDevicePixelRatio, useResizeObserver } from '@vueuse/core';
 import { ElSlider } from 'element-plus';
@@ -9,7 +12,7 @@ import { useEditorStore } from '../slicing/editor-store';
 import { usePlayback } from '../playback';
 import { useUiPreferencesStore } from '../ui/preferences';
 import { paletteFor } from '../ui/palette';
-import { MAX_TICKS, sampleToTick, tickToSampleExport } from '../core/timebase';
+import { sampleToTick, tickToSampleExport } from '../core/timebase';
 import { createTimelineGestures, type TimelinePointer } from './gestures';
 import { drawOverlay, drawRuler, drawTimeline, RULER_HEIGHT, setupCanvas } from './render';
 const rulerHeightCss = `${RULER_HEIGHT}px`;
@@ -29,6 +32,8 @@ const wave = useTemplateRef<HTMLCanvasElement>('wave');
 const overlay = useTemplateRef<HTMLCanvasElement>('overlay');
 const { pixelRatio } = useDevicePixelRatio();
 const dimensions = shallowRef({ width: 0, height: 0 });
+const trackMenu = shallowRef<{ x: number; y: number } | null>(null);
+const runCommand = useCommandRunner();
 // Gestures own pointer semantics; this component owns the DOM, RAF and observer lifecycle.
 const gestures = createTimelineGestures(editor);
 const { ghost, cursor } = gestures;
@@ -40,7 +45,14 @@ let fullDraw = false;
 let activePointer: number | null = null;
 // Widest scroll offset in ticks: timeline length minus one viewport width.
 const scrollMaximum = computed(() =>
-  Math.max(0, MAX_TICKS - dimensions.value.width / editor.pxPerTick),
+  Math.max(0, editor.timelineTicks - dimensions.value.width / editor.pxPerTick),
+);
+watch(
+  () => dimensions.value.width,
+  (width) => {
+    editor.viewportWidth = width;
+  },
+  { immediate: true },
 );
 // Coalesced repaint: one RAF redraws wave/ruler when fullDraw, then the overlay.
 function invalidate(all = true): void {
@@ -119,7 +131,7 @@ function point(event: PointerEvent): TimelinePointer {
     button: event.button,
     altKey: event.altKey,
     shiftKey: event.shiftKey,
-    ctrlKey: event.ctrlKey || event.metaKey,
+    ctrlKey: primaryPressed(event),
   };
 }
 // Viewport gesture protocol: one captured pointer drives begin/move/end;
@@ -165,7 +177,8 @@ function wheel(event: WheelEvent, rulerZoom = false): void {
     event.clientX - (rect?.left ?? 0),
     event.deltaX * unit,
     event.deltaY * unit,
-    rulerZoom || event.ctrlKey || event.metaKey,
+    // A trackpad pinch arrives as a wheel with Ctrl held, also on macOS.
+    rulerZoom || event.ctrlKey || primaryPressed(event),
   );
 }
 // Ruler click seeks: snapped cursor tick, then playback re-anchored to the same tick.
@@ -209,12 +222,33 @@ onBeforeUnmount(() => {
         :index="index"
         :viewport-width="dimensions.width"
         :loading="loading"
+        @menu="trackMenu = $event"
+      />
+      <!-- A new track that is still decoding -->
+      <TrackHeader
+        v-if="loading?.newTrack && loading.trackId && loading.stage !== 'opening'"
+        role="listitem"
+        :track-id="loading.trackId"
+        :index="editor.document.tracks.length"
+        :viewport-width="dimensions.width"
+        :loading="loading"
       />
     </div>
+    <CommandMenu
+      v-if="trackMenu"
+      :commands="TRACK_MENU"
+      :x="trackMenu.x"
+      :y="trackMenu.y"
+      :state="editor"
+      :label="t('chrome.trackMenu')"
+      @run="(command) => runCommand?.(command)"
+      @close="trackMenu = null"
+    />
     <!-- ruler: click to seek, wheel zooms -->
     <canvas
       ref="ruler"
       class="timeline-ruler"
+      data-hint-area="ruler"
       @pointerdown="seek"
       @wheel="wheel($event, true)"
     />
@@ -222,6 +256,7 @@ onBeforeUnmount(() => {
     <div
       ref="viewport"
       class="timeline-viewport"
+      data-hint-area="timeline"
       :aria-busy="!!loading"
       tabindex="0"
       :style="{ cursor }"

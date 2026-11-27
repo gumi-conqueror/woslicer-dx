@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { byteLimitText, MEDIA_FILE_MAX_BYTES, PROJECT_FILE_MAX_BYTES } from '../project/schema';
-import type { OpenedFile, Platform } from './contracts';
+import type { ChosenFile, OpenedFile, Platform } from './contracts';
 import type { AboutLink } from './about-links';
 
 const CHUNK_BYTES = 1024 * 1024;
@@ -63,6 +64,15 @@ async function writeBytes(id: string, bytes: Uint8Array): Promise<void> {
   }
 }
 
+/** A file that the host granted, read only when it is opened. */
+function chosenFile(value: unknown): ChosenFile {
+  const name =
+    typeof value === 'object' && value !== null && 'name' in value && typeof value.name === 'string'
+      ? value.name
+      : '';
+  return { name, open: () => readOpened(value, /\.wosdx$/i.test(name)) };
+}
+
 export function createTauriPlatform(): Platform {
   return {
     kind: 'tauri',
@@ -70,8 +80,24 @@ export function createTauriPlatform(): Platform {
       const value: unknown = await invoke('open_file', { kind });
       return value === null ? null : readOpened(value, kind === 'wosdx');
     },
+    async openFiles(kind) {
+      const value: unknown = await invoke('open_files', { kind });
+      return Array.isArray(value) ? value.map(chosenFile) : [];
+    },
     async reopenFile(id) {
       return readOpened(await invoke<unknown>('reopen_file', { reference: id }));
+    },
+    watchDrops({ active, dropped }) {
+      const stops = [
+        listen<unknown>('drop-active', (event) => active(event.payload === true)),
+        listen<unknown>('files-dropped', (event) => {
+          if (!Array.isArray(event.payload)) return;
+          dropped(event.payload.map(chosenFile));
+        }),
+      ];
+      return () => {
+        for (const stop of stops) void stop.then((unlisten) => unlisten());
+      };
     },
     async openProjectMedia(projectReference, mediaId) {
       const value: unknown = await invoke('open_project_media', { projectReference, mediaId });

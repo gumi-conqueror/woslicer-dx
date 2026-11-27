@@ -17,17 +17,40 @@ export const GAMEPAD_BUTTONS = [
   { id: 'dpad-left', button: 14, label: 'D-pad ←' },
   { id: 'dpad-right', button: 15, label: 'D-pad →' },
 ] as const;
-/** Stick directions. Axes 0–1 are the left stick, 2–3 the right stick; up and left are negative. */
+/**
+ * Stick directions. Axes 0–1 are the left stick, 2–3 the right stick; up and
+ * left are negative. Each direction has a light push and a hard push. A hard
+ * push left or right that is held for `LONG_HOLD_MS` becomes a long push.
+ */
 export const GAMEPAD_STICK_DIRECTIONS = [
-  { id: 'ls-up', axis: 1, sign: -1, label: 'LS ↑' },
-  { id: 'ls-down', axis: 1, sign: 1, label: 'LS ↓' },
-  { id: 'ls-left', axis: 0, sign: -1, label: 'LS ←' },
-  { id: 'ls-right', axis: 0, sign: 1, label: 'LS →' },
-  { id: 'rs-up', axis: 3, sign: -1, label: 'RS ↑' },
-  { id: 'rs-down', axis: 3, sign: 1, label: 'RS ↓' },
-  { id: 'rs-left', axis: 2, sign: -1, label: 'RS ←' },
-  { id: 'rs-right', axis: 2, sign: 1, label: 'RS →' },
+  { id: 'ls-up', label: 'LS ↑' },
+  { id: 'ls-down', label: 'LS ↓' },
+  { id: 'ls-left', label: 'LS ←' },
+  { id: 'ls-right', label: 'LS →' },
+  { id: 'rs-up', label: 'RS ↑' },
+  { id: 'rs-down', label: 'RS ↓' },
+  { id: 'rs-left', label: 'RS ←' },
+  { id: 'rs-right', label: 'RS →' },
+  { id: 'ls-up-hard', label: 'LS ⇈' },
+  { id: 'ls-down-hard', label: 'LS ⇊' },
+  { id: 'ls-left-hard', label: 'LS ⇇' },
+  { id: 'ls-right-hard', label: 'LS ⇉' },
+  { id: 'rs-up-hard', label: 'RS ⇈' },
+  { id: 'rs-down-hard', label: 'RS ⇊' },
+  { id: 'rs-left-hard', label: 'RS ⇇' },
+  { id: 'rs-right-hard', label: 'RS ⇉' },
+  { id: 'ls-left-long', label: 'LS ⋘' },
+  { id: 'ls-right-long', label: 'LS ⋙' },
+  { id: 'rs-left-long', label: 'RS ⋘' },
+  { id: 'rs-right-long', label: 'RS ⋙' },
 ] as const;
+/** The long push that each held hard push becomes. */
+const LONG_PUSHES: Partial<Record<string, HeldControl>> = {
+  'ls-left-hard': 'ls-left-long',
+  'ls-right-hard': 'ls-right-long',
+  'rs-left-hard': 'rs-left-long',
+  'rs-right-hard': 'rs-right-long',
+};
 export const GAMEPAD_ROTATIONS = [
   { id: 'ls-counterclockwise', label: 'LS ↺' },
   { id: 'ls-clockwise', label: 'LS ↻' },
@@ -70,10 +93,18 @@ export const UI_NAVIGATION: readonly {
   { action: 'toggle', controls: ['menu'], label: 'input.menuMode' },
   { action: 'confirm', controls: ['a'], label: 'input.confirm' },
   { action: 'cancel', controls: ['b'], label: 'input.back' },
-  { action: 'previous', controls: ['lb', 'dpad-left', 'ls-left'], label: 'input.previousMenu' },
-  { action: 'next', controls: ['rb', 'dpad-right', 'ls-right'], label: 'input.nextMenu' },
-  { action: 'up', controls: ['dpad-up', 'ls-up'], label: 'input.previousItem' },
-  { action: 'down', controls: ['dpad-down', 'ls-down'], label: 'input.nextItem' },
+  {
+    action: 'previous',
+    controls: ['lb', 'dpad-left', 'ls-left', 'ls-left-hard', 'ls-left-long'],
+    label: 'input.previousMenu',
+  },
+  {
+    action: 'next',
+    controls: ['rb', 'dpad-right', 'ls-right', 'ls-right-hard', 'ls-right-long'],
+    label: 'input.nextMenu',
+  },
+  { action: 'up', controls: ['dpad-up', 'ls-up', 'ls-up-hard'], label: 'input.previousItem' },
+  { action: 'down', controls: ['dpad-down', 'ls-down', 'ls-down-hard'], label: 'input.nextItem' },
   { action: 'scroll-up', controls: ['lt'], label: 'input.scrollUp' },
   { action: 'scroll-down', controls: ['rt'], label: 'input.scrollDown' },
 ];
@@ -81,8 +112,12 @@ export const UI_NAVIGATION: readonly {
 const DIRECTIONS: Partial<Record<GamepadControl, UiNavigation>> = {
   'dpad-left': 'left',
   'ls-left': 'left',
+  'ls-left-hard': 'left',
+  'ls-left-long': 'left',
   'dpad-right': 'right',
   'ls-right': 'right',
+  'ls-right-hard': 'right',
+  'ls-right-long': 'right',
 };
 export function uiNavigation(control: GamepadControl, dialog = false): UiNavigation | undefined {
   if (dialog && DIRECTIONS[control]) return DIRECTIONS[control];
@@ -101,8 +136,17 @@ const TRIGGER_RELEASE = 0.06;
 /** A held direction or shoulder button repeats after this delay, then at this interval. */
 const REPEAT_DELAY_MS = 380;
 const REPEAT_INTERVAL_MS = 110;
-/** A fully deflected stick repeats at this interval. */
-const REPEAT_FASTEST_MS = 40;
+/** Stick travel of a light push and of a hard push. Light pushes start above stick drift. */
+const STICK_LIGHT = 0.4;
+const STICK_HARD = 0.9;
+/** A held hard or long push halves its repeat interval every this long, down to the fastest interval. */
+const HARD_ACCELERATION_MS = 700;
+const REPEAT_FASTEST_MS = 25;
+/**
+ * A hard push left or right held this long switches to the next speed, like
+ * the hold time after which media players switch to a faster seek speed.
+ */
+const LONG_HOLD_MS = 1500;
 /** In recording mode, each eighth of a stick circle seeks one step. */
 const ROTATION_STEP = Math.PI / 4;
 /** A larger jump between polls has no clear direction; the reader starts over. */
@@ -148,6 +192,8 @@ export function pointingVector(pad: Pad | undefined): Pointing {
 export function createGamepadReader() {
   /** The next repeat time of each accepted control; Infinity marks a press made while suspended. */
   const held = new Map<HeldControl, number>();
+  /** When each accepted control was pressed. */
+  const since = new Map<HeldControl, number>();
   let index: number | undefined;
   let suspended = false;
   let recording = false;
@@ -175,18 +221,22 @@ export function createGamepadReader() {
       const { x, y } = axes(pad, first);
       const horizontal = Math.abs(x) >= Math.abs(y);
       const value = horizontal ? x : y;
-      if (Math.abs(value) <= GAMEPAD_DEAD_ZONE) continue;
+      const travel = Math.abs(value);
+      if (travel <= STICK_LIGHT) continue;
       const direction = horizontal ? (value < 0 ? 'left' : 'right') : value < 0 ? 'up' : 'down';
-      pressed.set(`${prefix}-${direction}`, Math.min(1, Math.abs(value)));
+      pressed.set(
+        travel >= STICK_HARD ? `${prefix}-${direction}-hard` : `${prefix}-${direction}`,
+        travel,
+      );
     }
     return pressed;
   }
 
-  /** A stick repeats faster the further it is pushed. */
-  function repeatInterval(control: HeldControl, travel: number): number {
-    if (!control.startsWith('ls-') && !control.startsWith('rs-')) return REPEAT_INTERVAL_MS;
-    const share = (travel - GAMEPAD_DEAD_ZONE) / (1 - GAMEPAD_DEAD_ZONE);
-    return REPEAT_INTERVAL_MS - share * (REPEAT_INTERVAL_MS - REPEAT_FASTEST_MS);
+  /** A hard or long push repeats faster the longer it is held. */
+  function repeatInterval(control: HeldControl, heldFor: number): number {
+    if (!control.endsWith('-hard') && !control.endsWith('-long')) return REPEAT_INTERVAL_MS;
+    const interval = REPEAT_INTERVAL_MS * 0.5 ** (heldFor / HARD_ACCELERATION_MS);
+    return Math.max(REPEAT_FASTEST_MS, interval);
   }
 
   /** Presses, repeats and releases of buttons and stick directions. */
@@ -196,12 +246,29 @@ export function createGamepadReader() {
     enabled: boolean,
   ): GamepadEvent[] {
     const events: GamepadEvent[] = [];
+    // A hard push held long enough continues as the long push; the hard push releases.
+    for (const [control, travel] of pressed) {
+      const long = LONG_PUSHES[control];
+      const start = since.get(control);
+      const next = held.get(control);
+      if (!long || recording) continue;
+      if (
+        held.has(long) ||
+        (next !== undefined &&
+          next !== Infinity &&
+          start !== undefined &&
+          now - start >= LONG_HOLD_MS)
+      ) {
+        pressed.delete(control);
+        pressed.set(long, travel);
+      }
+    }
     for (const [control, next] of held)
       if (!pressed.has(control)) {
         held.delete(control);
         if (next !== Infinity) events.push({ control, phase: 'release' });
       }
-    for (const [control, travel] of pressed) {
+    for (const control of pressed.keys()) {
       const next = held.get(control);
       if (!enabled || suspended) {
         held.set(control, Infinity);
@@ -209,10 +276,12 @@ export function createGamepadReader() {
       }
       if (next === undefined) {
         events.push({ control, phase: 'press' });
-        held.set(control, now + REPEAT_DELAY_MS);
+        // A long push continues a movement that is already repeating, so it has no repeat delay.
+        held.set(control, now + (control.endsWith('-long') ? REPEAT_INTERVAL_MS : REPEAT_DELAY_MS));
+        since.set(control, now);
       } else if (!recording && REPEATING.has(control) && now >= next) {
         events.push({ control, phase: 'repeat' });
-        held.set(control, now + repeatInterval(control, travel));
+        held.set(control, now + repeatInterval(control, now - (since.get(control) ?? now)));
       }
     }
     return events;

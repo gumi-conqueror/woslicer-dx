@@ -6,6 +6,8 @@ export interface RecordingInput {
   keys: readonly MarkerKey[];
 }
 export const RECORDING_SEEK_SECONDS = 0.5;
+/** A fast seek, for a long stick push, moves four ordinary seeks at once. */
+export const FAST_SEEK_SECONDS = 4 * RECORDING_SEEK_SECONDS;
 
 /** The `KeyboardEvent.code` of a key text; synthetic events can lack `code`. */
 export function codeForKey(key: string): string {

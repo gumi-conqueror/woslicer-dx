@@ -34,7 +34,8 @@ test('offsetsToTargets anchors offsets at the paste position', () => {
 
 test('clampGroupDelta keeps the whole group inside the timeline', () => {
   assert.equal(clampGroupDelta([100, 200], 500), 500);
-  assert.equal(clampGroupDelta([100, 200], 100000), MAX_TICKS - 1 - 200);
+  assert.equal(clampGroupDelta([100, 200], 100000), 100000);
+  assert.equal(clampGroupDelta([100, 200], MAX_TICKS), MAX_TICKS - 1 - 200);
   assert.equal(clampGroupDelta([100, 200], -500), -100);
   assert.equal(clampGroupDelta([], 5), 0);
 });

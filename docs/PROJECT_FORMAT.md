@@ -1,18 +1,18 @@
 # `.wosdx` project format
 
-This document describes the version 2 fields, the version 1 upgrade, compatibility rules and local media bindings.
+This document describes the version 3 fields, the upgrades of versions 1 and 2, compatibility rules and local media bindings.
 [codec.ts](../src/project/codec.ts) and [schema.ts](../src/project/schema.ts) define the implementation.
 
 ## Format and validation
 
 - `.wos` is the locked, 6,168-byte settings exchange format implemented by `@gumi-conqueror/wos-file`. Do not add fields or change its encoding.
 - Original `.bmh` compatibility is also locked. The [BMH format contract](BMH_FORMAT.md) applies at import and export. DX uses UTF-8 JSON internally.
-- `.wosdx` is bounded UTF-8 JSON with `format: "wosdx"` and `schemaVersion: 2`.
+- `.wosdx` is bounded UTF-8 JSON with `format: "wosdx"` and `schemaVersion: 3`.
 - The schema version is independent of the application, session and Rust crate versions.
 - Audio is not embedded. Projects store media metadata and origin hints. Projects may embed BMHelper data.
 
 `decodeProject`, `parseProject` and `encodeProject` are the codec entry points.
-Parsing checks the format and version first. A version 1 file is upgraded in
+Parsing checks the format and version first. A version 1 or 2 file is upgraded in
 memory (see below). Future versions take a separate path and are never interpreted.
 
 `schema.ts` defines field shapes, ranges and enums with Zod and derives document
@@ -21,7 +21,7 @@ count UTF-16 code units. `codec.ts` validates duplicate track IDs, duplicate mar
 Add field rules to the schema and cross-field business rules to the codec.
 The parser rejects invalid UTF-8, JSON, format identifiers or invalid data.
 
-## Version 2 fields
+## Version 3 fields
 
 A project has tracks. Each track is one complete source file with its own
 markers and output settings. All tracks share the time base, the global
@@ -32,15 +32,17 @@ handle 1 to 256 tracks. The editor edits one current track at a time.
 | --- | --- |
 | `projectId`, `name` | Stable project ID and display name. Decoding or recovering media must not replace the ID. |
 | `timing.bpm`, `timing.shiftTicks` | BPM and offset in ticks, not seconds or source frames. Shared by all tracks. |
-| `global` | `masterGainDb`, `masterMuted`, `cueGainDb`, `cueMode`, `playbackRate`, `views`. |
+| `global` | `masterGainDb`, `masterMuted`, `cueGainDb`, `cueMode`, `playbackRate`, `views`, `sharedMarkers`. |
 | `global.views` | Boolean `rms` and `bands` defaults. Spectrum is `"reserved"`. |
+| `global.sharedMarkers` | Boolean marker mode. `true` (shared markers): marker edits follow links to other tracks, and new markers go to every track. `false` (track markers): marker edits change the current track only. |
 | `tracks[]` | `trackId`, `name`, `gainDb`, `muted`, `solo`, `views`, `media`, `slicing`, `output`. 1–256 entries. |
 | `track.views` | `rms` and `bands` accept `null` (inherit), `true` or `false`. Spectrum is `"reserved"`. |
 | `track.media` | `null` before audio is chosen, or one `MediaAsset` (below). |
 | `track.slicing.fadeoutMs` | Integer milliseconds. |
 | `track.slicing.noisegateDb`, `track.slicing.noisegateEnabled` | Threshold in dB and a separate enable flag. |
-| `track.slicing.markers` | Ticks at 192 ticks per measure, from 0 through 49,151. The codec sorts ticks and rejects duplicates. |
+| `track.slicing.markers` | Ticks at 192 ticks per measure, from 0 through 2,147,483,646. The codec sorts ticks and rejects duplicates. |
 | `track.slicing.markerKeys` | Optional `{tick, keys}` entries for recorded markers. `keys` contains unique integers 1–7, including chords. Entries must reference existing marker ticks. |
+| `track.slicing.links` | Optional ticks of linked markers (see below). |
 | `track.slicing.bandDetection` | `bands {low,mid,high}`, `thresholdDb`, `minGapUnits`, `snap`. Detection settings are separate from waveform visibility. |
 | `track.output` | `baseName`, `clipStartNumber`, `useFfNumbering`. |
 | `bmhelper` | `null` or `{format: "bmhelper", source, divisions}` containing structured BMHelper work. |
@@ -49,7 +51,7 @@ handle 1 to 256 tracks. The editor edits one current track at a time.
 
 Version 1 kept `slicing` and `output` at the project level, listed `media[]`
 separately and placed audio on tracks as `clips[]`. The app upgrades a
-version 1 file in memory when it opens it, and saves version 2.
+version 1 file in memory when it opens it, and saves version 3.
 Only the two layouts that earlier releases could edit upgrade:
 
 - one track without clips or media;
@@ -59,6 +61,24 @@ Other version 1 layouts (several tracks or clips, trimmed clips, leading
 silence) are rejected, and the original file stays unchanged. Unknown version 1
 fields are dropped without a report. Releases before 2.0 reject version 2 files
 as a future version.
+
+### Version 2 upgrade
+
+Version 2 had no linked markers and no marker mode. The upgrade sets
+`global.sharedMarkers` to `true` and keeps all markers of each track.
+Releases up to 2.0.0-alpha.8 reject version 3 files as a future version.
+
+### Linked markers
+
+A track lists the ticks of its linked markers in `slicing.links`. All tracks
+that list the same tick form the link group of that tick, so a link only joins
+markers at the same tick. The codec keeps a tick in `slicing.links` only when
+the track has a marker at that tick and at least one other track lists the same
+tick. It sorts the ticks, removes duplicates and omits an empty list. A file
+without `slicing.links` has no linked markers.
+
+[marker-links.ts](../src/project/marker-links.ts) owns these rules: how edits
+follow links, copying markers as links, unlinking and relinking.
 
 ### Recorded marker keys
 
@@ -80,7 +100,7 @@ Replacing markers from WOS, BMSE, MIDI or edge detection clears old key attribut
 
 Projects without the field remain valid.
 Legacy `.wos` and original `.bmh` formats remain unchanged and do not store these
-attributes. WOS export retains the marker positions.
+attributes. WOS export retains the marker positions within the 256 measures (ticks 0 through 49,151) that a `.wos` file holds; it drops later markers and reports how many.
 
 ### BMHelper data
 
@@ -135,7 +155,7 @@ schema contain the complete validation rules.
 | Entire encoded UTF-8 JSON | 64 MiB, including BMHelper data and metadata. |
 | Desktop recovery JSON | 65 MiB, including the project and session fields. |
 | Tracks | 256, each with at most one media file. |
-| Markers | At most 49,152 markers. Ticks range from 0 through 49,151. |
+| Markers | At most 49,152 markers per track. Ticks range from 0 through 2,147,483,646; the timeline is as long as the longest audio or the last marker. |
 | Source frames | 0 through 2,000,000,000 per channel. |
 | Track / master / cue gain | −96 through +12 dB. |
 | BPM / `shiftTicks` | 0 < BPM ≤ 10,000. Shift from −1e9 through 1e9. |
@@ -160,7 +180,8 @@ views. These are constructor defaults, not user-configurable defaults.
 
 | Input | Behavior |
 | --- | --- |
-| Version 2 | Editable and saveable with any number of tracks. Missing media can be relinked per track. The desktop app reopens each track's audio. |
+| Version 3 | Editable and saveable with any number of tracks. Missing media can be relinked per track. The desktop app reopens each track's audio. |
+| Version 2 | Upgraded as described above. |
 | Version 1 | Upgraded as described above, or rejected. |
 | Future version or invalid file | Rejected; the current workspace and source file stay. |
 
@@ -168,7 +189,7 @@ views. These are constructor defaults, not user-configurable defaults.
 
 The parser constructs new objects containing known fields. It sorts markers,
 rejects duplicate ticks, lowercases digests and converts track spectrum `null`
-to `"reserved"`. For version 2 files, `parseProject` collects up to 16 unknown
+to `"reserved"`. For version 2 and 3 files, `parseProject` collects up to 16 unknown
 field paths in `unknownFields`, and the app shows `projectUnknownFields` to warn
 that saving keeps only recognized data. Normalized JSON does not preserve
 whitespace or field order. The locked `.wos` byte format is a separate
@@ -192,7 +213,7 @@ Opening a selected `.wosdx` file resolves its active media through `open_project
 This command accepts the selected project's host reference and a media ID, not a path.
 The host reads the bounded project file and grants access only to that entry's absolute supported audio path.
 The workspace verifies the media metadata and hash before adoption.
-Recovery reuses the persisted host grant. Browser file inputs and drops cannot provide absolute paths and require manual relinking.
+Recovery reuses the persisted host grant. The desktop app grants files that the user drops on its window in the same way as picked files. Browser file inputs and drops cannot provide absolute paths and require manual relinking.
 Projects without paths require one manual relink before saving the path.
 
 Relinking stages and decodes the candidate, then compares size, format,

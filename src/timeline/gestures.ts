@@ -1,6 +1,5 @@
 import { shallowRef } from 'vue';
 import type { EditorStore } from '../slicing/editor-store';
-import { markerTicks } from '@gumi-conqueror/wos-file';
 import { gridStepTicks } from '../core/gridlines';
 import { MAX_TICKS, resolveBreakpointTick } from '../core/timebase';
 import type { Ghost } from './render';
@@ -45,11 +44,11 @@ export function createTimelineGestures(editor: EditorStore) {
   const unregister = editor.registerDraftCancellation(() => {
     cancel();
   });
-  function bitmap(): Uint8Array {
-    const value = new Uint8Array(MAX_TICKS);
-    for (const tick of editor.ticks) value[tick] = 1;
-    return value;
+  /** The markers of a paint or erase draft. */
+  function bitmap(): Set<number> {
+    return new Set(editor.ticks);
   }
+  const markerTicks = (draft: ReadonlySet<number>) => [...draft].sort((a, b) => a - b);
   const tickAt = (x: number) => editor.scrollTick + x / editor.pxPerTick;
   const clamped = (tick: number) => Math.max(0, Math.min(MAX_TICKS - 1, Math.round(tick)));
   const paintTick = (point: TimelinePointer) =>
@@ -74,9 +73,9 @@ export function createTimelineGestures(editor: EditorStore) {
       }
     return nearest;
   }
-  function paint(tick: number, changed: Set<number>, draft: Uint8Array): void {
-    if (!editor.legalTick(tick) || draft[tick] === 1) return;
-    draft[tick] = 1;
+  function paint(tick: number, changed: Set<number>, draft: Set<number>): void {
+    if (!editor.legalTick(tick) || draft.has(tick)) return;
+    draft.add(tick);
     changed.add(tick);
   }
   function paintSegment(
@@ -84,7 +83,7 @@ export function createTimelineGestures(editor: EditorStore) {
     to: number,
     point: TimelinePointer,
     changed: Set<number>,
-    draft: Uint8Array,
+    draft: Set<number>,
   ): void {
     const step = gridStepTicks(editor.grid);
     if (editor.snap && !point.altKey && step > 0) {
@@ -92,12 +91,12 @@ export function createTimelineGestures(editor: EditorStore) {
         paint(Math.round(tick), changed, draft);
     } else paint(to, changed, draft);
   }
-  function erase(first: number, last: number, draft: Uint8Array): number {
+  function erase(first: number, last: number, draft: Set<number>): number {
     const radius = ERASE_RADIUS_PX / editor.pxPerTick;
     const hits = markerTicks(draft).filter(
       (tick) => tick >= Math.min(first, last) - radius && tick <= Math.max(first, last) + radius,
     );
-    for (const tick of hits) draft[tick] = 0;
+    for (const tick of hits) draft.delete(tick);
     editor.setPreviewTicks(markerTicks(draft));
     return hits.length;
   }

@@ -2,7 +2,8 @@ import type { SourceAudio } from '../core/audio/pcm';
 import { computed, markRaw, shallowRef, triggerRef } from 'vue';
 import { defineStore } from 'pinia';
 import { normalizeSelection } from '../core/markers';
-import { remapMarkerKeys, type MarkerKeys } from '../project/marker-keys';
+import type { MarkerKeys } from '../project/marker-keys';
+import { applyMarkerEdit } from '../project/marker-links';
 import { ProjectEditor } from '../project/editor';
 import { createEmptyProject, currentTrack } from '../project/codec';
 import type {
@@ -19,6 +20,9 @@ import {
   markerTickAllowed,
   resolveBreakpointTick,
   samplesPerTick,
+  sampleToTick,
+  EMPTY_TIMELINE_TICKS,
+  MEASURE_TICKS,
   tickToSampleExport,
   type TimeBase,
 } from '../core/timebase';
@@ -143,13 +147,22 @@ export const useEditorStore = defineStore('editor', () => {
   const trackAmps = computed<ReadonlyMap<string, number>>(() => {
     const tracks = document.value.tracks;
     const soloing = tracks.some((item) => item.solo && !item.muted);
+    const preview = trackGainPreview.value;
     return new Map(
-      tracks.map((item) => [
-        item.trackId,
-        item.muted || (soloing && !item.solo) ? 0 : dbToAmp(clampGainDb(item.gainDb)),
-      ]),
+      tracks.map((item) => {
+        const gain = preview?.trackId === item.trackId ? preview.db : item.gainDb;
+        return [
+          item.trackId,
+          item.muted || (soloing && !item.solo) ? 0 : dbToAmp(clampGainDb(gain)),
+        ];
+      }),
     );
   });
+  /** A track gain while its slider is dragged; monitoring follows it without an undo entry. */
+  const trackGainPreview = shallowRef<{ trackId: string; db: number } | null>(null);
+  function setTrackGainPreview(value: { trackId: string; db: number } | null): void {
+    trackGainPreview.value = value && Number.isFinite(value.db) ? value : null;
+  }
   /** Mute, solo and gain of a track, as one undoable edit. */
   function setTrackMix(
     trackId: string,
@@ -255,6 +268,16 @@ export const useEditorStore = defineStore('editor', () => {
   const bandBusy = shallowRef(false);
   const ticks = computed(() => track.value.slicing.markers);
   const markerKeys = computed(() => track.value.slicing.markerKeys ?? []);
+  /** Ticks of the current track's linked markers. */
+  const linkedTicks = computed<ReadonlySet<number>>(() => new Set(track.value.slicing.links ?? []));
+  /** Marker edits follow links to other tracks, and new markers go to every track. */
+  const sharedMarkers = computed({
+    get: () => document.value.global.sharedMarkers,
+    set: (value: boolean) =>
+      applyGlobal((draft) => {
+        draft.global.sharedMarkers = value;
+      }),
+  });
   const canUndo = computed(() => project.value.canUndo);
   const canRedo = computed(() => project.value.canRedo);
   function publish(): void {
@@ -264,6 +287,7 @@ export const useEditorStore = defineStore('editor', () => {
   function cancelDraft(): void {
     volumePreview.value = null;
     cueVolumePreview.value = null;
+    trackGainPreview.value = null;
     cancelActiveDraft?.();
     previewTicks.value = null;
   }
@@ -290,6 +314,8 @@ export const useEditorStore = defineStore('editor', () => {
   function editTrack<T>(edit: (draft: ProjectTrack) => T, trackId = track.value.trackId) {
     return transact((draft) => edit(currentTrack(draft, trackId)));
   }
+  /** The track whose name field is open for editing. */
+  const renamingTrackId = shallowRef<string | null>(null);
   /** Renames a track in one undoable edit; a blank name is ignored. */
   function renameTrack(trackId: string, name: string): void {
     const value = name.trim();
@@ -340,23 +366,30 @@ export const useEditorStore = defineStore('editor', () => {
   ): void {
     updateSession({ lastFile: value }, trackId);
   }
-  function setTicks(value: readonly number[], keys: MarkerKeys = markerKeys.value): boolean {
-    return transact((draft) => {
-      const { slicing } = currentTrack(draft, currentTrackId.value);
-      slicing.markers = normalizeSelection(value);
-      const retained = new Set(slicing.markers);
-      slicing.markerKeys = remapMarkerKeys(
-        keys.filter((entry) => retained.has(entry.tick)),
-        (tick) => tick,
-      );
-    }).changed;
+  /**
+   * Replaces the current track's markers in one undoable edit. `target` tells
+   * where the edit moved each previous marker, so linked markers on other
+   * tracks can follow it.
+   */
+  function setTicks(
+    value: readonly number[],
+    keys: MarkerKeys = markerKeys.value,
+    target: (tick: number) => number = (tick) => tick,
+  ): boolean {
+    return transact((draft) =>
+      applyMarkerEdit(
+        draft.tracks,
+        currentTrack(draft, currentTrackId.value).trackId,
+        { markers: value, keys, target },
+        draft.global.sharedMarkers,
+        markerAllowed,
+      ),
+    ).changed;
   }
   function addTicks(value: readonly number[]): number {
-    return editTrack(({ slicing }) => {
-      const additions = normalizeSelection(value).filter((t) => !slicing.markers.includes(t));
-      slicing.markers = normalizeSelection([...slicing.markers, ...additions]);
-      return additions.length;
-    }).value;
+    const additions = normalizeSelection(value).filter((t) => !ticks.value.includes(t));
+    setTicks([...ticks.value, ...additions]);
+    return additions.length;
   }
   function setOutputOptions(value: Partial<OutputRecipe>): void {
     editTrack((draft) => {
@@ -395,14 +428,28 @@ export const useEditorStore = defineStore('editor', () => {
       tickToSampleExport(tick, timeBase.value) > source.value.length
     );
   }
-  function legalTick(tick: number): boolean {
-    const audio = source.value,
-      base = timeBase.value;
-    return markerTickAllowed(tick, audio && base && { base, length: audio.length });
+  /** Whether a track can hold a marker at a tick: within the timeline and, with audio, its audio. */
+  function markerAllowed(trackId: string, tick: number): boolean {
+    const audio = sessions.value.get(trackId)?.source,
+      base = timeBaseOf(trackId);
+    return markerTickAllowed(tick, audio && base ? { base, length: audio.length } : null);
   }
+  function legalTick(tick: number): boolean {
+    return markerAllowed(track.value.trackId, tick);
+  }
+  /** The cursor stays on the timeline, so held keys and sticks stop at its end. */
   function setCursorTick(tick: number): void {
     if (Number.isFinite(tick))
-      cursorTick.value = Math.max(0, Math.min(MAX_TICKS - 1, Math.round(tick)));
+      cursorTick.value = Math.max(0, Math.min(timelineTicks.value, Math.round(tick)));
+  }
+  /**
+   * Moves the cursor from a key, a controller or a seek, and keeps it in the
+   * middle of the view. Pointer clicks use `setCursorTick` and do not scroll.
+   */
+  function moveCursorTo(tick: number): void {
+    setCursorTick(tick);
+    if (viewportWidth.value > 0)
+      glideScrollTo(cursorTick.value - viewportWidth.value / pxPerTick.value / 2);
   }
   function setSelectedTicks(value: readonly number[]): void {
     selectedTicks.value = normalizeSelection(value).filter((t) => ticks.value.includes(t));
@@ -411,16 +458,99 @@ export const useEditorStore = defineStore('editor', () => {
     selectionStartTick.value = start;
     selectionEndTick.value = end;
   }
+  /** Scrolls within the timeline: the view never starts after its last viewport width. */
   function setScrollTick(value: number): void {
-    if (Number.isFinite(value)) scrollTick.value = Math.max(0, value);
+    stopGlide();
+    if (Number.isFinite(value)) scrollTick.value = scrollLimit(value);
+  }
+  function scrollLimit(value: number): number {
+    const span = viewportWidth.value > 0 ? viewportWidth.value / pxPerTick.value : 0;
+    return Math.max(0, Math.min(value, timelineTicks.value - span));
+  }
+  /** A glide approaches its target by 63 % in this time, so it slows down as it arrives. */
+  const GLIDE_MS = 70;
+  let glideFrame = 0,
+    glideTarget = 0;
+  function stopGlide(): void {
+    if (glideFrame) cancelAnimationFrame(glideFrame);
+    glideFrame = 0;
+  }
+  /**
+   * Scrolls smoothly toward a scroll position. A later target redirects the
+   * glide; any direct scroll stops it. Without animation frames, or when the
+   * user prefers reduced motion, the view jumps.
+   */
+  function glideScrollTo(value: number): void {
+    if (!Number.isFinite(value)) return;
+    glideTarget = scrollLimit(value);
+    const reduced =
+      typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (typeof requestAnimationFrame !== 'function' || reduced) {
+      setScrollTick(glideTarget);
+      return;
+    }
+    if (glideFrame) return;
+    let last = performance.now();
+    const step = (now: number): void => {
+      const share = 1 - Math.exp(-Math.max(0, now - last) / GLIDE_MS);
+      last = now;
+      const next = scrollTick.value + (glideTarget - scrollTick.value) * share;
+      // Within half a pixel, the glide lands on its target.
+      const done = Math.abs(glideTarget - next) * pxPerTick.value < 0.5;
+      scrollTick.value = done ? glideTarget : next;
+      glideFrame = done ? 0 : requestAnimationFrame(step);
+    };
+    glideFrame = requestAnimationFrame(step);
+  }
+  /** Shows the whole timeline. */
+  function zoomToFit(): void {
+    pxPerTick.value = fitScale.value;
+    scrollTick.value = 0;
   }
   function snapTick(tick: number): number {
     return resolveBreakpointTick(tick, snap.value, gridStepTicks(grid.value), false);
   }
+  /**
+   * The timeline length in ticks: to the end of the longest track's audio or
+   * the last marker of any track, plus one measure. Without audio it is at
+   * least `EMPTY_TIMELINE_TICKS` long. Scrolling, zooming out and the cursor
+   * stop there. `loading` gives the audio length of a track that is still
+   * loading, for the length the timeline will have.
+   */
+  function timelineLength(loading?: { trackId: string; ticks: number }): number {
+    let end = 0,
+      audible = false;
+    for (const item of document.value.tracks) {
+      const audio = sessions.value.get(item.trackId)?.source;
+      const base = timeBaseOf(item.trackId);
+      if (loading?.trackId === item.trackId) {
+        audible = true;
+        end = Math.max(end, Math.ceil(loading.ticks));
+      } else if (audio && base) {
+        audible = true;
+        end = Math.max(end, Math.ceil(sampleToTick(audio.length, base)));
+      }
+      end = Math.max(end, item.slicing.markers.at(-1) ?? 0);
+    }
+    // A new track is not in the document while it loads.
+    if (loading && !document.value.tracks.some((item) => item.trackId === loading.trackId)) {
+      audible = true;
+      end = Math.max(end, Math.ceil(loading.ticks));
+    }
+    const length = Math.min(MAX_TICKS, end + MEASURE_TICKS);
+    return audible ? length : Math.max(EMPTY_TIMELINE_TICKS, length);
+  }
+  const timelineTicks = computed(() => timelineLength());
+  /** The visible width of the timeline in CSS pixels; the timeline view reports it. */
+  const viewportWidth = shallowRef(0);
+  /** The zoom that shows the whole timeline in the viewport. */
+  const fitScale = computed(() =>
+    viewportWidth.value > 0 ? viewportWidth.value / timelineTicks.value : 0.02,
+  );
   function zoomAt(anchor: number, factor: number): void {
     const frames = timeBase.value ? samplesPerTick(timeBase.value) : 500;
     const next = zoomView({ scale: pxPerTick.value, scroll: scrollTick.value }, anchor, factor, {
-      min: 0.02,
+      min: Math.min(fitScale.value, 600),
       max: Math.max(600, 4 * frames),
     });
     pxPerTick.value = next.scale;
@@ -493,6 +623,7 @@ export const useEditorStore = defineStore('editor', () => {
     cursorTick.value = 0;
     setSelection(null, null);
     pxPerTick.value = 6;
+    stopGlide();
     scrollTick.value = 0;
     followPlayhead.value = true;
     exportLock.value = false;
@@ -507,6 +638,10 @@ export const useEditorStore = defineStore('editor', () => {
     sessions,
     timeBase,
     timeBaseOf,
+    timelineTicks,
+    timelineLength,
+    viewportWidth,
+    zoomToFit,
     docRevision,
     documentGeneration,
     isDirty,
@@ -531,6 +666,7 @@ export const useEditorStore = defineStore('editor', () => {
     masterAmp,
     trackAmps,
     setTrackMix,
+    setTrackGainPreview,
     cueAmp,
     setVolumePreview,
     setCueVolumePreview,
@@ -555,12 +691,16 @@ export const useEditorStore = defineStore('editor', () => {
     bandBusy,
     ticks,
     markerKeys,
+    linkedTicks,
+    sharedMarkers,
+    markerAllowed,
     canUndo,
     canRedo,
     transact,
     editTrack,
     selectTrack,
     renameTrack,
+    renamingTrackId,
     replaceDocument,
     undo,
     redo,
@@ -577,6 +717,7 @@ export const useEditorStore = defineStore('editor', () => {
     tickBeyondEnd,
     legalTick,
     setCursorTick,
+    moveCursorTo,
     setSelectedTicks,
     setSelection,
     setScrollTick,

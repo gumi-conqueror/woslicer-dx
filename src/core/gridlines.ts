@@ -52,7 +52,7 @@ export function gridLineTicks(
     const first = Math.floor(fromTick / grid) * grid;
     for (let tick = first; tick <= toTick; tick += grid) {
       if (tick < 0) continue;
-      if (tick > MAX_TICKS) break;
+      if (tick >= MAX_TICKS) break;
       lines.push({ tick, isMeasure: tick % MEASURE_TICKS === 0 });
     }
   }
@@ -60,7 +60,7 @@ export function gridLineTicks(
     const first = Math.floor(fromTick / MEASURE_TICKS) * MEASURE_TICKS;
     for (let tick = first; tick <= toTick; tick += MEASURE_TICKS) {
       if (tick < 0) continue;
-      if (tick > MAX_TICKS) break;
+      if (tick >= MAX_TICKS) break;
       lines.push({ tick, isMeasure: true });
     }
   }

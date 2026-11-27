@@ -44,20 +44,16 @@ const hints = computed(() => {
 </template>
 <style scoped>
 .gamepad-hints {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 2px 14px;
-  padding: 3px 10px;
-  border-top: 1px solid var(--el-border-color);
-  background: var(--wos-chrome);
-  color: var(--el-text-color-secondary);
-  font-size: 11px;
+  display: inline;
 }
 .hint {
   display: inline-flex;
   align-items: center;
   gap: 3px;
+  vertical-align: middle;
+}
+.hint + .hint {
+  margin-left: 14px;
 }
 .gamepad-icon {
   width: 19px;

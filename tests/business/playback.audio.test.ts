@@ -498,3 +498,28 @@ describe('multi-track playback', () => {
     for (const gain of [snareGain, kickGain]) expect(gain?.disconnect).toHaveBeenCalled();
   });
 });
+
+describe('track switching during playback', () => {
+  it('keeps playing at the same time position on the newly selected track', async () => {
+    const app = createTestApp();
+    await app.workspace.loadAudio(audioFile('kick.wav', 96000));
+    const kick = app.editor.track.trackId;
+    app.opened = { ...audioFile('snare.wav', 96000) };
+    await app.run('add-track');
+    const playback = createPlayback(app.editor);
+    owners.push(playback);
+    const context = required(contexts.at(-1));
+    app.editor.selectTrack(kick);
+    playback.play();
+    context.currentTime = 0.5;
+    void app.run('next-track');
+    // Both test files are 48 kHz, so 0.5 s is sample 24000 on the new track.
+    expect(app.editor.playing).toBe(true);
+    expect(app.editor.track.trackId).not.toBe(kick);
+    expect(playback.currentSample()).toBe(24000);
+    playback.stop();
+    // A stopped playhead keeps its time as well.
+    app.editor.selectTrack(kick);
+    expect(app.editor.playheadSample).toBe(24000);
+  });
+});

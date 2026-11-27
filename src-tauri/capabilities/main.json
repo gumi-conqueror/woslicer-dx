@@ -21,6 +21,7 @@
     "allow-app-data-folders",
     "allow-open-data-folder",
     "allow-open-file",
+    "allow-open-files",
     "allow-reopen-file",
     "allow-open-project-media",
     "allow-begin-read",
