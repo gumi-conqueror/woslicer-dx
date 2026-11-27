@@ -218,7 +218,8 @@
     "pressKey": "사용할 키 입력. Esc로 취소.",
     "pressControl": "사용할 컨트롤러 버튼 입력. Menu로 취소.",
     "keyReserved": "메뉴와 대화 상자용 예약 키. 다른 키 입력.",
-    "inputSettingsTitle": "입력 설정"
+    "inputSettingsTitle": "입력 설정",
+    "trackGain": "트랙 게인(dB)"
   },
   "status": {
     "projectOpened": "프로젝트 열기 완료: {name}",
@@ -461,7 +462,9 @@
     },
     "audioFormats": "WAV, AIFF, FLAC, Ogg Vorbis, MP3, AAC-LC, ALAC의 모노·스테레오 지원. 내부 처리는 Float32, WAV 출력은 16-bit PCM 사용. AAC의 앞뒤에는 인코더가 추가한 여백이 있을 수 있다. MKV/MKA는 위 코덱 지원. Opus는 미지원. MKV/MKA는 오디오 트랙 하나만 읽음. 기본 트랙 표시가 생략되면 첫 트랙을 선택할 수 있음. 필요한 트랙은 미리 추출.",
     "previousTrack": "이전 트랙 선택",
-    "nextTrack": "다음 트랙 선택"
+    "nextTrack": "다음 트랙 선택",
+    "moveTrackUp": "현재 트랙을 위로 이동",
+    "moveTrackDown": "현재 트랙을 아래로 이동"
   },
   "input": {
     "keyboard": "키보드 / 마우스",

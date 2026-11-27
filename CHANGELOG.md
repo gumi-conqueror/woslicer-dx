@@ -4,6 +4,13 @@
 
 ## Unreleased
 
+## 2.0.0-alpha.8 — 2026-11-27
+
+### Added
+
+- Ctrl/Cmd+Shift+↑ and Ctrl/Cmd+Shift+↓ move the current track up or down the track list.
+- Each track header has a gain field in dB for playback.
+
 ## 2.0.0-alpha.7 — 2026-11-27
 
 ### Added
