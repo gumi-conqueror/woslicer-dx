@@ -372,8 +372,7 @@
     "markersRelinked": "분할점 {count}개 다시 링크함.",
     "markersRelinkNone": "다른 트랙의 같은 위치에 분할점 없음.",
     "sharedMarkersOn": "분할점 공유: 분할점 편집이 모든 트랙에 적용됨.",
-    "sharedMarkersOff": "트랙 단독: 분할점 편집이 현재 트랙에만 적용됨.",
-    "markersLinkedAt": "tick {tick}의 분할점 {count}개를 링크함."
+    "sharedMarkersOff": "트랙 단독: 분할점 편집이 현재 트랙에만 적용됨."
   },
   "menu": {
     "file": "파일",
@@ -571,20 +570,33 @@
   },
   "hints": {
     "area": "마우스와 키보드",
-    "timelineDrag": "드래그: 분할점 추가",
-    "timelineRightDrag": "오른쪽 드래그: 분할점 삭제",
-    "timelineMove": "분할점 드래그: 선택 이동",
-    "timelineSelect": "Shift/Ctrl+드래그: 범위 선택",
-    "timelineAlt": "Alt: 스냅 안 함",
-    "timelineWheel": "휠: 스크롤 · Ctrl+휠: 확대/축소",
-    "rulerClick": "클릭: 커서와 재생 위치 이동",
-    "rulerWheel": "휠: 확대/축소",
-    "overviewDrag": "클릭 또는 드래그: 보기 이동",
-    "trackClick": "클릭: 트랙 선택",
-    "trackRightClick": "오른쪽 클릭: 트랙 메뉴",
-    "markerClick": "행 클릭: 선택 · Ctrl+클릭: 선택에 추가",
-    "cellClick": "칸 클릭: 링크할 점 선택",
-    "cellDoubleClick": "칸 더블클릭: 이 시점의 분할점 모두 선택",
-    "cellRightClick": "칸 오른쪽 클릭: 링크 또는 해제"
+    "addMarkers": "분할점 추가",
+    "removeMarkers": "분할점 삭제",
+    "moveMarkers": "분할점 위: 선택 이동",
+    "addRange": "범위를 선택에 추가",
+    "toggleRange": "범위 선택 전환",
+    "noSnap": "스냅 안 함",
+    "moveView": "보기 이동",
+    "scroll": "스크롤",
+    "zoom": "확대/축소",
+    "seek": "커서와 재생 위치 이동",
+    "selectTrack": "트랙 선택",
+    "renameTrack": "이름 위: 이름 변경",
+    "trackMenu": "트랙 메뉴",
+    "selectCell": "칸 선택",
+    "selectLinked": "링크된 칸 선택",
+    "selectRow": "행 선택",
+    "linkCells": "선택 링크 또는 해제",
+    "goToMarker": "분할점으로 이동"
+  },
+  "mouse": {
+    "left": "왼쪽 버튼",
+    "right": "오른쪽 버튼",
+    "middle": "가운데 버튼",
+    "wheel": "휠",
+    "click": "클릭",
+    "double": "더블클릭",
+    "triple": "트리플클릭",
+    "drag": "드래그"
   }
 }

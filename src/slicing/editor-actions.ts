@@ -55,6 +55,12 @@ export function moveMarkers(editor: EditorStore, ticks: readonly number[], delta
   return applied;
 }
 
+/** Markers of some tracks at one tick. */
+export interface LinkPoints {
+  tick: number;
+  trackIds: readonly string[];
+}
+
 export function createEditorActions(editor: EditorStore) {
   let measureClipboard: { offsets: number[]; keys: MarkerKeys } | null = null;
   let selectionClipboard: { offsets: number[]; origin: number; keys: MarkerKeys } | null = null;
@@ -277,24 +283,39 @@ export function createEditorActions(editor: EditorStore) {
     editor.setStatus(count ? 'markersRelinked' : 'markersRelinkNone', { count });
     return count;
   }
-  /** Links the markers of the given tracks at one tick, adding markers where a track has none. */
-  function linkPoints(tick: number, trackIds: readonly string[]): number {
-    editor.cancelDraft();
-    const count =
-      editor.transact((draft) => linkAt(draft.tracks, tick, trackIds, editor.markerAllowed))
-        .value ?? 0;
-    if (count) editor.setStatus('markersLinkedAt', { count, tick });
-    else editor.setStatus('markersRelinkNone');
-    return count;
-  }
-  /** Removes the markers of the given tracks at one tick from their link group. */
-  function unlinkPoints(tick: number, trackIds: readonly string[]): number {
+  /**
+   * Links the markers of the given tracks at each tick, adding markers where a
+   * track has none, in one undoable edit. A tick needs at least two tracks.
+   */
+  function linkPoints(points: readonly LinkPoints[]): number {
     editor.cancelDraft();
     const count =
       editor.transact((draft) =>
-        draft.tracks
-          .filter((item) => trackIds.includes(item.trackId))
-          .reduce((sum, item) => sum + unlinkTrackMarkers(item, [tick]), 0),
+        points.reduce(
+          (sum, { tick, trackIds }) =>
+            sum + linkAt(draft.tracks, tick, trackIds, editor.markerAllowed),
+          0,
+        ),
+      ).value ?? 0;
+    editor.setStatus(count ? 'markersLinked' : 'markersRelinkNone', {
+      count,
+      tracks: new Set(points.flatMap((point) => point.trackIds)).size,
+    });
+    return count;
+  }
+  /** Removes the markers of the given tracks at each tick from their link groups, in one undoable edit. */
+  function unlinkPoints(points: readonly LinkPoints[]): number {
+    editor.cancelDraft();
+    const count =
+      editor.transact((draft) =>
+        points.reduce(
+          (sum, { tick, trackIds }) =>
+            sum +
+            draft.tracks
+              .filter((item) => trackIds.includes(item.trackId))
+              .reduce((total, item) => total + unlinkTrackMarkers(item, [tick]), 0),
+          0,
+        ),
       ).value ?? 0;
     editor.setStatus('markersUnlinked', { count });
     return count;

@@ -174,7 +174,7 @@ describe('editor panels with real Element Plus controls', () => {
     await rows[2].trigger('click');
     expect(f.editor.playheadSample).not.toBe(12345);
   });
-  it('links and unlinks points in the marker list and wraps track cells after eight tracks', async () => {
+  it('selects, links and goes to points in the marker list and wraps track cells after eight tracks', async () => {
     const { f, options } = setup();
     // Track markers: tick 24 on two tracks, not linked.
     f.editor.sharedMarkers = false;
@@ -191,23 +191,41 @@ describe('editor panels with real Element Plus controls', () => {
     await flushPromises();
     const links = () => f.editor.document.tracks.map((track) => track.slicing.links ?? []);
     const cell = (name: string) => wrapper.get(`[aria-label="${name}"]`);
-    // A right click on a point links it with the other markers at its tick.
-    await cell('1: marker').trigger('contextmenu');
-    expect(links()).toEqual([[24], [24]]);
-    // A right click on a linked point unlinks it.
-    await cell('1: linked marker').trigger('contextmenu');
-    expect(links()).toEqual([[], []]);
-    // Left clicks pick points; a right click on a picked point links the picked points.
-    await cell('1: marker').trigger('click');
-    await cell('2: marker').trigger('click');
+    const click = (name: string, detail = 1) =>
+      cell(name).element.dispatchEvent(new MouseEvent('click', { bubbles: true, detail }));
+    const middle = async (name: string) => {
+      cell(name).element.dispatchEvent(new MouseEvent('auxclick', { bubbles: true, button: 1 }));
+      await flushPromises();
+    };
+    // Left clicks select cells; a middle click links a selection without linked markers.
+    click('1: marker');
+    click('2: marker');
+    await flushPromises();
     expect(wrapper.findAll('.marker-cell.picked')).toHaveLength(2);
+    await middle('2: marker');
+    expect(links()).toEqual([[24], [24]]);
+    expect(wrapper.findAll('.marker-cell.picked')).toHaveLength(0);
+    // A second click adds the cells linked with the clicked one.
+    click('1: linked marker');
+    click('1: linked marker', 2);
+    await flushPromises();
+    expect(wrapper.findAll('.marker-cell.picked')).toHaveLength(2);
+    // A middle click on a selection with linked markers unlinks them.
+    await middle('1: linked marker');
+    expect(links()).toEqual([[], []]);
+    // A third click selects the whole row.
+    click('1: marker', 3);
+    await middle('1: marker');
+    expect(links()).toEqual([[24], [24]]);
+    // With nothing selected, a middle click acts on the clicked cell.
+    await middle('2: linked marker');
+    expect(links()).toEqual([[], []]);
+    // A right click makes the cell's track current and moves the cursor to the marker.
+    f.editor.selectTrack(f.editor.document.tracks[0]?.trackId ?? '');
     await cell('2: marker').trigger('contextmenu');
-    expect(links()).toEqual([[24], [24]]);
-    // A double click picks every marker at the tick; a right click then unlinks them all.
-    await cell('1: linked marker').trigger('dblclick');
-    expect(wrapper.findAll('.marker-cell.picked')).toHaveLength(2);
-    await cell('2: linked marker').trigger('contextmenu');
-    expect(links()).toEqual([[], []]);
+    expect(f.editor.track.trackId).toBe('second');
+    expect(f.editor.cursorTick).toBe(24);
+    expect(f.editor.selectedTicks).toEqual([24]);
     // Ten tracks need two lines of cells, so rows grow from 32 px to 46 px.
     f.editor.transact((draft) => {
       for (let index = 3; index <= 10; index++) {
@@ -229,8 +247,12 @@ describe('editor panels with real Element Plus controls', () => {
     area.dispatchEvent(new PointerEvent('pointerover', { bubbles: true }));
     await flushPromises();
     const hints = wrapper.get('[role="note"]');
-    expect(hints.text()).toContain('Right-click: track menu');
-    expect(hints.text()).toContain('F2: Rename track');
+    // Mouse actions show a mouse icon, shortcuts show key caps.
+    expect(hints.get('[aria-label="Right button click"]').element.parentElement?.textContent).toBe(
+      'Track menu',
+    );
+    const rename = hints.findAll('.hint').find((hint) => hint.text().endsWith('Rename track'));
+    expect(rename?.findAll('kbd').map((key) => key.text())).toEqual(['F2']);
     // Moving onto the status bar keeps the hints; an area without hints clears them.
     wrapper
       .get('.statusbar')

@@ -372,8 +372,7 @@
     "markersRelinked": "已重新链接 {count} 个切点。",
     "markersRelinkNone": "其他音轨在相同位置没有切点。",
     "sharedMarkersOn": "共享切点：切点编辑作用于所有音轨。",
-    "sharedMarkersOff": "单轨切点：切点编辑只作用于当前音轨。",
-    "markersLinkedAt": "已链接 tick {tick} 上的 {count} 个切点。"
+    "sharedMarkersOff": "单轨切点：切点编辑只作用于当前音轨。"
   },
   "menu": {
     "file": "文件",
@@ -571,20 +570,33 @@
   },
   "hints": {
     "area": "鼠标和键盘",
-    "timelineDrag": "拖动：添加切点",
-    "timelineRightDrag": "右键拖动：删除切点",
-    "timelineMove": "拖动切点：移动选中的切点",
-    "timelineSelect": "Shift/Ctrl+拖动：框选",
-    "timelineAlt": "Alt：不吸附",
-    "timelineWheel": "滚轮：滚动 · Ctrl+滚轮：缩放",
-    "rulerClick": "单击：移动光标和播放光标",
-    "rulerWheel": "滚轮：缩放",
-    "overviewDrag": "单击或拖动：移动视图",
-    "trackClick": "单击：选中音轨",
-    "trackRightClick": "右键：音轨菜单",
-    "markerClick": "单击行：选中 · Ctrl+单击：加选",
-    "cellClick": "单击格子：选择要链接的点",
-    "cellDoubleClick": "双击格子：选中这个时间点的所有切点",
-    "cellRightClick": "右键格子：链接或解除链接"
+    "addMarkers": "添加切点",
+    "removeMarkers": "删除切点",
+    "moveMarkers": "在切点上：移动选中的切点",
+    "addRange": "框选加入选择",
+    "toggleRange": "框选切换选择",
+    "noSnap": "不吸附",
+    "moveView": "移动视图",
+    "scroll": "滚动",
+    "zoom": "缩放",
+    "seek": "移动光标和播放光标",
+    "selectTrack": "选中音轨",
+    "renameTrack": "在名称上：重命名",
+    "trackMenu": "音轨菜单",
+    "selectCell": "选择格子",
+    "selectLinked": "选择链接的格子",
+    "selectRow": "选择整行",
+    "linkCells": "链接或解除选中的格子",
+    "goToMarker": "跳到切点"
+  },
+  "mouse": {
+    "left": "左键",
+    "right": "右键",
+    "middle": "中键",
+    "wheel": "滚轮",
+    "click": "单击",
+    "double": "双击",
+    "triple": "三击",
+    "drag": "拖动"
   }
 }

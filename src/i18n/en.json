@@ -372,8 +372,7 @@
     "markersRelinked": "Relinked {count} markers.",
     "markersRelinkNone": "No other track has a marker at the same position.",
     "sharedMarkersOn": "Shared markers: marker edits apply to all tracks.",
-    "sharedMarkersOff": "Track markers: marker edits apply to the current track only.",
-    "markersLinkedAt": "Linked {count} markers at tick {tick}."
+    "sharedMarkersOff": "Track markers: marker edits apply to the current track only."
   },
   "menu": {
     "file": "File",
@@ -571,20 +570,33 @@
   },
   "hints": {
     "area": "Mouse and keyboard",
-    "timelineDrag": "Drag: add markers",
-    "timelineRightDrag": "Right-drag: remove markers",
-    "timelineMove": "Drag a marker: move the selection",
-    "timelineSelect": "Shift/Ctrl+drag: select",
-    "timelineAlt": "Alt: no snapping",
-    "timelineWheel": "Wheel: scroll · Ctrl+wheel: zoom",
-    "rulerClick": "Click: move the cursor and playhead",
-    "rulerWheel": "Wheel: zoom",
-    "overviewDrag": "Click or drag: move the view",
-    "trackClick": "Click: select the track",
-    "trackRightClick": "Right-click: track menu",
-    "markerClick": "Click a row: select · Ctrl+click: add to selection",
-    "cellClick": "Click a cell: pick a point",
-    "cellDoubleClick": "Double-click a cell: pick all markers at this time",
-    "cellRightClick": "Right-click a cell: link or unlink"
+    "addMarkers": "Add markers",
+    "removeMarkers": "Remove markers",
+    "moveMarkers": "On a marker: move the selection",
+    "addRange": "Add a range to the selection",
+    "toggleRange": "Toggle the selection in a range",
+    "noSnap": "Place without snapping",
+    "moveView": "Move the view",
+    "scroll": "Scroll",
+    "zoom": "Zoom",
+    "seek": "Move the cursor and playhead",
+    "selectTrack": "Select the track",
+    "renameTrack": "On the name: rename",
+    "trackMenu": "Track menu",
+    "selectCell": "Select a cell",
+    "selectLinked": "Select its linked cells",
+    "selectRow": "Select the row",
+    "linkCells": "Link or unlink the selection",
+    "goToMarker": "Go to the marker"
+  },
+  "mouse": {
+    "left": "Left button",
+    "right": "Right button",
+    "middle": "Middle button",
+    "wheel": "Wheel",
+    "click": "click",
+    "double": "double-click",
+    "triple": "triple-click",
+    "drag": "drag"
   }
 }

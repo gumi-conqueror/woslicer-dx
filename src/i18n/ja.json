@@ -372,8 +372,7 @@
     "markersRelinked": "分割点 {count} 個を再リンク。",
     "markersRelinkNone": "他のトラックの同じ位置に分割点なし。",
     "sharedMarkersOn": "分割点共有：分割点の編集は全トラックに適用。",
-    "sharedMarkersOff": "トラック単独：分割点の編集は現在のトラックのみに適用。",
-    "markersLinkedAt": "tick {tick} の分割点 {count} 個をリンク。"
+    "sharedMarkersOff": "トラック単独：分割点の編集は現在のトラックのみに適用。"
   },
   "menu": {
     "file": "ファイル",
@@ -571,20 +570,33 @@
   },
   "hints": {
     "area": "マウスとキーボード",
-    "timelineDrag": "ドラッグ：分割点を追加",
-    "timelineRightDrag": "右ドラッグ：分割点を削除",
-    "timelineMove": "分割点をドラッグ：選択を移動",
-    "timelineSelect": "Shift/Ctrl+ドラッグ：範囲選択",
-    "timelineAlt": "Alt：スナップしない",
-    "timelineWheel": "ホイール：スクロール · Ctrl+ホイール：ズーム",
-    "rulerClick": "クリック：カーソルと再生位置を移動",
-    "rulerWheel": "ホイール：ズーム",
-    "overviewDrag": "クリックまたはドラッグ：表示位置を移動",
-    "trackClick": "クリック：トラックを選択",
-    "trackRightClick": "右クリック：トラックメニュー",
-    "markerClick": "行をクリック：選択 · Ctrl+クリック：選択に追加",
-    "cellClick": "セルをクリック：リンクする点を選択",
-    "cellDoubleClick": "セルをダブルクリック：この時点の分割点をすべて選択",
-    "cellRightClick": "セルを右クリック：リンクまたは解除"
+    "addMarkers": "分割点を追加",
+    "removeMarkers": "分割点を削除",
+    "moveMarkers": "分割点の上：選択を移動",
+    "addRange": "範囲を選択に追加",
+    "toggleRange": "範囲の選択を切替",
+    "noSnap": "スナップしない",
+    "moveView": "表示位置を移動",
+    "scroll": "スクロール",
+    "zoom": "ズーム",
+    "seek": "カーソルと再生位置を移動",
+    "selectTrack": "トラックを選択",
+    "renameTrack": "名前の上：名前を変更",
+    "trackMenu": "トラックメニュー",
+    "selectCell": "セルを選択",
+    "selectLinked": "リンクしたセルを選択",
+    "selectRow": "行を選択",
+    "linkCells": "選択をリンクまたは解除",
+    "goToMarker": "分割点へ移動"
+  },
+  "mouse": {
+    "left": "左ボタン",
+    "right": "右ボタン",
+    "middle": "中ボタン",
+    "wheel": "ホイール",
+    "click": "クリック",
+    "double": "ダブルクリック",
+    "triple": "トリプルクリック",
+    "drag": "ドラッグ"
   }
 }

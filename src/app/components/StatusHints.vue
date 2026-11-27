@@ -2,10 +2,12 @@
 import { computed, onBeforeUnmount, onMounted, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { commandLabel } from '../commands';
-import { HINT_AREAS, isHintArea, type HintArea } from '../hint-areas';
-import { shortcutLabel } from '../../input/bindings';
+import { HINT_AREAS, isHintArea, type HintArea, type MouseHint } from '../hint-areas';
+import { chordKeys, keyboardChords } from '../../input/bindings';
 import { useInputState } from '../../input/state';
 import GamepadHints from './GamepadHints.vue';
+import KeyCaps from '../../ui/KeyCaps.vue';
+import MouseIcon from '../../ui/MouseIcon.vue';
 
 /**
  * Input hints in the status bar. With a controller, the common controller
@@ -33,14 +35,21 @@ onBeforeUnmount(() => {
   window.removeEventListener('pointerover', hover);
   document.documentElement.removeEventListener('pointerleave', leave);
 });
+/** Each hint: held keys, an optional mouse gesture, and the action. */
 const items = computed(() => {
   if (!area.value) return [];
   const { mouse, commands } = HINT_AREAS[area.value];
   return [
-    ...mouse.map((key) => t(key)),
+    ...mouse.map((hint: MouseHint) => ({
+      keys: hint.keys ?? [],
+      mouse: hint.mouse,
+      label: t(hint.label),
+    })),
     ...commands.flatMap((command) => {
-      const keys = shortcutLabel(command);
-      return keys ? [`${keys}: ${t(commandLabel(command))}`] : [];
+      const chord = keyboardChords(command)[0];
+      return chord
+        ? [{ keys: chordKeys(chord), mouse: undefined, label: t(commandLabel(command)) }]
+        : [];
     }),
   ];
 });
@@ -55,10 +64,16 @@ const items = computed(() => {
       :aria-label="t('hints.area')"
     >
       <span
-        v-for="item in items"
-        :key="item"
+        v-for="(item, index) in items"
+        :key="index"
         class="hint"
-        >{{ item }}</span
+        ><KeyCaps
+          v-if="item.keys.length"
+          :keys="item.keys"
+        /><MouseIcon
+          v-if="item.mouse"
+          v-bind="item.mouse"
+        />{{ item.label }}</span
       >
     </span>
   </span>
@@ -72,6 +87,12 @@ const items = computed(() => {
   white-space: nowrap;
   text-overflow: ellipsis;
   font-size: 11px;
+}
+.area-hints .hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  vertical-align: middle;
 }
 .area-hints .hint + .hint {
   margin-left: 14px;

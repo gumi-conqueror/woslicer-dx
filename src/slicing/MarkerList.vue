@@ -48,46 +48,61 @@ const cellLines = computed(() => Math.ceil(columns.value.length / CELLS_PER_LINE
 const cellGrid = computed(() => ({
   gridTemplateColumns: `repeat(${Math.min(columns.value.length, CELLS_PER_LINE)}, 14px)`,
 }));
-/**
- * The points picked for linking: tracks at one tick. Picking a point at
- * another tick starts a new pick.
- */
-const picked = shallowRef<{ tick: number; trackIds: ReadonlySet<string> } | null>(null);
+type Column = (typeof columns.value)[number];
+/** Selected cells, as "track id@tick". Cells at several ticks can be selected. */
+const picked = shallowRef<ReadonlySet<string>>(new Set());
+const cellKey = (trackId: string, tick: number) => `${trackId}@${tick}`;
 function isPicked(trackId: string, tick: number): boolean {
-  return picked.value?.tick === tick && picked.value.trackIds.has(trackId);
-}
-/** A left click picks or drops one point. */
-function pick(trackId: string, tick: number): void {
-  const ids = new Set(picked.value?.tick === tick ? picked.value.trackIds : []);
-  if (ids.has(trackId)) ids.delete(trackId);
-  else ids.add(trackId);
-  picked.value = ids.size ? { tick, trackIds: ids } : null;
-}
-/** A double click picks every marker at the tick. */
-function pickAll(tick: number): void {
-  const ids = columns.value.filter((column) => column.markers.has(tick)).map((c) => c.trackId);
-  picked.value = { tick, trackIds: new Set(ids) };
+  return picked.value.has(cellKey(trackId, tick));
 }
 /**
- * A right click links or unlinks. On a picked point it acts on all picked
- * points: they unlink when all of them are linked, otherwise they link. On
- * another point it toggles that point alone, linking it with the other markers
- * at its tick.
+ * Left clicks select cells. One click selects or deselects a cell, also a
+ * linked one alone. A second click adds the cells linked with it; a third
+ * adds every cell of the row.
  */
-function toggleLink(column: (typeof columns.value)[number], tick: number): void {
-  const group = isPicked(column.trackId, tick) && picked.value ? [...picked.value.trackIds] : [];
-  if (group.length) {
-    const linked = columns.value.filter(
-      (item) => group.includes(item.trackId) && item.links.has(tick),
-    );
-    if (linked.length === group.length) workspace.actions.unlinkPoints(tick, group);
-    else workspace.actions.linkPoints(tick, group);
-  } else if (column.links.has(tick)) workspace.actions.unlinkPoints(tick, [column.trackId]);
-  else {
-    const holders = columns.value.filter((item) => item.markers.has(tick)).map((c) => c.trackId);
-    workspace.actions.linkPoints(tick, [...new Set([...holders, column.trackId])]);
+function pick(column: Column, tick: number, event: MouseEvent): void {
+  const next = new Set(picked.value);
+  const key = cellKey(column.trackId, tick);
+  if (event.detail <= 1) {
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+  } else if (event.detail === 2) {
+    if (!column.links.has(tick)) return;
+    for (const item of columns.value)
+      if (item.links.has(tick)) next.add(cellKey(item.trackId, tick));
+  } else for (const item of columns.value) next.add(cellKey(item.trackId, tick));
+  picked.value = next;
+}
+/**
+ * A middle click edits the links of the selection, or of the clicked cell when
+ * nothing is selected. Selected linked markers leave their links; a link that
+ * keeps one marker ends. A selection without linked markers is linked, tick by tick.
+ */
+function applyLinks(column: Column, tick: number): void {
+  const keys = picked.value.size ? [...picked.value] : [cellKey(column.trackId, tick)];
+  const groups = new Map<number, string[]>();
+  let linked = false;
+  for (const key of keys) {
+    const at = key.lastIndexOf('@');
+    const trackId = key.slice(0, at),
+      point = Number(key.slice(at + 1));
+    const item = columns.value.find((entry) => entry.trackId === trackId);
+    if (!item) continue;
+    if (item.links.has(point)) linked = true;
+    groups.set(point, [...(groups.get(point) ?? []), trackId]);
   }
-  picked.value = null;
+  const points = [...groups].map(([point, trackIds]) => ({ tick: point, trackIds }));
+  if (linked) workspace.actions.unlinkPoints(points);
+  else workspace.actions.linkPoints(points);
+  picked.value = new Set();
+}
+/** A right click goes to the marker: its track becomes current and the cursor moves there. */
+function goTo(column: Column, tick: number): void {
+  editor.selectTrack(column.trackId);
+  editor.moveCursorTo(tick);
+  editor.setSelectedTicks(column.markers.has(tick) ? [tick] : []);
+  if (editor.timeBase && !editor.playing)
+    editor.setPlayheadSample(tickToSampleExport(tick, editor.timeBase));
 }
 const otherTracks = computed(() =>
   columns.value.filter((column) => column.trackId !== editor.track.trackId),
@@ -278,9 +293,10 @@ watch(
                 ]"
                 :aria-pressed="isPicked(column.trackId, tick)"
                 :aria-label="`${column.number}: ${t(CELL_LABELS[cellState(column, tick)])}`"
-                @click.stop="pick(column.trackId, tick)"
-                @dblclick.stop="pickAll(tick)"
-                @contextmenu.prevent.stop="toggleLink(column, tick)"
+                @click.stop="pick(column, tick, $event)"
+                @mousedown.middle.prevent
+                @auxclick.stop="$event.button === 1 && applyLinks(column, tick)"
+                @contextmenu.prevent.stop="goTo(column, tick)"
               />
             </span>
           </div>

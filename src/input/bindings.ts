@@ -380,15 +380,17 @@ function keyLabel(chord: KeyChord): string {
   const value = chord.key ?? '';
   return KEY_LABELS[value] ?? (value.length === 1 ? value.toUpperCase() : value);
 }
+/** The keys of one chord, modifiers first, as key caps show them. */
+export function chordKeys(chord: KeyChord): string[] {
+  return [
+    ...(chord.primary ? ['Ctrl/Cmd'] : []),
+    ...(chord.alt ? ['Alt'] : []),
+    ...(chord.shift === true ? ['Shift'] : []),
+    keyLabel(chord),
+  ];
+}
 export function formatChords(chords: readonly KeyChord[]): string {
-  const labels = chords.map((chord) =>
-    [
-      ...(chord.primary ? ['Ctrl/Cmd'] : []),
-      ...(chord.alt ? ['Alt'] : []),
-      ...(chord.shift === true ? ['Shift'] : []),
-      keyLabel(chord),
-    ].join('+'),
-  );
+  const labels = chords.map((chord) => chordKeys(chord).join('+'));
   return [...new Set(labels)].join(' / ');
 }
 /** The keyboard text shown beside a command in menus and tooltips. */
