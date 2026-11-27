@@ -514,23 +514,33 @@ export const useEditorStore = defineStore('editor', () => {
    * The timeline length in ticks: to the end of the longest track's audio or
    * the last marker of any track, plus one measure. Without audio it is at
    * least `EMPTY_TIMELINE_TICKS` long. Scrolling, zooming out and the cursor
-   * stop there.
+   * stop there. `loading` gives the audio length of a track that is still
+   * loading, for the length the timeline will have.
    */
-  const timelineTicks = computed(() => {
+  function timelineLength(loading?: { trackId: string; ticks: number }): number {
     let end = 0,
       audible = false;
     for (const item of document.value.tracks) {
       const audio = sessions.value.get(item.trackId)?.source;
       const base = timeBaseOf(item.trackId);
-      if (audio && base) {
+      if (loading?.trackId === item.trackId) {
+        audible = true;
+        end = Math.max(end, Math.ceil(loading.ticks));
+      } else if (audio && base) {
         audible = true;
         end = Math.max(end, Math.ceil(sampleToTick(audio.length, base)));
       }
       end = Math.max(end, item.slicing.markers.at(-1) ?? 0);
     }
+    // A new track is not in the document while it loads.
+    if (loading && !document.value.tracks.some((item) => item.trackId === loading.trackId)) {
+      audible = true;
+      end = Math.max(end, Math.ceil(loading.ticks));
+    }
     const length = Math.min(MAX_TICKS, end + MEASURE_TICKS);
     return audible ? length : Math.max(EMPTY_TIMELINE_TICKS, length);
-  });
+  }
+  const timelineTicks = computed(() => timelineLength());
   /** The visible width of the timeline in CSS pixels; the timeline view reports it. */
   const viewportWidth = shallowRef(0);
   /** The zoom that shows the whole timeline in the viewport. */
@@ -629,6 +639,7 @@ export const useEditorStore = defineStore('editor', () => {
     timeBase,
     timeBaseOf,
     timelineTicks,
+    timelineLength,
     viewportWidth,
     zoomToFit,
     docRevision,

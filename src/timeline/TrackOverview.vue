@@ -40,16 +40,21 @@ const snapshot = computed(() => {
 });
 
 /**
- * The loading box: as long as the declared audio on the timeline, filled as far
- * as decoding has come. Without a declared length, it covers the whole row.
+ * The loading box: as long as the declared audio on the timeline that the
+ * project will have with it, filled as far as decoding has come. Without a
+ * declared length, it covers the whole row.
  */
 const loadingBox = computed(() => {
   const audio = props.loading?.audio;
   if (!audio?.frames) return null;
   const { bpm, shiftTicks: shift } = editor.document.timing;
-  const ticks = sampleToTick(audio.frames, { bpm, shift, sampleRate: audio.sampleRate });
+  const ticks = Math.max(
+    0,
+    sampleToTick(audio.frames, { bpm, shift, sampleRate: audio.sampleRate }),
+  );
+  const timeline = editor.timelineLength({ trackId: props.trackId, ticks });
   return {
-    width: `${(100 * Math.min(1, Math.max(0, ticks) / Math.max(editor.timelineTicks, ticks))).toFixed(3)}%`,
+    width: `${(100 * Math.min(1, ticks / timeline)).toFixed(3)}%`,
     done: `${(100 * Math.min(1, audio.decoded / audio.frames)).toFixed(3)}%`,
   };
 });
@@ -170,16 +175,19 @@ onBeforeUnmount(() => cancelAnimationFrame(frame));
   border-right: 1px solid var(--el-color-primary-light-5);
   background: var(--wos-panel-header);
 }
-/* The decoded part of the audio. */
+/* The decoded part of the audio, under the animation, which keeps moving until the track is ready. */
 .track-loading-done {
   position: absolute;
+  z-index: 0;
   inset: 0 auto 0 0;
-  background: var(--el-color-primary-light-8);
+  border-right: 2px solid var(--el-color-primary);
+  background: rgba(var(--el-color-primary-rgb), 0.18);
 }
 .track-loading::before,
 .track-loading::after {
   content: '';
   position: absolute;
+  z-index: 1;
   inset: 0;
 }
 .track-loading::before {

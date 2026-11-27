@@ -162,15 +162,18 @@ export function createWorkspace(options: WorkspaceOptions) {
     editor.setStatus('parsingSourceFile');
     let worker: AudioEngine | null = null;
     try {
-      const identity = await identifyAudio(file);
-      if (disposed || request !== opening) return;
+      // Hashing and decoding run at the same time, so the audio length shows
+      // early. Both read their own copy of the bytes.
       loading.value = { ...loading.value, stage: 'decoding', name: file.name };
       worker = createEngine();
       pendingEngine = worker;
-      const result = await worker.decode(file.name, file.bytes, (audio) => {
-        if (!disposed && request === opening)
-          loading.value = { ...loading.value, stage: 'decoding', audio };
-      });
+      const [identity, result] = await Promise.all([
+        identifyAudio(file),
+        worker.decode(file.name, file.bytes, (audio) => {
+          if (!disposed && request === opening)
+            loading.value = { ...loading.value, stage: 'decoding', audio };
+        }),
+      ]);
       if (disposed || request !== opening) return;
       // Parameter and marker edits remain valid during decoding. Only replacing
       // the document invalidates this result; merge audio into the latest state.
