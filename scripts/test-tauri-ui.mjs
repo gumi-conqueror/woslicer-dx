@@ -247,6 +247,8 @@ async function verifyProfile(profile, client, runDir) {
             reject(new Error(event.message));
           };
           worker.onmessage = ({ data }) => {
+            // Interim progress messages precede the decoded reply.
+            if (data.kind === 'decoding') return;
             worker.terminate();
             if (data.kind !== 'decoded') {
               reject(new Error(JSON.stringify(data)));
