@@ -17,4 +17,7 @@ it('keeps the cursor in the middle of the view when keys or a controller move it
   // A pointer click sets the cursor without scrolling.
   f.editor.setCursorTick(300);
   expect(f.editor.scrollTick).toBe(0);
+  // Held moves stop at the end of the 384-tick timeline.
+  for (let step = 0; step < 10; step++) await f.run('cursor-next-measure');
+  expect(f.editor.cursorTick).toBe(384);
 });

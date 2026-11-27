@@ -427,9 +427,10 @@ export const useEditorStore = defineStore('editor', () => {
   function legalTick(tick: number): boolean {
     return markerAllowed(track.value.trackId, tick);
   }
+  /** The cursor stays on the timeline, so held keys and sticks stop at its end. */
   function setCursorTick(tick: number): void {
     if (Number.isFinite(tick))
-      cursorTick.value = Math.max(0, Math.min(MAX_TICKS - 1, Math.round(tick)));
+      cursorTick.value = Math.max(0, Math.min(timelineTicks.value, Math.round(tick)));
   }
   /**
    * Moves the cursor from a key, a controller or a seek, and keeps it in the
@@ -463,18 +464,24 @@ export const useEditorStore = defineStore('editor', () => {
   }
   /**
    * The timeline length in ticks: to the end of the longest track's audio or
-   * the last marker of any track, plus one measure. Scrolling and zooming out
+   * the last marker of any track, plus one measure. Without audio it is at
+   * least `EMPTY_TIMELINE_TICKS` long. Scrolling, zooming out and the cursor
    * stop there.
    */
   const timelineTicks = computed(() => {
-    let end = 0;
+    let end = 0,
+      audible = false;
     for (const item of document.value.tracks) {
       const audio = sessions.value.get(item.trackId)?.source;
       const base = timeBaseOf(item.trackId);
-      if (audio && base) end = Math.max(end, Math.ceil(sampleToTick(audio.length, base)));
+      if (audio && base) {
+        audible = true;
+        end = Math.max(end, Math.ceil(sampleToTick(audio.length, base)));
+      }
       end = Math.max(end, item.slicing.markers.at(-1) ?? 0);
     }
-    return end > 0 ? Math.min(MAX_TICKS, end + MEASURE_TICKS) : EMPTY_TIMELINE_TICKS;
+    const length = Math.min(MAX_TICKS, end + MEASURE_TICKS);
+    return audible ? length : Math.max(EMPTY_TIMELINE_TICKS, length);
   });
   /** The visible width of the timeline in CSS pixels; the timeline view reports it. */
   const viewportWidth = shallowRef(0);
