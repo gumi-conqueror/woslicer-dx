@@ -98,7 +98,7 @@ pub fn run() {
             build_identity,
         ])
         .setup(|app| {
-            let data_dir = app.path().app_data_dir()?;
+            let data_dir = app_data::data_dir(app.handle())?;
             std::fs::create_dir_all(&data_dir)?;
             app.manage(files::HostFiles::load(&data_dir)?);
             let window =
