@@ -8,12 +8,21 @@ import {
   tickToSampleExport,
 } from '../core/timebase';
 import { formatRate, stepPlaybackRate } from '../core/rate';
-import { FAST_SEEK_SECONDS, RECORDING_SEEK_SECONDS, type RecordingInput } from '../input/recording';
 import type { EditorStore } from '../slicing/editor-store';
-import { FIELD_RANGES } from '../project/schema';
+import { FIELD_RANGES, type MarkerKey } from '../project/schema';
 import type { Workspace } from '../workspace/workspace';
 import type { Playback } from '../playback';
 import { visibleDialog } from '../ui/focus';
+
+/** The argument of `recording-tap`: the input time and the pressed recording keys 1–7. */
+export interface RecordingInput {
+  time?: number;
+  keys: readonly MarkerKey[];
+}
+/** How far the recording seek commands move the playhead. */
+export const RECORDING_SEEK_SECONDS = 0.5;
+/** A fast seek, for a long stick push, moves four ordinary seeks at once. */
+export const FAST_SEEK_SECONDS = 4 * RECORDING_SEEK_SECONDS;
 
 /** The editor state that command availability reads. */
 export type CommandState = Pick<

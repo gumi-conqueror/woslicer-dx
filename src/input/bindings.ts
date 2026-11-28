@@ -1,9 +1,9 @@
 import { shallowRef } from 'vue';
-import type { AppCommand } from '../app/commands';
+import type { AppCommand, RecordingInput } from '../app/commands';
 import type { GamepadControl } from './gamepad';
 import type { YuanconControl } from './yuancon/protocol';
 import type { MarkerKey } from '../project/schema';
-import { codeForKey, codeLabel, eventCode, type RecordingInput } from './recording';
+import { codeForKey, codeLabel, eventCode } from './recording';
 
 /**
  * Input layers. Recording lies over editing: a control bound in the recording
