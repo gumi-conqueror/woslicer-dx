@@ -5,6 +5,7 @@ import { expect, it, vi } from 'vitest';
 import BMHelperPanel from '../../src/bmhelper/BMHelperPanel.vue';
 import { useBmhelperStore } from '../../src/bmhelper/store';
 import { useEditorStore } from '../../src/slicing/editor-store';
+import { createEditorActions, editorActionsKey } from '../../src/slicing/editor-actions';
 import { createWorkspace, workspaceKey } from '../../src/workspace/workspace';
 import { setupI18n } from '../../src/i18n/setup';
 import type { OpenedFile, Platform } from '../../src/platform/contracts';
@@ -52,6 +53,7 @@ interface PanelHarness {
   wrapper: VueWrapper;
   platform: Platform;
   store: ReturnType<typeof useBmhelperStore>;
+  editor: ReturnType<typeof useEditorStore>;
   findButton(text: string): DOMWrapper<Element>;
   dispose(): Promise<void>;
 }
@@ -71,7 +73,10 @@ function mountPanel(options: {
   const wrapper = mount(BMHelperPanel, {
     global: {
       plugins: [pinia, translation.i18n],
-      provide: { [workspaceKey as symbol]: workspace },
+      provide: {
+        [workspaceKey as symbol]: workspace,
+        [editorActionsKey as symbol]: createEditorActions(editor),
+      },
       stubs: { PianoRoll: true, ElDialog: dialogStub },
     },
   });
@@ -79,6 +84,7 @@ function mountPanel(options: {
     wrapper,
     platform: options.platform,
     store,
+    editor,
     findButton: (text) => {
       const found = wrapper.findAll('button').find((value) => value.text() === text);
       if (!found) throw new Error(`Missing button: ${text}`);
@@ -155,7 +161,7 @@ it('exports converted BMH names with a warning and keeps Unicode DX work', async
   }
 });
 
-it('emits 48-per-beat cuts and uses platform clipboard and save actions', async () => {
+it('applies 48-per-beat cuts to the timeline and uses platform clipboard and save actions', async () => {
   const platform = createPlatform();
   const harness = mountPanel({
     platform,
@@ -166,7 +172,7 @@ it('emits 48-per-beat cuts and uses platform clipboard and save actions', async 
   });
   try {
     await harness.findButton('Apply markers to timeline').trigger('click');
-    expect(harness.wrapper.emitted('applyCuts')).toEqual([[{ ticks: [0] }]]);
+    expect(harness.editor.ticks).toEqual([0]);
     await harness.findButton('Copy markers').trigger('click');
     await flushPromises();
     const division = harness.store.selectedDivision;

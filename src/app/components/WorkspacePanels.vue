@@ -2,7 +2,6 @@
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
 import { useResizeObserver } from '@vueuse/core';
 import { useI18n } from 'vue-i18n';
-import { useEditorActions } from '../../slicing/editor-actions';
 import MarkerList from '../../slicing/MarkerList.vue';
 import DetectionPanel from '../../detection/DetectionPanel.vue';
 import OutputPanel from '../../export/OutputPanel.vue';
@@ -10,7 +9,6 @@ import BMHelperPanel from '../../bmhelper/BMHelperPanel.vue';
 import SourceInfo from './SourceInfo.vue';
 import AppIcon from '../../ui/AppIcon.vue';
 
-const actions = useEditorActions();
 const { t } = useI18n();
 const panels = [
   { id: 'source', title: 'chrome.tabSource', icon: 'wave' },
@@ -112,10 +110,7 @@ function close(id: PanelId): void {
           <MarkerList v-else-if="panel.id === 'cuts'" />
           <DetectionPanel v-else-if="panel.id === 'detect'" />
           <OutputPanel v-else-if="panel.id === 'output'" />
-          <BMHelperPanel
-            v-else
-            @apply-cuts="actions.applyBmhelperCuts($event.ticks)"
-          />
+          <BMHelperPanel v-else />
         </div>
       </section>
     </div>

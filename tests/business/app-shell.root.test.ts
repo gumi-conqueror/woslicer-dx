@@ -8,8 +8,6 @@ import WindowTitlebar from '../../src/app/components/WindowTitlebar.vue';
 import CalibrationDialog from '../../src/calibration/CalibrationDialog.vue';
 import { pinia, localization } from '../../src/app/runtime';
 import { useEditorStore } from '../../src/slicing/editor-store';
-import { useBmhelperStore } from '../../src/bmhelper/store';
-import { writeSmfSequence } from '../../src/core/formats/smf';
 
 /**
  * What Element Plus resolves a confirmed box with: the action string. Its
@@ -17,20 +15,6 @@ import { writeSmfSequence } from '../../src/core/formats/smf';
  * confirmation never carries, so the plain string needs this one assertion.
  */
 const confirmed = 'confirm' as MessageBoxData;
-
-/** BMHelper work named "discarded" that no file holds yet. */
-function unsavedBmhelperWork(): ReturnType<typeof useBmhelperStore> {
-  const bmh = useBmhelperStore(pinia);
-  const midi = writeSmfSequence({
-    quantize: 480,
-    notes: [{ position: 0, gate: 120, nn: 60, vel: 100 }],
-    controls: [],
-    pitches: [],
-  });
-  const track = bmh.inspectMidi(midi).tracks.find((value) => value.noteCount > 0)?.index ?? 0;
-  bmh.importMidi(midi, 'discarded.mid', track, new Set([0]));
-  return bmh;
-}
 
 const effects = vi.hoisted(() => ({
   stopAudio: vi.fn(),
@@ -94,7 +78,6 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.clearAllMocks();
   useEditorStore(pinia).reset();
-  useBmhelperStore(pinia).reset();
 });
 function render() {
   return mount(App, {
@@ -196,17 +179,14 @@ it('opens calibration from toolbar, isolates keyboard dispatch, and applies its 
     wrapper.unmount();
   }
 });
-it('coordinates confirmed workspace and BMHelper reset through the command dispatcher', async () => {
+it('resets the workspace through the command dispatcher after the close is confirmed', async () => {
   vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue(confirmed);
-  const bmh = unsavedBmhelperWork();
   const wrapper = render();
   try {
     wrapper.findComponent(ApplicationMenu).vm.$emit('command', 'close-project');
     await flushPromises();
     expect(effects.execute).toHaveBeenCalledWith('close-project');
     expect(effects.reset).toHaveBeenCalledOnce();
-    expect(bmh.name).toBe('');
-    expect(bmh.dirty).toBe(false);
   } finally {
     wrapper.unmount();
   }
@@ -375,7 +355,6 @@ it('blocks repeated close commands and keyboard dispatch while a reset is pendin
         resolveReset = resolve;
       }),
   );
-  const bmh = unsavedBmhelperWork();
   const wrapper = render();
   try {
     await flushPromises();
@@ -389,7 +368,6 @@ it('blocks repeated close commands and keyboard dispatch while a reset is pendin
     resolveReset();
     await flushPromises();
     expect(effects.reset).toHaveBeenCalledOnce();
-    expect(bmh.name).toBe('');
   } finally {
     wrapper.unmount();
   }
@@ -423,14 +401,12 @@ it('releases the close lock and surfaces the error when the reset fails', async 
 
 it('keeps the workspace and releases the lock when the close dialog is cancelled', async () => {
   const confirmSpy = vi.spyOn(ElMessageBox, 'confirm').mockRejectedValue('cancel');
-  const bmh = unsavedBmhelperWork();
   const wrapper = render();
   try {
     await flushPromises();
     wrapper.findComponent(ApplicationMenu).vm.$emit('command', 'close-project');
     await flushPromises();
     expect(effects.reset).not.toHaveBeenCalled();
-    expect(bmh.name).toBe('discarded');
     vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue(confirmed);
     wrapper.findComponent(ApplicationMenu).vm.$emit('command', 'close-project');
     await flushPromises();

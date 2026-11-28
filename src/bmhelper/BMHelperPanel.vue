@@ -26,10 +26,11 @@ import {
   type SortType,
 } from '../core/bmhelper';
 import type { SmfTrackInfo } from '../core/formats/smf';
+import { useEditorActions } from '../slicing/editor-actions';
 import { useBmhelperStore } from './store';
 import PianoRoll from './PianoRoll.vue';
 
-const emit = defineEmits<{ applyCuts: [value: { ticks: number[] }] }>();
+const actions = useEditorActions();
 const { t } = useI18n();
 const store = useBmhelperStore();
 const divisionName = ref('');
@@ -340,7 +341,7 @@ function showDefinitions(): void {
           >
           <ElButton
             :disabled="busy"
-            @click="emit('applyCuts', { ticks: store.cutTicks() })"
+            @click="actions.applyBmhelperCuts(store.cutTicks())"
             >{{ t('chrome.bmhApply') }}</ElButton
           >
           <ElButton

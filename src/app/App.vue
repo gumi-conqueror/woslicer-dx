@@ -20,7 +20,6 @@ import { getPlatform, getBuildIdentity } from '../platform';
 import type { BuildIdentity, ChosenFile } from '../platform/contracts';
 import { useEditorStore } from '../slicing/editor-store';
 import { createEditorActions, provideEditorActions } from '../slicing/editor-actions';
-import { useBmhelperStore } from '../bmhelper/store';
 import { createWorkspace, provideWorkspace } from '../workspace/workspace';
 import { createPlayback, providePlayback } from '../playback';
 import TimelineEditor from '../timeline/TimelineEditor.vue';
@@ -54,8 +53,6 @@ import { useYuanconRecording } from '../input/yuancon/use-recording';
 const platform = getPlatform();
 const editor = useEditorStore(pinia);
 const input = useInputState(pinia);
-const bmhelper = useBmhelperStore(pinia);
-bmhelper.bindEditor(editor);
 const workspace = createWorkspace({
   platform,
   editor,
@@ -330,7 +327,6 @@ async function closeWorkspace(): Promise<void> {
     dialogs.calibration = false;
     playback.stop();
     await workspace.reset();
-    bmhelper.reset();
     panelGeneration.value++;
   } catch (error: unknown) {
     if (error !== 'cancel' && error !== 'close') report(error);

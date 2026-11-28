@@ -2,7 +2,7 @@ import { mount } from '@vue/test-utils';
 import { createPinia, disposePinia } from 'pinia';
 import { nextTick } from 'vue';
 import { ElInputNumber, ElSelect, ElOption } from 'element-plus';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import { clearMocks, mockIPC } from '@tauri-apps/api/mocks';
 import DocumentOptions from '../../src/app/components/DocumentOptions.vue';
 import EditorToolbar from '../../src/app/components/EditorToolbar.vue';
@@ -20,7 +20,6 @@ import { MAX_TICKS } from '../../src/core/timebase';
 import { createI18n } from 'vue-i18n';
 import en from '../../src/i18n/en.json';
 import { fixture } from '../support/app';
-import BMHelperPanel from '../../src/bmhelper/BMHelperPanel.vue';
 import { creditLinks } from '../../src/platform/about-links';
 import * as platformApi from '../../src/platform';
 import { createTauriPlatform } from '../../src/platform/tauri';
@@ -156,9 +155,23 @@ describe('application controls', () => {
       instance.dispose();
     }
   });
-  it('filters BMHelper cuts with one undo entry and preserves BPM and project when its module is toggled', async () => {
-    // WorkspacePanels reads the workspace through injection, so this test
-    // mounts against the real workspace fixture instead of a bare pinia.
+  it('filters BMHelper cuts with one undo entry and preserves the BPM', () => {
+    const f = fixture();
+    onTestFinished(() => f.dispose());
+    f.editor.setDocumentOptions({ bpm: 120 });
+    f.editor.setTicks([24]);
+    f.editor.setSource(source);
+    f.actions.applyBmhelperCuts([-1, 0, 48, 1000, MAX_TICKS, 0.5]);
+    expect(f.editor.ticks).toEqual([0, 48]);
+    expect(f.editor.doc.bpm).toBe(120);
+    expect(f.editor.status.segments[0]).toMatchObject({
+      key: 'bmhAppliedDropped',
+      params: { count: 2, dropped: 4 },
+    });
+    f.editor.undo();
+    expect(f.editor.ticks).toEqual([24]);
+  });
+  it('keeps the BMHelper file name while its panel is hidden and shown again', async () => {
     const f = fixture();
     const i18n = createI18n({ legacy: false, locale: 'en', messages: { en } });
     const wrapper = mount(WorkspacePanels, {
@@ -175,23 +188,6 @@ describe('application controls', () => {
       },
     });
     try {
-      f.editor.setDocumentOptions({ bpm: 120 });
-      f.editor.setTicks([24]);
-      f.editor.setSource(source);
-      await wrapper.get('button[aria-label="BMHelper"]').trigger('click');
-      await nextTick();
-      wrapper
-        .findComponent(BMHelperPanel)
-        .vm.$emit('applyCuts', { ticks: [-1, 0, 48, 1000, MAX_TICKS, 0.5] });
-      await nextTick();
-      expect(f.editor.ticks).toEqual([0, 48]);
-      expect(f.editor.doc.bpm).toBe(120);
-      expect(f.editor.status.segments[0]).toMatchObject({
-        key: 'bmhAppliedDropped',
-        params: { count: 2, dropped: 4 },
-      });
-      f.editor.undo();
-      expect(f.editor.ticks).toEqual([24]);
       const bmh = useBmhelperStore(f.pinia);
       bmh.name = 'retained';
       await wrapper.get('button[aria-label="BMHelper"]').trigger('click');
@@ -199,9 +195,6 @@ describe('application controls', () => {
       await wrapper.get('button[aria-label="BMHelper"]').trigger('click');
       await nextTick();
       expect(bmh.name).toBe('retained');
-      bmh.reset();
-      expect(bmh.name).toBe('');
-      expect(bmh.project).toBeNull();
     } finally {
       wrapper.unmount();
       await f.dispose();
