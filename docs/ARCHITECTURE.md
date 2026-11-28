@@ -32,7 +32,27 @@ See [Project format](PROJECT_FORMAT.md) for that compatibility boundary.
 | Gamepad reader, fixed menu and dialog navigation, polling | [`src/input/gamepad.ts`](../src/input/gamepad.ts), [`use-gamepad.ts`](../src/input/use-gamepad.ts) |
 | YuanCon protocol, device session and recording | [`src/input/yuancon/`](../src/input/yuancon/) |
 | Languages, fonts and theme | [`src/i18n/`](../src/i18n/), [`src/ui/`](../src/ui/), [`build-fonts.mjs`](../scripts/build-fonts.mjs) |
+| Input settings, key and controller icons, recording guide, YuanCon dialog | `.vue` files in [`src/input/`](../src/input/) |
 | Native commands and permissions | [`src-tauri/src/`](../src-tauri/src/), [`capabilities/`](../src-tauri/capabilities/), [`permissions/`](../src-tauri/permissions/) |
+
+## Layers
+
+A file imports only from its own layer or from a lower layer. `scripts/import-layers.test.mjs` holds the same table and fails on an import of a higher layer.
+In a feature folder the `.vue` files are views and the `.ts` files are services.
+
+| Layer | Contents | Location |
+| ---: | --- | --- |
+| 7 | App shell: assembly, menu bar, title bar, panel dock, status bar, help, About | `src/app/` |
+| 6 | Views: the components of each feature | `src/timeline/`; `.vue` files in other folders |
+| 5 | Input: devices, bindings, command wheel | `.ts` files in `src/input/` |
+| 4 | Commands and menus | `src/commands/` |
+| 3 | Feature services | `.ts` files in `src/playback/`, `src/workspace/`, `src/export/`, `src/detection/`, `src/bmhelper/`, `src/calibration/` |
+| 2 | Editor state | `editor-store.ts` and `editor-actions.ts` in `src/slicing/` |
+| 1 | Boundaries: project format, platform, audio Worker, languages, shared UI parts | `src/project/`, `src/platform/`, `src/audio/`, `src/i18n/`, `src/ui/` |
+| 0 | Rules: pure computations and file formats | `src/core/` |
+
+Every layer can import the generated message data in `src/i18n/generated.ts`.
+A new source folder needs a row in the table of the test.
 
 ## Fact owners
 
