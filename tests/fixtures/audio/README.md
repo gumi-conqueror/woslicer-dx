@@ -20,4 +20,4 @@ The `tone*` files come from [audio-decode v0.1.0](https://github.com/gumi-conque
 That repository's fixture generator creates 6,000 stereo frames at 48 kHz and transcodes them with FFmpeg.
 Its fixture README contains the regeneration command. Compressed streams can include codec delay or padding.
 Matroska fixtures cover FLAC and AAC input and rejection of unsupported Opus.
-[`audio-decode.test.ts`](../../app/audio-decode.test.ts) checks the published decoder against these inputs.
+[`audio-loading.decoder.test.ts`](../../business/audio-loading.decoder.test.ts) checks the published decoder against these inputs.

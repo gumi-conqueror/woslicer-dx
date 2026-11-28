@@ -200,11 +200,11 @@ write them to disk.
 
 Portable projects must not contain Tauri UUIDs, picker tokens, Blob URLs,
 `FileSystemHandle` objects, PCM buffers or machine-specific window state.
-The recovery session stores the active media's host reference separately as `lastFile`.
-Recovery data has its own version (3), separate from the project format. It stores the project, `dirty`, `lastFile`
-and editor state grouped by owner: `state.view`, `state.detection` and `state.calibration`.
+The recovery session stores each track's host reference separately in `files`, by track id.
+Recovery data has its own version (4), separate from the project format. It stores the project, `dirty`, `currentTrackId`, `files`
+and editor state grouped by owner: `state.view` and `state.calibration`.
 `src/workspace/session.ts` lists the saved fields. The app keeps a record of any other version unchanged,
-reports it, and asks before it replaces the record. Version 3 does not read the records of releases before 2.0;
+reports it, and asks before it replaces the record. Version 4 also reads version 3 records. It does not read the records of releases before 2.0;
 the status bar names them as records from an earlier version.
 Decode failures must not delete bindings. Desktop paths must not become browser references.
 
