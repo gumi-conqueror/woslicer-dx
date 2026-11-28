@@ -2,13 +2,9 @@
 import { computed } from 'vue';
 import { useWindowSize } from '@vueuse/core';
 import { useI18n } from 'vue-i18n';
-import { commandEnabled, commandLabel, type CommandState } from '../commands';
-import { WHEEL_SLOTS } from '../../input/wheel';
-import {
-  WHEEL_SLOT_RADIUS_SHARE,
-  WHEEL_VIEWPORT_SHARE,
-  type CommandWheel,
-} from '../../input/use-wheel';
+import { commandEnabled, commandLabel, type CommandState } from '../app/commands';
+import { WHEEL_SLOTS } from './wheel';
+import { WHEEL_SLOT_RADIUS_SHARE, WHEEL_VIEWPORT_SHARE, type CommandWheel } from './use-wheel';
 const props = defineProps<{ wheel: CommandWheel; state: CommandState }>();
 const { t } = useI18n();
 const viewport = useWindowSize();

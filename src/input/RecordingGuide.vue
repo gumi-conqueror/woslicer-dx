@@ -8,10 +8,10 @@ import {
   keyboardChords,
   recordingKeys,
   yuanconControls,
-} from '../../input/bindings';
-import { commandLabel, RECORDING_SEEK_SECONDS } from '../commands';
-import GamepadIcon from '../../ui/GamepadIcon.vue';
-import YuanconIcon from '../../ui/YuanconIcon.vue';
+} from './bindings';
+import { commandLabel, RECORDING_SEEK_SECONDS } from '../app/commands';
+import GamepadIcon from '../ui/GamepadIcon.vue';
+import YuanconIcon from '../ui/YuanconIcon.vue';
 const props = defineProps<{ device: 'keyboard' | 'gamepad' | 'yuancon' }>();
 const { t } = useI18n();
 const keys = recordingKeys();

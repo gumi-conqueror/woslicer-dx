@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { canRecord, commandLabel, type AppCommand } from '../commands';
-import { gamepadControls } from '../../input/bindings';
-import { useInputState } from '../../input/state';
-import { useEditorStore } from '../../slicing/editor-store';
-import GamepadIcon from '../../ui/GamepadIcon.vue';
+import { canRecord, commandLabel, type AppCommand } from '../app/commands';
+import { gamepadControls } from './bindings';
+import { useInputState } from './state';
+import { useEditorStore } from '../slicing/editor-store';
+import GamepadIcon from '../ui/GamepadIcon.vue';
 /** The commands the hint bar shows for each layer; the controls come from the bindings. */
 const HINTS: Readonly<Record<'edit' | 'recording', readonly AppCommand[]>> = {
   edit: ['place-marker', 'toggle-marker', 'preview', 'play-pause', 'open-wheel', 'help'],

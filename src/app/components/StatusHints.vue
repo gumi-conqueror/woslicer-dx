@@ -5,7 +5,7 @@ import { commandLabel } from '../commands';
 import { HINT_AREAS, isHintArea, type HintArea, type MouseHint } from '../hint-areas';
 import { chordKeys, keyboardChords } from '../../input/bindings';
 import { useInputState } from '../../input/state';
-import GamepadHints from './GamepadHints.vue';
+import GamepadHints from '../../input/GamepadHints.vue';
 import KeyCaps from '../../ui/KeyCaps.vue';
 import MouseIcon from '../../ui/MouseIcon.vue';
 

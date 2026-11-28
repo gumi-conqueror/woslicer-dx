@@ -18,7 +18,7 @@ import KeyCaps from '../../ui/KeyCaps.vue';
 import MouseIcon from '../../ui/MouseIcon.vue';
 import { HINT_AREAS } from '../hint-areas';
 import UninstallGuide from './UninstallGuide.vue';
-import RecordingGuide from './RecordingGuide.vue';
+import RecordingGuide from '../../input/RecordingGuide.vue';
 const open = defineModel<boolean>({ required: true });
 const { t } = useI18n();
 // This choice belongs to the guide. Actual input activity must never change it.

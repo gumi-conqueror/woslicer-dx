@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ElButton, ElCheckbox, ElDialog, ElOption, ElSelect } from 'element-plus';
 import { useI18n } from 'vue-i18n';
-import type { YuanconConnection } from '../../input/yuancon/use-yuancon';
-import YuanconIcon from '../../ui/YuanconIcon.vue';
+import type { YuanconConnection } from './yuancon/use-yuancon';
+import YuanconIcon from '../ui/YuanconIcon.vue';
 const open = defineModel<boolean>({ required: true });
 const props = defineProps<{ connection: YuanconConnection }>();
 const { t } = useI18n();

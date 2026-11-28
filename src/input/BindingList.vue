@@ -9,16 +9,12 @@ import {
   type Binding,
   type InputLayer,
   type KeyChord,
-} from '../../input/bindings';
-import {
-  reservedKey,
-  useBindingOverrides,
-  type RebindableDevice,
-} from '../../input/binding-overrides';
-import { commandLabel } from '../commands';
-import { APPLICATION_MENU } from '../menu';
-import GamepadIcon from '../../ui/GamepadIcon.vue';
-import KeyCaps from '../../ui/KeyCaps.vue';
+} from './bindings';
+import { reservedKey, useBindingOverrides, type RebindableDevice } from './binding-overrides';
+import { commandLabel } from '../app/commands';
+import { APPLICATION_MENU } from '../app/menu';
+import GamepadIcon from '../ui/GamepadIcon.vue';
+import KeyCaps from '../ui/KeyCaps.vue';
 
 const props = defineProps<{ device: RebindableDevice }>();
 const { t } = useI18n();

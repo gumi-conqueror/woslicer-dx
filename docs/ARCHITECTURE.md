@@ -19,7 +19,7 @@ See [Project format](PROJECT_FORMAT.md) for that compatibility boundary.
 | Commands: ids, labels, help groups, availability and execution | [`src/app/commands.ts`](../src/app/commands.ts) |
 | Keyboard, controller and YuanCon bindings, including recording keys 1–7 | [`src/input/bindings.ts`](../src/input/bindings.ts) |
 | Where input goes (dialogs, menus, wheel, text fields) | `inputContext` in [`App.vue`](../src/app/App.vue), [`src/input/router.ts`](../src/input/router.ts), [`src/ui/focus.ts`](../src/ui/focus.ts) |
-| Command wheel | [`src/input/wheel.ts`](../src/input/wheel.ts), [`use-wheel.ts`](../src/input/use-wheel.ts), [`CommandWheel.vue`](../src/app/components/CommandWheel.vue) |
+| Command wheel | [`src/input/wheel.ts`](../src/input/wheel.ts), [`use-wheel.ts`](../src/input/use-wheel.ts), [`CommandWheel.vue`](../src/input/CommandWheel.vue) |
 | Timeline rendering and gestures | [`src/timeline/`](../src/timeline/) |
 | Marker edits and undoable document state | [`editor-store.ts`](../src/slicing/editor-store.ts), [`editor-actions.ts`](../src/slicing/editor-actions.ts) |
 | Project loading, saving and recovery | [`src/workspace/`](../src/workspace/), [`src/project/`](../src/project/) |
@@ -57,7 +57,7 @@ Each fact below has one owner. Change the fact there; other code reads it.
 | Default key, controller and YuanCon bindings | `BINDINGS` in [`src/input/bindings.ts`](../src/input/bindings.ts) |
 | The user's binding changes (local preference) and the one-control-one-command rule | [`src/input/binding-overrides.ts`](../src/input/binding-overrides.ts) |
 | Fixed controller navigation | `UI_NAVIGATION` in [`src/input/gamepad.ts`](../src/input/gamepad.ts) |
-| Status bar input hints: areas and their mouse and keyboard actions | `HINT_AREAS` in [`src/app/hint-areas.ts`](../src/app/hint-areas.ts); controller hints in [`GamepadHints.vue`](../src/app/components/GamepadHints.vue) |
+| Status bar input hints: areas and their mouse and keyboard actions | `HINT_AREAS` in [`src/app/hint-areas.ts`](../src/app/hint-areas.ts); controller hints in [`GamepadHints.vue`](../src/input/GamepadHints.vue) |
 | Which cursor moves keep the cursor centered | `moveCursorTo` in [`editor-store.ts`](../src/slicing/editor-store.ts) |
 | Controller thresholds and repeat timing | top of [`src/input/gamepad.ts`](../src/input/gamepad.ts) |
 | Command wheel travel and size; default slots | [`src/input/wheel.ts`](../src/input/wheel.ts), [`use-wheel.ts`](../src/input/use-wheel.ts) |
