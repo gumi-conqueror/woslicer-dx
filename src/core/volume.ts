@@ -20,6 +20,15 @@ export function ampToDb(amp: number): number {
   return amp <= 0 ? -Infinity : 20 * Math.log10(amp);
 }
 
+/** A level as text, such as `-10.0 dB`. A level above 0 dB carries a plus sign: `+3 dB`. */
+export function formatDb(db: number, digits = 0): string {
+  const text = db.toFixed(digits);
+  // The sign follows the rounded number, so a level near zero reads `0.0 dB`.
+  const rounded = Number(text);
+  if (rounded === 0) return `${(0).toFixed(digits)} dB`;
+  return `${rounded > 0 ? '+' : ''}${text} dB`;
+}
+
 /** Slider position (0..100) -> dB in [-60, 0]. */
 export function sliderToDb(position: number): number {
   const clamped = Math.max(0, Math.min(100, position));

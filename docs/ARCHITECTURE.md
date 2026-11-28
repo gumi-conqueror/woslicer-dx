@@ -82,6 +82,7 @@ Each fact below has one owner. Change the fact there; other code reads it.
 | Status bar input hints: areas and their mouse and keyboard actions | `HINT_AREAS` in [`src/app/hint-areas.ts`](../src/app/hint-areas.ts); controller hints in [`GamepadHints.vue`](../src/input/GamepadHints.vue) |
 | How a number box steps with the mouse wheel and the arrow keys | [`src/ui/NumberField.vue`](../src/ui/NumberField.vue); every number box uses it |
 | When a mouse wheel gesture on a number box or a volume slider becomes one edit | `useWheelGesture` in [`src/ui/wheel-gesture.ts`](../src/ui/wheel-gesture.ts) |
+| Level text in dB, with a plus sign above 0 dB | `formatDb` in [`src/core/volume.ts`](../src/core/volume.ts) |
 | Which cursor moves keep the cursor centered | `moveCursorTo` in [`editor-store.ts`](../src/slicing/editor-store.ts) |
 | Controller thresholds and repeat timing | top of [`src/input/gamepad.ts`](../src/input/gamepad.ts) |
 | Command wheel travel and size; default slots | [`src/input/wheel.ts`](../src/input/wheel.ts), [`use-wheel.ts`](../src/input/use-wheel.ts) |

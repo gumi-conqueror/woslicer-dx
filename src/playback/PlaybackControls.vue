@@ -5,7 +5,14 @@ import { useI18n } from 'vue-i18n';
 import { useEditorStore } from '../slicing/editor-store';
 import { CUE_MODES, type CueMode } from '../project/schema';
 import { PLAYBACK_RATES, formatRate } from '../core/rate';
-import { ampToDb, dbToAmp, dbToSlider, sliderToDb, VOLUME_SLIDER_RANGE_DB } from '../core/volume';
+import {
+  ampToDb,
+  dbToAmp,
+  dbToSlider,
+  formatDb,
+  sliderToDb,
+  VOLUME_SLIDER_RANGE_DB,
+} from '../core/volume';
 import { usePlayback } from './index';
 import VolumeSlider from './VolumeSlider.vue';
 import { shortcutLabel } from '../input/bindings';
@@ -56,7 +63,7 @@ function setCue(value: unknown): void {
   if (mode) editor.cueMode = mode;
 }
 // Slider tooltip: the dB fader value for the hovered position.
-const formatVolume = (position: number) => `${sliderToDb(position).toFixed(1)} dB`;
+const formatVolume = (position: number) => formatDb(sliderToDb(position), 1);
 </script>
 
 <template>

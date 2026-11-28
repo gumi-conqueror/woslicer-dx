@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import VolumeSlider from '../playback/VolumeSlider.vue';
-import { VOLUME_SLIDER_RANGE_DB } from '../core/volume';
+import { formatDb, VOLUME_SLIDER_RANGE_DB } from '../core/volume';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useEditorStore } from '../slicing/editor-store';
@@ -109,7 +109,7 @@ function commit(): void {
             :min="TRACK_GAIN_MIN_DB"
             :max="FIELD_RANGES.gainDb.max"
             :wheel-step="1"
-            :format-tooltip="(db: number) => `${db} dB`"
+            :format-tooltip="formatDb"
             :label="t('chrome.trackGain')"
             @pointerdown.stop
             @preview="(db) => editor.setTrackGainPreview(db === null ? null : { trackId, db })"
