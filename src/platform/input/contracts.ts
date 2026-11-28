@@ -8,6 +8,13 @@ export type HidEvent =
 export interface HidConnection {
   close(): Promise<void>;
 }
+/** Which device to offer: its vendor, product and the usage of its report collection. */
+export interface HidFilter {
+  vendorId: number;
+  productId: number;
+  usagePage: number;
+  usage: number;
+}
 export interface HidBackend {
   available: boolean;
   /** Native device selection. WebHID supplies its own chooser. */
