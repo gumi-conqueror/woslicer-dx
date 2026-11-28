@@ -147,7 +147,7 @@ describe('command availability rules', () => {
     for (const id of APP_COMMANDS)
       if ('enabled' in COMMANDS[id]) expect(ids.has(id), id).toBe(true);
     for (const group of APPLICATION_MENU)
-      for (const item of group.commands) expect(ids.has(item.id), item.id).toBe(true);
+      for (const item of group.commands) if (item) expect(ids.has(item.id), item.id).toBe(true);
   });
   it.each(table)('enables %s per the shared rule', (id, editorState, expected) => {
     expect(commandEnabled(id, editorState)).toBe(expected);

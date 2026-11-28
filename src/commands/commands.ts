@@ -167,13 +167,13 @@ export const COMMANDS = {
   },
   'move-track-up': {
     label: 'help.moveTrackUp',
-    group: 'navigation',
+    group: 'project',
     enabled: (state) => !isFirstTrack(state),
     run: ({ workspace }) => workspace.moveTrack(-1),
   },
   'move-track-down': {
     label: 'help.moveTrackDown',
-    group: 'navigation',
+    group: 'project',
     enabled: (state) => !isLastTrack(state),
     run: ({ workspace }) => workspace.moveTrack(1),
   },

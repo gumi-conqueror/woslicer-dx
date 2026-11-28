@@ -10,7 +10,9 @@
 
 ### Changed
 
+- Menus have lines between groups of commands and a new order. **Project** starts with **Open audio**, keeps the `.wos` commands together and ends with **Close**. **Edit** lists cut, copy and paste in that order, then the measure commands, **Select all markers**, **Clear all markers** and the link commands.
 - **Export slices of all tracks** is removed. With several tracks, **Export all slices** opens the same export window; it is now also available when another track has the markers. A command wheel slot with the removed command becomes empty.
+- The track context menu no longer has **Share markers across tracks**. The command stays in the **Edit** menu and on the toolbar.
 
 ### Fixed
 

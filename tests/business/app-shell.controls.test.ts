@@ -91,16 +91,22 @@ describe('application controls', () => {
     try {
       expect(wrapper.findComponent(DocumentOptions).exists()).toBe(true);
       expect(wrapper.text()).not.toContain('Calibrate');
-      expect(
-        APPLICATION_MENU.find((group) => group.label === 'menu.tools')?.commands.map(
-          (item) => item.id,
-        ),
-      ).toEqual(['toggle-recording', 'connect-yuancon', 'calibrate', 'input-settings']);
-      expect(
-        APPLICATION_MENU.find((group) => group.label === 'menu.help')?.commands.map(
-          (item) => item.id,
-        ),
-      ).toEqual(['help', 'troubleshoot', 'open-data-folder', 'about']);
+      const commandsOf = (label: string) =>
+        APPLICATION_MENU.find((group) => group.label === label)?.commands.flatMap((item) =>
+          item ? [item.id] : [],
+        );
+      expect(commandsOf('menu.tools')).toEqual([
+        'toggle-recording',
+        'connect-yuancon',
+        'calibrate',
+        'input-settings',
+      ]);
+      expect(commandsOf('menu.help')).toEqual([
+        'help',
+        'troubleshoot',
+        'open-data-folder',
+        'about',
+      ]);
       expect(commandEnabled('calibrate', instance.editor)).toBe(false);
       instance.editor.setSource(source);
       await nextTick();
@@ -115,7 +121,9 @@ describe('application controls', () => {
     const wrapper = mount(ApplicationMenu, { global: instance.global });
     try {
       const groups = APPLICATION_MENU;
-      const menuCommands = groups.flatMap((group) => group.commands.map((item) => item.id));
+      const menuCommands = groups.flatMap((group) =>
+        group.commands.flatMap((item) => (item ? [item.id] : [])),
+      );
       expect(new Set(menuCommands).size).toBe(menuCommands.length);
       expect(menuCommands.every((command) => APP_COMMANDS.includes(command))).toBe(true);
       expect(wrapper.find('[role="menubar"]').exists()).toBe(true);
@@ -128,9 +136,30 @@ describe('application controls', () => {
           // labels are verified through the same translator the component uses.
           expect(wrapper.text()).toContain(translate(group.label));
           for (const item of group.commands)
-            expect(translate(commandLabel(item.id))).not.toMatch(/^(menu|chrome)\./);
+            if (item) expect(translate(commandLabel(item.id))).not.toMatch(/^(menu|chrome)\./);
         }
       }
+    } finally {
+      wrapper.unmount();
+      instance.dispose();
+    }
+  });
+  it.each([false, true])('draws lines only between menu commands (desktop: %s)', (desktop) => {
+    const instance = setup();
+    const wrapper = mount(ApplicationMenu, { props: { desktop }, global: instance.global });
+    try {
+      const popups = wrapper.findAll('.menu-popup');
+      expect(popups).toHaveLength(APPLICATION_MENU.length);
+      for (const popup of popups) {
+        const kinds = popup
+          .findAll('hr, [role="menuitem"]')
+          .map((node) => (node.element.tagName === 'HR' ? 'line' : 'command'));
+        expect(kinds[0]).toBe('command');
+        expect(kinds.at(-1)).toBe('command');
+        expect(kinds.join(' ')).not.toContain('line line');
+      }
+      // The web version has no data folder to open.
+      expect(wrapper.find('[data-command="open-data-folder"]').exists()).toBe(desktop);
     } finally {
       wrapper.unmount();
       instance.dispose();
