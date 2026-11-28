@@ -13,7 +13,6 @@
     "restoring": "Restoring previous work…",
     "opening": "Opening file…",
     "reading": "Reading audio…",
-    "verifying": "Checking audio…",
     "decoding": "Decoding audio and creating waveform…",
     "hint": "Large audio files may take longer to load. Loading continues in the background."
   },

@@ -46,7 +46,7 @@ export interface WorkspaceOptions {
   confirmRelinkDifference?: (difference: RelinkDifference) => Promise<boolean>;
 }
 export interface LoadingActivity {
-  stage: 'restoring' | 'opening' | 'reading' | 'verifying' | 'decoding';
+  stage: 'restoring' | 'opening' | 'reading' | 'decoding';
   name?: string;
   mediaId?: string;
   /** The track that receives the audio; absent before a target is known. */
@@ -152,7 +152,7 @@ export function createWorkspace(options: WorkspaceOptions) {
     const request = beginOpening({
         trackId,
         newTrack,
-        stage: 'verifying',
+        stage: 'decoding',
         name: file.name,
         mediaId: preserveBaseName ? editor.track.media?.mediaId : undefined,
       }),
@@ -166,7 +166,6 @@ export function createWorkspace(options: WorkspaceOptions) {
     try {
       // Hashing and decoding run at the same time, so the audio length shows
       // early. Both read their own copy of the bytes.
-      loading.value = { ...loading.value, stage: 'decoding', name: file.name };
       worker = createEngine();
       pendingEngine = worker;
       const [identity, result] = await Promise.all([
