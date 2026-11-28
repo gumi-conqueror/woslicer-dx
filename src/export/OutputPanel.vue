@@ -2,12 +2,12 @@
 import { shortcutLabel } from '../input/bindings';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useWorkspace } from '../workspace/workspace';
+import { useLegacyInterop } from '../interop/legacy';
 import { useEditorStore } from '../slicing/editor-store';
 import { useExporter } from './exporter';
 import { FIELD_RANGES, inRange } from '../project/schema';
 const { t } = useI18n();
-const workspace = useWorkspace();
+const interop = useLegacyInterop();
 const editor = useEditorStore();
 const exporter = useExporter();
 // Output fields written through editor transactions.
@@ -110,19 +110,19 @@ const gate = computed({
       >
       <el-button
         :title="shortcutLabel('export-wos')"
-        @click="workspace.saveWos()"
+        @click="interop.saveWos()"
         >{{ t('chrome.saveWos') }}</el-button
       >
-      <el-button @click="workspace.importWosSettings()">{{ t('menu.importWos') }}</el-button>
+      <el-button @click="interop.importWosSettings()">{{ t('menu.importWos') }}</el-button>
       <el-button
         :disabled="!editor.ticks.length"
         :title="shortcutLabel('copy-bmse')"
-        @click="workspace.bmseOut()"
+        @click="interop.bmseOut()"
         >{{ t('chrome.bmseOut') }}</el-button
       >
       <el-button
         :title="shortcutLabel('paste-bmse')"
-        @click="workspace.bmseIn()"
+        @click="interop.bmseIn()"
         >{{ t('chrome.bmseIn') }}</el-button
       >
     </div>

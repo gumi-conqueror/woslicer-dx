@@ -46,6 +46,7 @@ import InputSettingsDialog from '../input/InputSettingsDialog.vue';
 import ExportDialog from '../export/ExportDialog.vue';
 import { createExporter, provideExporter } from '../export/exporter';
 import { createDetection, provideDetection } from '../detection/detection';
+import { createLegacyInterop, provideLegacyInterop } from '../interop/legacy';
 import { reservedControl, useBindingOverrides } from '../input/binding-overrides';
 import { useYuanconRecording } from '../input/yuancon/use-recording';
 
@@ -64,11 +65,13 @@ const workspace = createWorkspace({
 const loading = workspace.loading;
 const actions = createEditorActions(editor);
 const exporter = createExporter(platform, editor, workspace.audio);
+const interop = createLegacyInterop(platform, editor, workspace.audio);
 const playback = createPlayback(editor);
 provideWorkspace(workspace);
 provideEditorActions(actions);
 provideExporter(exporter);
 provideDetection(createDetection(editor, workspace.audio));
+provideLegacyInterop(interop);
 providePlayback(playback);
 // Localized app state.
 const { t } = useI18n({ useScope: 'global' });
@@ -96,6 +99,7 @@ const commands = createCommands({
   actions,
   workspace,
   exporter,
+  interop,
   playback,
   hosts: {
     close: closeWorkspace,

@@ -344,7 +344,7 @@ describe('portable project workflow', () => {
     wos.shift = 2;
     wos.markers[5] = 1;
     f.opened = { name: 'cuts.wos', reference: null, bytes: writeWos(wos) };
-    await f.workspace.importWosSettings();
+    await f.interop.importWosSettings();
     expect(f.editor.doc.bpm).toBe(150);
     expect(f.editor.doc.shift).toBe(2);
     expect(f.editor.ticks).toEqual([5]);
@@ -370,7 +370,7 @@ describe('portable project workflow', () => {
     wos.bpm = 90;
     wos.markers[3] = 1;
     f.opened = { name: 'cuts.wos', reference: null, bytes: writeWos(wos) };
-    await f.workspace.importWosSettings();
+    await f.interop.importWosSettings();
     expect(f.editor.doc.bpm).toBe(90);
     expect(f.editor.ticks).toEqual([3]);
     expect(f.editor.document.projectId).toBe(projectId);
@@ -474,7 +474,7 @@ it('keeps markers past 256 measures in the project and drops them only from .wos
   f.actions.setMarker(192 * 280);
   expect(f.editor.ticks).toEqual([1920, 53760]);
   expect(f.editor.timelineTicks).toBeGreaterThan(192 * 280);
-  await f.workspace.saveWos();
+  await f.interop.saveWos();
   expect(f.editor.status.segments.map((segment) => segment.key)).toEqual([
     'savedWos',
     'wosMarkersDropped',

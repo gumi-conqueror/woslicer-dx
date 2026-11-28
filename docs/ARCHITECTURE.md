@@ -28,6 +28,7 @@ See [Project format](PROJECT_FORMAT.md) for that compatibility boundary.
 | Slice rendering, peaks and analysis | [`src/core/`](../src/core/) |
 | Slice export controls | [`src/export/OutputPanel.vue`](../src/export/OutputPanel.vue) |
 | BMHelper MIDI division | [`src/bmhelper/`](../src/bmhelper/) |
+| WOS settings import and export, BMSE clipboard | [`src/interop/legacy.ts`](../src/interop/legacy.ts); the file formats are in `src/core/formats/` and `@gumi-conqueror/wos-file` |
 | OS/browser services | [`src/platform/`](../src/platform/) |
 | Gamepad reader, fixed menu and dialog navigation, polling | [`src/input/gamepad.ts`](../src/input/gamepad.ts), [`use-gamepad.ts`](../src/input/use-gamepad.ts) |
 | YuanCon protocol, device session and recording | [`src/input/yuancon/`](../src/input/yuancon/) |
@@ -46,7 +47,7 @@ In a feature folder the `.vue` files are views and the `.ts` files are services.
 | 6 | Views: the components of each feature | `src/timeline/`; `.vue` files in other folders |
 | 5 | Input: devices, bindings, command wheel | `.ts` files in `src/input/` |
 | 4 | Commands and menus | `src/commands/` |
-| 3 | Feature services | `.ts` files in `src/playback/`, `src/workspace/`, `src/export/`, `src/detection/`, `src/bmhelper/`, `src/calibration/` |
+| 3 | Feature services | `.ts` files in `src/playback/`, `src/workspace/`, `src/export/`, `src/detection/`, `src/bmhelper/`, `src/calibration/`, `src/interop/` |
 | 2 | Editor state | `editor-store.ts` and `editor-actions.ts` in `src/slicing/` |
 | 1 | Boundaries: project format, platform, audio Worker, languages, shared UI parts | `src/project/`, `src/platform/`, `src/audio/`, `src/i18n/`, `src/ui/` |
 | 0 | Rules: pure computations and file formats | `src/core/` |

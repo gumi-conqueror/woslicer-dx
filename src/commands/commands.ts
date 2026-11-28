@@ -13,6 +13,7 @@ import type { EditorStore } from '../slicing/editor-store';
 import { FIELD_RANGES, type MarkerKey } from '../project/schema';
 import type { Workspace } from '../workspace/workspace';
 import type { Exporter } from '../export/exporter';
+import type { LegacyInterop } from '../interop/legacy';
 import type { Playback } from '../playback';
 import { visibleDialog } from '../ui/focus';
 
@@ -61,6 +62,7 @@ interface CommandContext {
   actions: EditorActions;
   workspace: Workspace;
   exporter: Exporter;
+  interop: LegacyInterop;
   playback: Playback;
   hosts: CommandHosts;
 }
@@ -168,12 +170,12 @@ export const COMMANDS = {
   'import-wos': {
     label: 'menu.importWos',
     group: 'project',
-    run: ({ workspace }) => workspace.importWosSettings(),
+    run: ({ interop }) => interop.importWosSettings(),
   },
   'export-wos': {
     label: 'menu.exportWos',
     group: 'project',
-    run: ({ workspace }) => workspace.saveWos(),
+    run: ({ interop }) => interop.saveWos(),
   },
   'close-project': { label: 'chrome.close', group: 'project', run: ({ hosts }) => hosts.close() },
   help: { label: 'menu.guide', group: 'project', run: ({ hosts }) => hosts.openDialog('help') },
@@ -449,12 +451,12 @@ export const COMMANDS = {
     label: 'help.bmseOut',
     group: 'output',
     enabled: hasMarkers,
-    run: ({ workspace }) => workspace.bmseOut(),
+    run: ({ interop }) => interop.bmseOut(),
   },
   'paste-bmse': {
     label: 'help.bmseIn',
     group: 'output',
-    run: ({ workspace }) => workspace.bmseIn(),
+    run: ({ interop }) => interop.bmseIn(),
   },
   'clip-number-down': {
     label: 'help.clipNumberDown',

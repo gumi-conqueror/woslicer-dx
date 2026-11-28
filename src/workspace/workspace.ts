@@ -8,8 +8,6 @@ import {
   encodeProject,
   parseProject,
   projectFromWos,
-  projectToWos,
-  markersBeyondWos,
 } from '../project/codec';
 import { FIELD_RANGES, inRange, PROJECT_MAX_TRACKS, type ProjectDocument } from '../project/schema';
 import {
@@ -20,10 +18,9 @@ import {
   relinkMedia,
   setTrackAudio,
 } from './project-media';
-import { readWos, writeWos } from '@gumi-conqueror/wos-file';
+import { readWos } from '@gumi-conqueror/wos-file';
 import { linkMarkersTo } from '../project/marker-links';
 import { markerTickAllowed } from '../core/timebase';
-import { buildBmseClipboard, parseBmseClipboard } from '../core/formats/bmse';
 import type { ChosenFile, Platform, OpenedFile } from '../platform/contracts';
 import type { EditorStore } from '../slicing/editor-store';
 import { createAudioEngine } from '../audio/audio-client';
@@ -66,6 +63,8 @@ export interface WorkspaceAudio {
   currentEngine(): AudioEngine | null;
   /** Changes when audio is released or replaced. A result of an older generation is stale. */
   generation(): number;
+  /** The workspace is disposed: the application is closing, and late results are dropped. */
+  closed(): boolean;
 }
 export function createWorkspace(options: WorkspaceOptions) {
   const { platform, editor, createEngine = createAudioEngine } = options;
@@ -87,6 +86,7 @@ export function createWorkspace(options: WorkspaceOptions) {
     engine: (trackId) => engines.get(trackId) ?? null,
     currentEngine,
     generation: () => generation,
+    closed: () => disposed,
   };
   function beginOpening(activity: LoadingActivity | null = null): number {
     opening++;
@@ -553,32 +553,6 @@ export function createWorkspace(options: WorkspaceOptions) {
       finishOpening(request);
     }
   }
-  /** Imports timing and cuts into the current project in one undo step, keeping its identity and media. */
-  async function importWosSettings(): Promise<void> {
-    const revision = editor.docRevision;
-    try {
-      const file = await platform.openFile('wos');
-      if (!file || disposed || revision !== editor.docRevision) return;
-      const data = readWos(file.bytes);
-      const wos = projectFromWos(data, file.name);
-      const imported = currentTrack(wos).slicing;
-      editor.transact((draft) => {
-        draft.timing = { ...wos.timing };
-        const { slicing } = currentTrack(draft, editor.currentTrackId);
-        slicing.fadeoutMs = imported.fadeoutMs;
-        slicing.noisegateDb = imported.noisegateDb;
-        slicing.markers = imported.markers;
-        delete slicing.markerKeys;
-      });
-      editor.setStatus('importedWosSettings', {
-        file: file.name,
-        bpm: wos.timing.bpm,
-        shift: wos.timing.shiftTicks,
-      });
-    } catch (error) {
-      if (!disposed) editor.setStatus('wosLoadFailed', { message: errorMessage(error) }, true);
-    }
-  }
   /** Replaces the whole workspace with a fresh project that only carries the WOS timing. */
   async function newProjectFromWos(): Promise<void> {
     if (recoveryBlock && !(await releaseRecoveryBlock())) return;
@@ -595,60 +569,6 @@ export function createWorkspace(options: WorkspaceOptions) {
     } catch (error) {
       if (!disposed && request === opening)
         editor.setStatus('wosLoadFailed', { message: errorMessage(error) }, true);
-    }
-  }
-  async function saveWos(): Promise<void> {
-    const version = generation;
-    try {
-      const bytes = writeWos(projectToWos(editor.document, editor.currentTrackId));
-      const dropped = markersBeyondWos(editor.document, editor.currentTrackId);
-      const name = `${editor.source?.name ?? 'untitled'}.wos`;
-      if ((await platform.saveFile('wos', name, bytes)) && !disposed && version === generation)
-        if (dropped)
-          editor.setStatus(
-            [
-              { key: 'savedWos', params: { file: name } },
-              { key: 'wosMarkersDropped', params: { count: dropped } },
-            ],
-            true,
-          );
-        else editor.setStatus('savedWos', { file: name });
-    } catch (error) {
-      if (!disposed && version === generation)
-        editor.setStatus('wosSaveFailed', { message: errorMessage(error) }, true);
-    }
-  }
-  async function bmseOut(): Promise<void> {
-    if (!editor.ticks.length) {
-      editor.setStatus('noMarkersToCopy', true);
-      return;
-    }
-    try {
-      await platform.writeClipboard(
-        buildBmseClipboard(editor.ticks, {
-          startNumber: editor.clipStartNumber,
-          numbering: editor.useFfNumbering ? 'restricted' : 'extended',
-        }),
-      );
-      editor.setStatus('bmseClipboardOut', {
-        count: editor.ticks.length,
-        start: editor.clipStartNumber,
-      });
-    } catch (error) {
-      editor.setStatus('bmseReadFailed', { message: errorMessage(error) }, true);
-    }
-  }
-  async function bmseIn(): Promise<void> {
-    const version = generation;
-    try {
-      const parsed = parseBmseClipboard(await platform.readClipboard());
-      if (disposed || version !== generation) return;
-      const legal = parsed.ticks.filter(editor.legalTick);
-      editor.setTicks(legal, []);
-      editor.setStatus('bmseClipboardImported', { count: legal.length });
-    } catch (error) {
-      if (!disposed && version === generation)
-        editor.setStatus('bmseReadFailed', { message: errorMessage(error) }, true);
     }
   }
   async function restoreSession(): Promise<void> {
@@ -743,15 +663,11 @@ export function createWorkspace(options: WorkspaceOptions) {
     openChosenFiles,
     loadAudio,
     reopen,
-    importWosSettings,
     newProjectFromWos,
-    saveWos,
     reset,
     restoreSession,
     dispose,
     flushSession: persistence.flush,
-    bmseIn,
-    bmseOut,
   };
 }
 export type Workspace = ReturnType<typeof createWorkspace>;

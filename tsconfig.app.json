@@ -30,6 +30,7 @@
     "src/bmhelper/**/*.vue",
     "src/workspace/**/*.ts",
     "src/input/**/*.ts",
+    "src/interop/**/*.ts",
     "src/input/**/*.vue",
     "src/platform/**/*.ts",
     "src/i18n/**/*.ts",

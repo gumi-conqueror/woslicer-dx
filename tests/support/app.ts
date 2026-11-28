@@ -15,6 +15,7 @@ import { readEditorSession } from '../../src/workspace/session';
 import { createCommands } from '../../src/commands/commands';
 import { createExporter, exporterKey } from '../../src/export/exporter';
 import { createDetection, detectionKey } from '../../src/detection/detection';
+import { createLegacyInterop, legacyInteropKey } from '../../src/interop/legacy';
 import { errorMessage } from '../../src/core/messages';
 import type { Playback } from '../../src/playback';
 
@@ -36,6 +37,7 @@ export function createTestApp(
     actions: app.actions,
     workspace: app.workspace,
     exporter: app.exporter,
+    interop: app.interop,
     playback,
     hosts: {
       close() {},
@@ -222,6 +224,7 @@ export function fixture(createEngine = processorEngine) {
   const actions = createEditorActions(editor);
   const exporter = createExporter(platform, editor, workspace.audio);
   const detection = createDetection(editor, workspace.audio);
+  const interop = createLegacyInterop(platform, editor, workspace.audio);
   return {
     pinia,
     editor,
@@ -229,12 +232,14 @@ export function fixture(createEngine = processorEngine) {
     workspace,
     exporter,
     detection,
+    interop,
     /** What `App.vue` provides to its components: pass it as `global.provide` to mount one. */
     provide: {
       [workspaceKey]: workspace,
       [editorActionsKey]: actions,
       [exporterKey]: exporter,
       [detectionKey]: detection,
+      [legacyInteropKey]: interop,
     },
     platform,
     saved: memory.saved,

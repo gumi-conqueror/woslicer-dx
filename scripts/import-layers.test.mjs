@@ -19,7 +19,7 @@ const LAYERS = [
   [5, /^src\/input\/.*\.ts$/], // input
   [6, /^src\/timeline\//], // views
   [6, /\.vue$/], // views
-  [3, /^src\/(playback|workspace|export|detection|bmhelper|calibration)\/.*\.ts$/], // feature services
+  [3, /^src\/(playback|workspace|export|detection|bmhelper|calibration|interop)\/.*\.ts$/], // feature services
 ];
 /** Generated message keys and catalogs are data. Every layer may import them. */
 const GENERATED = 'src/i18n/generated.ts';
