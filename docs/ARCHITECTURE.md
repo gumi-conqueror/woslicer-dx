@@ -20,13 +20,14 @@ See [Project format](PROJECT_FORMAT.md) for that compatibility boundary.
 | Keyboard, controller and YuanCon bindings, including recording keys 1–7 | [`src/input/bindings.ts`](../src/input/bindings.ts) |
 | Where input goes (dialogs, menus, wheel, text fields) | `inputContext` in [`App.vue`](../src/app/App.vue), [`src/input/router.ts`](../src/input/router.ts), [`src/ui/focus.ts`](../src/ui/focus.ts) |
 | Command wheel | [`src/input/wheel.ts`](../src/input/wheel.ts), [`use-wheel.ts`](../src/input/use-wheel.ts), [`CommandWheel.vue`](../src/input/CommandWheel.vue) |
-| Timeline rendering and gestures | [`src/timeline/`](../src/timeline/) |
-| Marker edits and undoable document state | [`editor-store.ts`](../src/slicing/editor-store.ts), [`editor-actions.ts`](../src/slicing/editor-actions.ts) |
+| Timeline rendering and gestures, track header | [`src/timeline/`](../src/timeline/) |
+| Marker edits, the marker clipboards and undoable document state | [`editor-store.ts`](../src/slicing/editor-store.ts), [`editor-actions.ts`](../src/slicing/editor-actions.ts) |
 | Project loading, saving and recovery | [`src/workspace/`](../src/workspace/), [`src/project/`](../src/project/) |
 | Playback and input timestamps | [`src/playback/`](../src/playback/) |
 | Decoding and Worker requests | [`src/audio/`](../src/audio/) |
 | Slice rendering, peaks and analysis | [`src/core/`](../src/core/) |
-| Slice export controls | [`src/export/OutputPanel.vue`](../src/export/OutputPanel.vue) |
+| Slice export | [`src/export/exporter.ts`](../src/export/exporter.ts); controls in [`OutputPanel.vue`](../src/export/OutputPanel.vue) and [`ExportDialog.vue`](../src/export/ExportDialog.vue) |
+| Band and edge detection | [`src/detection/detection.ts`](../src/detection/detection.ts), [`DetectionPanel.vue`](../src/detection/DetectionPanel.vue) |
 | BMHelper MIDI division | [`src/bmhelper/`](../src/bmhelper/) |
 | WOS settings import and export, BMSE clipboard | [`src/interop/legacy.ts`](../src/interop/legacy.ts); the file formats are in `src/core/formats/` and `@gumi-conqueror/wos-file` |
 | OS/browser services | [`src/platform/`](../src/platform/) |
@@ -72,7 +73,7 @@ Each fact below has one owner. Change the fact there; other code reads it.
 | Timeline length, also with a track that is still loading | `timelineLength` in [`editor-store.ts`](../src/slicing/editor-store.ts) |
 | Tempo estimate of new audio | `estimateTempo` in [`src/core/tempo.ts`](../src/core/tempo.ts) |
 | Export matrix: marker rows, default selection, job names | [`src/export/export-plan.ts`](../src/export/export-plan.ts) |
-| Dropped files: page drops in the browser, granted native drops on the desktop | `watchDrops` in [`src/platform/`](../src/platform/); `openDroppedFiles` in [`workspace.ts`](../src/workspace/workspace.ts) |
+| Dropped files: page drops in the browser, granted native drops on the desktop | `watchDrops` in [`src/platform/`](../src/platform/); `openChosenFiles` in [`workspace.ts`](../src/workspace/workspace.ts) |
 | Supported audio formats | [`src/core/audio-formats.ts`](../src/core/audio-formats.ts); `src-tauri/src/files.rs` repeats the extensions and a consistency test compares them |
 | Commands, their labels and availability | `COMMANDS` in [`src/commands/commands.ts`](../src/commands/commands.ts) |
 | Default key, controller and YuanCon bindings | `BINDINGS` in [`src/input/bindings.ts`](../src/input/bindings.ts) |
@@ -89,7 +90,9 @@ Each fact below has one owner. Change the fact there; other code reads it.
 ## State and commands
 
 The editor store owns document state and undo history. Feature components read its reactive projections and commit document edits through transactions.
-The workspace owns file operations, recovery and transient loading state. `TrackHeader.vue` displays the current audio load activity.
+The workspace owns file operations, recovery, each track's audio engine and transient loading state. `TrackHeader.vue` displays the current audio load activity.
+`App.vue` creates the other services beside the workspace: the editor actions, the exporter, detection and the legacy exchange. Each service provides itself to its views, for example `useExporter()` in `src/export/exporter.ts`.
+The exporter, detection and the legacy exchange get the tracks' audio from `workspace.audio`; they drop a result when its generation changed meanwhile.
 Playback and device sessions keep runtime resources outside the portable project document.
 Revision checks reject stale asynchronous results and gestures after document replacement.
 
