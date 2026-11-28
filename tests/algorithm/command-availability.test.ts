@@ -89,6 +89,8 @@ const table: ReadonlyArray<readonly [AppCommand, MenuEditorState, boolean]> = [
   ['shift-markers-later', withSource, true],
   ['copy-bmse', state(), false],
   ['paste-bmse', state(), true],
+  ['measure-copy', state(), false],
+  ['measure-cut', withSource, true],
   ['measure-paste', state(), true],
   ['open-wheel', state(), true],
   // A project keeps at least one track.

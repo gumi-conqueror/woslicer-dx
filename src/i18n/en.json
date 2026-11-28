@@ -458,6 +458,8 @@
     "keyboard": "Keyboard shortcuts",
     "keyboardScope": "Shortcuts work in the editor, outside text fields and dialogs. Buttons, sliders and tabs use standard keyboard navigation.",
     "calibrationBody": "Load audio and open Tools → Calibrate. Tap {keys} with the clicks. When the median stabilizes, select Finish, then Apply. Press {cancel} to close. The offset corrects marker timing during playback.",
+    "measureCopy": "Copy the markers of the measure",
+    "measureCut": "Cut the markers of the measure",
     "measurePaste": "Paste markers into the measure",
     "clearSelection": "Clear selection / cancel drag",
     "toggleMarker": "Toggle marker at cursor",

@@ -224,6 +224,11 @@ export function createEditorActions(editor: EditorStore) {
   function measureBase(): number {
     return Math.floor(editor.cursorTick / MEASURE_TICKS) * MEASURE_TICKS;
   }
+  /** The measure of the cursor, counted from 1 as the status bar shows it. */
+  function measureNumber(): number {
+    return measureBase() / MEASURE_TICKS + 1;
+  }
+  /** Copies the markers of the cursor's measure to the measure clipboard. */
   function measureCopy(): void {
     editor.cancelDraft();
     const base = measureBase();
@@ -239,28 +244,37 @@ export function createEditorActions(editor: EditorStore) {
         (tick) => tick - base,
       ),
     };
+    editor.setStatus('copiedMeasure', { measure: measureNumber() });
   }
   function measureCut(): void {
     measureCopy();
     const base = measureBase();
     editor.setTicks(editor.ticks.filter((t) => t < base || t >= base + MEASURE_TICKS));
+    editor.setStatus('cutMeasure', { measure: measureNumber() });
   }
+  /** Replaces the markers of the cursor's measure with the measure clipboard. */
   function measurePaste(): boolean {
     editor.cancelDraft();
     const clipboard = ofThisDocument(measureClipboard);
-    if (!clipboard) return false;
-    const measure = Math.floor(editor.cursorTick / MEASURE_TICKS);
-    if (clipboard.offsets.some((tick) => !editor.legalTick(measure * MEASURE_TICKS + tick)))
+    if (!clipboard) {
+      editor.setStatus('measureClipboardEmpty', true);
       return false;
-    const base = measure * MEASURE_TICKS;
+    }
+    const base = measureBase();
+    if (clipboard.offsets.some((tick) => !editor.legalTick(base + tick))) {
+      editor.setStatus('cutBeyondEnd', true);
+      return false;
+    }
     const ticks = editor.ticks.filter((t) => t < base || t >= base + MEASURE_TICKS);
     ticks.push(...clipboard.offsets.map((tick) => base + tick));
-    return editor.setTicks(ticks, [
+    const changed = editor.setTicks(ticks, [
       ...editor.markerKeys.filter(
         (entry) => entry.tick < base || entry.tick >= base + MEASURE_TICKS,
       ),
       ...remapMarkerKeys(clipboard.keys, (tick) => tick + base),
     ]);
+    editor.setStatus('pastedMeasure', { measure: measureNumber() });
+    return changed;
   }
   /** The selected markers, or all markers of the current track when none are selected. */
   function linkTargets(): number[] {

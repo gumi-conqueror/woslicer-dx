@@ -74,6 +74,9 @@ export const BINDINGS: readonly Binding[] = [
   { layer: 'edit', command: 'copy-selection', keyboard: [primary('c')] },
   { layer: 'edit', command: 'cut-selection', keyboard: [primary('x')] },
   { layer: 'edit', command: 'paste-selection', keyboard: [primary('v')] },
+  // Without default keys: the rows let the user bind them in the input settings.
+  { layer: 'edit', command: 'measure-copy' },
+  { layer: 'edit', command: 'measure-cut' },
   { layer: 'edit', command: 'measure-paste', keyboard: [primary('f')] },
   { layer: 'edit', command: 'select-all', keyboard: [primary('a')] },
   { layer: 'edit', command: 'clear-selection', keyboard: CANCEL, gamepad: ['b'] },

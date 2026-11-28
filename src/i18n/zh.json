@@ -458,6 +458,8 @@
     "keyboard": "快捷键",
     "keyboardScope": "快捷键在编辑区生效，输入框和对话框内不触发。按钮、滑块和标签页使用标准键盘导航。",
     "calibrationBody": "加载音频后打开“工具 → 校准”。跟随节拍按 {keys}，中位数稳定后点击“完成”，再点击“应用”。{cancel} 关闭校准。校准仅影响播放中手动添加的切点。",
+    "measureCopy": "复制小节的切点",
+    "measureCut": "剪切小节的切点",
     "measurePaste": "粘贴切点到小节",
     "clearSelection": "取消选择／取消拖动",
     "toggleMarker": "添加或删除光标处切点",

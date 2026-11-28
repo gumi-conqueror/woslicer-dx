@@ -458,6 +458,8 @@
     "keyboard": "키보드 단축키",
     "keyboardScope": "입력란·대화 상자 밖의 편집 영역에서 유효. 버튼·슬라이더·탭은 표준 키보드 탐색 지원.",
     "calibrationBody": "음원을 불러온 뒤 ‘도구 → 입력 보정’을 연다. 박자음에 맞춰 {keys} 입력. 중앙값이 안정되면 ‘완료’ → ‘적용’. {cancel}로 닫기. 보정 대상은 재생 중 추가하는 분할점.",
+    "measureCopy": "마디의 분할점 복사",
+    "measureCut": "마디의 분할점 잘라내기",
     "measurePaste": "마디에 분할점 붙여넣기",
     "clearSelection": "선택 해제 / 드래그 취소",
     "toggleMarker": "커서 위치 분할점 추가·삭제",

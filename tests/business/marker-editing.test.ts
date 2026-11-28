@@ -95,3 +95,30 @@ it('finds both clipboards empty after the project is closed', async () => {
   expect(actions.measurePaste()).toBe(false);
   expect(editor.ticks).toEqual([]);
 });
+
+it('copies and cuts a measure by command and pastes it into the measure of the cursor', async () => {
+  const f = setup();
+  f.editor.addTicks([10, 100, 200]);
+  await f.run('measure-copy');
+  expect(f.editor.status.segments[0]).toMatchObject({
+    key: 'copiedMeasure',
+    params: { measure: 1 },
+  });
+  f.editor.setCursorTick(384);
+  await f.run('measure-paste');
+  expect(f.editor.ticks).toEqual([10, 100, 200, 394, 484]);
+  expect(f.editor.status.segments[0]).toMatchObject({
+    key: 'pastedMeasure',
+    params: { measure: 3 },
+  });
+  await f.run('measure-cut');
+  expect(f.editor.ticks).toEqual([10, 100, 200]);
+  expect(f.editor.status.segments[0]).toMatchObject({ key: 'cutMeasure', params: { measure: 3 } });
+});
+
+it('reports an empty measure clipboard when nothing was copied', async () => {
+  const f = setup();
+  await f.run('measure-paste');
+  expect(f.editor.status.segments[0]?.key).toBe('measureClipboardEmpty');
+  expect(f.editor.isError).toBe(true);
+});

@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+### Added
+
+- **Edit → Copy the markers of the measure** and **Cut the markers of the measure** fill the measure clipboard for **Paste markers into the measure** (Ctrl/Cmd+F), which is now in the Edit menu too. The two new commands have no default keys; assign keys in the input settings. Measure copy, cut and paste show their result in the status bar.
+
 ### Fixed
 
 - When saving a project, detection, a clipboard copy or a BMHelper action fails, the status bar names that action. It no longer reports a failed load.

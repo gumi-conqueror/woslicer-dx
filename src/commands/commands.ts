@@ -244,6 +244,18 @@ export const COMMANDS = {
     group: 'edit',
     run: ({ actions }) => actions.pasteSelection(),
   },
+  'measure-copy': {
+    label: 'help.measureCopy',
+    group: 'edit',
+    enabled: hasMarkers,
+    run: ({ actions }) => actions.measureCopy(),
+  },
+  'measure-cut': {
+    label: 'help.measureCut',
+    group: 'edit',
+    enabled: hasMarkers,
+    run: ({ actions }) => actions.measureCut(),
+  },
   'measure-paste': {
     label: 'help.measurePaste',
     group: 'edit',
