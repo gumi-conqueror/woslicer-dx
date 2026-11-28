@@ -66,8 +66,8 @@ vi.mock('../../src/playback', () => ({
   }),
   providePlayback: () => {},
 }));
-vi.mock('../../src/app/commands', async (original) => ({
-  ...(await original<typeof import('../../src/app/commands')>()),
+vi.mock('../../src/commands/commands', async (original) => ({
+  ...(await original<typeof import('../../src/commands/commands')>()),
   createCommands: ({
     hosts,
   }: {

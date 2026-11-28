@@ -5,8 +5,8 @@ import {
   commandEnabled,
   type AppCommand,
   type CommandState as MenuEditorState,
-} from '../../src/app/commands';
-import { APPLICATION_MENU } from '../../src/app/menu';
+} from '../../src/commands/commands';
+import { APPLICATION_MENU } from '../../src/commands/menu';
 
 const track = (media: unknown) => ({ media }) as unknown as MenuEditorState['track'];
 const linked = (links: number[]) =>

@@ -4,7 +4,7 @@ import type { YuanconState } from './protocol';
 import { createYuanconReader } from './recording';
 import { routeYuancon } from '../router';
 import { useInputState } from '../state';
-import type { AppCommand, RecordingInput } from '../../app/commands';
+import type { AppCommand, RecordingInput } from '../../commands/commands';
 
 export function useYuanconRecording(options: {
   active: () => boolean;

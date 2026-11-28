@@ -1,4 +1,4 @@
-import type { AppCommand, RecordingInput } from '../app/commands';
+import type { AppCommand, RecordingInput } from '../commands/commands';
 import { gamepadBinding, yuanconBinding, type InputLayer } from './bindings';
 import { uiNavigation, type GamepadControl, type GamepadEvent, type UiNavigation } from './gamepad';
 import { mergeTaps } from './recording';

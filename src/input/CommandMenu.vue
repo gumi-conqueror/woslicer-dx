@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { nextTick, onMounted, onUnmounted, ref, useTemplateRef } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { commandEnabled, commandLabel, type AppCommand, type CommandState } from '../app/commands';
+import {
+  commandEnabled,
+  commandLabel,
+  type AppCommand,
+  type CommandState,
+} from '../commands/commands';
 import { shortcutLabel } from './bindings';
 
 /**

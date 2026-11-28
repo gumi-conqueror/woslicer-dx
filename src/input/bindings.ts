@@ -1,5 +1,5 @@
 import { shallowRef } from 'vue';
-import type { AppCommand, RecordingInput } from '../app/commands';
+import type { AppCommand, RecordingInput } from '../commands/commands';
 import type { GamepadControl } from './gamepad';
 import type { YuanconControl } from './yuancon/protocol';
 import type { MarkerKey } from '../project/schema';

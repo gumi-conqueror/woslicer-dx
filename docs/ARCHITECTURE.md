@@ -15,8 +15,8 @@ See [Project format](PROJECT_FORMAT.md) for that compatibility boundary.
 | Behavior | Main source locations |
 | --- | --- |
 | Application assembly and project replacement | [`src/app/App.vue`](../src/app/App.vue) |
-| Menu entries and availability | [`src/app/menu.ts`](../src/app/menu.ts), [`ApplicationMenu.vue`](../src/app/components/ApplicationMenu.vue) |
-| Commands: ids, labels, help groups, availability and execution | [`src/app/commands.ts`](../src/app/commands.ts) |
+| Menu entries and availability | [`src/commands/menu.ts`](../src/commands/menu.ts), [`ApplicationMenu.vue`](../src/app/components/ApplicationMenu.vue) |
+| Commands: ids, labels, help groups, availability and execution | [`src/commands/commands.ts`](../src/commands/commands.ts) |
 | Keyboard, controller and YuanCon bindings, including recording keys 1–7 | [`src/input/bindings.ts`](../src/input/bindings.ts) |
 | Where input goes (dialogs, menus, wheel, text fields) | `inputContext` in [`App.vue`](../src/app/App.vue), [`src/input/router.ts`](../src/input/router.ts), [`src/ui/focus.ts`](../src/ui/focus.ts) |
 | Command wheel | [`src/input/wheel.ts`](../src/input/wheel.ts), [`use-wheel.ts`](../src/input/use-wheel.ts), [`CommandWheel.vue`](../src/input/CommandWheel.vue) |
@@ -53,7 +53,7 @@ Each fact below has one owner. Change the fact there; other code reads it.
 | Export matrix: marker rows, default selection, job names | [`src/export/export-plan.ts`](../src/export/export-plan.ts) |
 | Dropped files: page drops in the browser, granted native drops on the desktop | `watchDrops` in [`src/platform/`](../src/platform/); `openDroppedFiles` in [`workspace.ts`](../src/workspace/workspace.ts) |
 | Supported audio formats | [`src/core/audio-formats.ts`](../src/core/audio-formats.ts); `src-tauri/src/files.rs` repeats the extensions and a consistency test compares them |
-| Commands, their labels and availability | `COMMANDS` in [`src/app/commands.ts`](../src/app/commands.ts) |
+| Commands, their labels and availability | `COMMANDS` in [`src/commands/commands.ts`](../src/commands/commands.ts) |
 | Default key, controller and YuanCon bindings | `BINDINGS` in [`src/input/bindings.ts`](../src/input/bindings.ts) |
 | The user's binding changes (local preference) and the one-control-one-command rule | [`src/input/binding-overrides.ts`](../src/input/binding-overrides.ts) |
 | Fixed controller navigation | `UI_NAVIGATION` in [`src/input/gamepad.ts`](../src/input/gamepad.ts) |

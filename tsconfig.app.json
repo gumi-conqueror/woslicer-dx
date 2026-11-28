@@ -13,6 +13,7 @@
     "src/app/**/*.ts",
     "src/app/**/*.vue",
     "src/audio/**/*.ts",
+    "src/commands/**/*.ts",
     "src/timeline/**/*.ts",
     "src/timeline/**/*.vue",
     "src/slicing/**/*.ts",

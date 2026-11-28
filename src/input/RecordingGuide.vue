@@ -9,7 +9,7 @@ import {
   recordingKeys,
   yuanconControls,
 } from './bindings';
-import { commandLabel, RECORDING_SEEK_SECONDS } from '../app/commands';
+import { commandLabel, RECORDING_SEEK_SECONDS } from '../commands/commands';
 import GamepadIcon from './GamepadIcon.vue';
 import YuanconIcon from './YuanconIcon.vue';
 const props = defineProps<{ device: 'keyboard' | 'gamepad' | 'yuancon' }>();

@@ -1,4 +1,4 @@
-import type { RecordingInput } from '../app/commands';
+import type { RecordingInput } from '../commands/commands';
 
 /** The `KeyboardEvent.code` of a key text; synthetic events can lack `code`. */
 export function codeForKey(key: string): string {

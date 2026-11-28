@@ -2,8 +2,8 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useEditorStore } from '../../slicing/editor-store';
-import { APPLICATION_MENU } from '../menu';
-import { commandEnabled, commandLabel, type AppCommand } from '../commands';
+import { APPLICATION_MENU } from '../../commands/menu';
+import { commandEnabled, commandLabel, type AppCommand } from '../../commands/commands';
 import { shortcutLabel, gamepadShortcut } from '../../input/bindings';
 import { useInputState } from '../../input/state';
 import type { UiNavigation } from '../../input/gamepad';

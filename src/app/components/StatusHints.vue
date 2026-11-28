@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { commandLabel } from '../commands';
+import { commandLabel } from '../../commands/commands';
 import { HINT_AREAS, isHintArea, type HintArea, type MouseHint } from '../hint-areas';
 import { chordKeys, keyboardChords } from '../../input/bindings';
 import { useInputState } from '../../input/state';

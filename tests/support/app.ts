@@ -7,7 +7,7 @@ import { wavFile } from './audio';
 import type { Platform, OpenedFile, OutputFile } from '../../src/platform/contracts';
 import { onTestFinished } from 'vitest';
 import { readEditorSession } from '../../src/workspace/session';
-import { createCommands } from '../../src/app/commands';
+import { createCommands } from '../../src/commands/commands';
 import { errorMessage } from '../../src/core/messages';
 import type { Playback } from '../../src/playback';
 

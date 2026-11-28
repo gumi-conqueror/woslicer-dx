@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { canRecord, commandLabel, type AppCommand } from '../app/commands';
+import { canRecord, commandLabel, type AppCommand } from '../commands/commands';
 import { gamepadControls } from './bindings';
 import { useInputState } from './state';
 import { useEditorStore } from '../slicing/editor-store';

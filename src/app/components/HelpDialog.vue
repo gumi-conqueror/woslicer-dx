@@ -11,8 +11,8 @@ import {
   keyboardChords,
 } from '../../input/bindings';
 import { UI_NAVIGATION } from '../../input/gamepad';
-import { COMMAND_GROUPS, commandGroup, commandLabel } from '../commands';
-import { APPLICATION_MENU } from '../menu';
+import { COMMAND_GROUPS, commandGroup, commandLabel } from '../../commands/commands';
+import { APPLICATION_MENU } from '../../commands/menu';
 import GamepadIcon from '../../input/GamepadIcon.vue';
 import KeyCaps from '../../input/KeyCaps.vue';
 import MouseIcon from '../../ui/MouseIcon.vue';

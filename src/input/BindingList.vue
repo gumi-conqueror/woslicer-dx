@@ -11,8 +11,8 @@ import {
   type KeyChord,
 } from './bindings';
 import { reservedKey, useBindingOverrides, type RebindableDevice } from './binding-overrides';
-import { commandLabel } from '../app/commands';
-import { APPLICATION_MENU } from '../app/menu';
+import { commandLabel } from '../commands/commands';
+import { APPLICATION_MENU } from '../commands/menu';
 import GamepadIcon from './GamepadIcon.vue';
 import KeyCaps from './KeyCaps.vue';
 

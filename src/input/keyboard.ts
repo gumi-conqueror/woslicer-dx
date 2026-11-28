@@ -1,4 +1,4 @@
-import type { AppCommand, CommandArgs, CommandResult } from '../app/commands';
+import type { AppCommand, CommandArgs, CommandResult } from '../commands/commands';
 import { keyBinding, type InputLayer } from './bindings';
 import { keyOwnedByControl, visibleDialog } from '../ui/focus';
 

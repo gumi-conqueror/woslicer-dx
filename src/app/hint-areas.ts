@@ -1,4 +1,4 @@
-import type { AppCommand } from './commands';
+import type { AppCommand } from '../commands/commands';
 import { CANCEL, chordKeys, PRIMARY_KEY } from '../input/bindings';
 import type { MouseGesture } from '../ui/mouse';
 

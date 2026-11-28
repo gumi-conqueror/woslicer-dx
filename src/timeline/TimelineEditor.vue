@@ -2,8 +2,8 @@
 import { CANCEL, matchesChords, primaryPressed } from '../input/bindings';
 import TrackHeader from './TrackHeader.vue';
 import CommandMenu from '../input/CommandMenu.vue';
-import { TRACK_MENU } from '../app/menu';
-import { useCommandRunner } from '../app/commands';
+import { TRACK_MENU } from '../commands/menu';
+import { useCommandRunner } from '../commands/commands';
 import { computed, onBeforeUnmount, onMounted, shallowRef, useTemplateRef, watch } from 'vue';
 import { useDevicePixelRatio, useResizeObserver } from '@vueuse/core';
 import { ElSlider } from 'element-plus';

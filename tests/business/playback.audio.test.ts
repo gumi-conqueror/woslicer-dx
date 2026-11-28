@@ -4,7 +4,7 @@ import { useEditorStore } from '../../src/slicing/editor-store';
 import type { CueMode } from '../../src/project/schema';
 import { createPlayback, type Playback } from '../../src/playback';
 import { renderSlice } from '../../src/core/audio/slice';
-import { createCommands } from '../../src/app/commands';
+import { createCommands } from '../../src/commands/commands';
 import { handleKeyDown } from '../../src/input/keyboard';
 import { createTestApp, audioFile } from '../support/app';
 

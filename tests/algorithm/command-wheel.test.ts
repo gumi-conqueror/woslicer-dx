@@ -8,7 +8,7 @@ import {
   type WheelEvent,
   type WheelState,
 } from '../../src/input/wheel';
-import { isAppCommand } from '../../src/app/commands';
+import { isAppCommand } from '../../src/commands/commands';
 import { MAX_WHEELS, parseWheels } from '../../src/input/wheel-layout';
 
 function run(events: readonly WheelEvent[], start: WheelState = { open: false, page: 0 }) {
