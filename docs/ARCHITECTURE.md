@@ -104,7 +104,7 @@ The feature action owns validation and undo behavior. Continuous pointer gesture
 `WindowTitlebar.vue` delegates native controls through `src/platform/desktop-window.ts`.
 Native window-state restoration excludes decorations so it preserves the frameless window configuration.
 `App.vue` confirms exit and saves recovery data before native window closure.
-`WorkspacePanels.vue` owns panel visibility and order.
+`WorkspacePanels.vue` owns panel visibility and order. Its `panels` table has one row for each side panel; to add a panel, add a row.
 
 ## Audio path
 
