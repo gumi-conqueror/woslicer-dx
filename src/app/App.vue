@@ -23,7 +23,7 @@ import HelpDialog from './components/HelpDialog.vue';
 import AboutDialog from './components/AboutDialog.vue';
 import TroubleshootDialog from './components/TroubleshootDialog.vue';
 import { useInputControls, navigateDialog } from '../input/use-gamepad';
-import { editingControl, visibleDialog } from '../input/context';
+import { editingControl, visibleDialog } from '../ui/focus';
 import { canRecord } from './commands';
 import { handleKeyDown } from '../input/keyboard';
 import { routeGamepad, type InputContext, type WheelAction } from '../input/router';

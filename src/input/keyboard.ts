@@ -1,6 +1,6 @@
 import type { AppCommand, CommandArgs, CommandResult } from '../app/commands';
 import { keyBinding, type InputLayer } from './bindings';
-import { keyOwnedByControl, visibleDialog } from './context';
+import { keyOwnedByControl, visibleDialog } from '../ui/focus';
 
 interface KeyboardTarget {
   run<C extends AppCommand>(id: C, args?: CommandArgs<C>): Promise<CommandResult>;

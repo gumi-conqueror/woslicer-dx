@@ -18,7 +18,7 @@ See [Project format](PROJECT_FORMAT.md) for that compatibility boundary.
 | Menu entries and availability | [`src/app/menu.ts`](../src/app/menu.ts), [`ApplicationMenu.vue`](../src/app/components/ApplicationMenu.vue) |
 | Commands: ids, labels, help groups, availability and execution | [`src/app/commands.ts`](../src/app/commands.ts) |
 | Keyboard, controller and YuanCon bindings, including recording keys 1–7 | [`src/input/bindings.ts`](../src/input/bindings.ts) |
-| Where input goes (dialogs, menus, wheel, text fields) | `inputContext` in [`App.vue`](../src/app/App.vue), [`src/input/router.ts`](../src/input/router.ts), [`context.ts`](../src/input/context.ts) |
+| Where input goes (dialogs, menus, wheel, text fields) | `inputContext` in [`App.vue`](../src/app/App.vue), [`src/input/router.ts`](../src/input/router.ts), [`src/ui/focus.ts`](../src/ui/focus.ts) |
 | Command wheel | [`src/input/wheel.ts`](../src/input/wheel.ts), [`use-wheel.ts`](../src/input/use-wheel.ts), [`CommandWheel.vue`](../src/app/components/CommandWheel.vue) |
 | Timeline rendering and gestures | [`src/timeline/`](../src/timeline/) |
 | Marker edits and undoable document state | [`editor-store.ts`](../src/slicing/editor-store.ts), [`editor-actions.ts`](../src/slicing/editor-actions.ts) |

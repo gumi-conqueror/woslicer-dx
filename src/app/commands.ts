@@ -13,7 +13,7 @@ import type { EditorStore } from '../slicing/editor-store';
 import { FIELD_RANGES } from '../project/schema';
 import type { Workspace } from '../workspace/workspace';
 import type { Playback } from '../playback';
-import { visibleDialog } from '../input/context';
+import { visibleDialog } from '../ui/focus';
 
 /** The editor state that command availability reads. */
 export type CommandState = Pick<
