@@ -6,6 +6,7 @@ import { useLegacyInterop } from '../interop/legacy';
 import { useEditorStore } from '../slicing/editor-store';
 import { useExporter } from './exporter';
 import { FIELD_RANGES, inRange } from '../project/schema';
+import NumberField from '../ui/NumberField.vue';
 const { t } = useI18n();
 const interop = useLegacyInterop();
 const editor = useEditorStore();
@@ -66,7 +67,7 @@ const gate = computed({
           :aria-label="t('chrome.baseNameLabel')"
       /></el-form-item>
       <el-form-item :label="t('chrome.fadeLabel')"
-        ><el-input-number
+        ><NumberField
           v-model="fade"
           :min="FIELD_RANGES.fadeoutMs.min"
           :max="FIELD_RANGES.fadeoutMs.max"
@@ -74,7 +75,7 @@ const gate = computed({
           :aria-label="t('chrome.fadeLabel')"
       /></el-form-item>
       <el-form-item :label="t('chrome.gateLabel')"
-        ><el-input-number
+        ><NumberField
           v-model="gate"
           :min="FIELD_RANGES.noisegateDb.min"
           :max="FIELD_RANGES.noisegateDb.max"
@@ -85,7 +86,7 @@ const gate = computed({
         }}</el-checkbox></el-form-item
       >
       <el-form-item :label="t('chrome.clipStartNoLabel')"
-        ><el-input-number
+        ><NumberField
           v-model="clipStart"
           :min="FIELD_RANGES.clipStartNumber.min"
           :max="FIELD_RANGES.clipStartNumber.max"

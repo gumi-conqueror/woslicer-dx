@@ -85,6 +85,48 @@ describe('application controls', () => {
       instance.dispose();
     }
   });
+  it('steps a number box with the wheel and the arrow keys to multiples of its step', async () => {
+    vi.useFakeTimers();
+    const instance = setup();
+    const wrapper = mount(DocumentOptions, { global: instance.global });
+    try {
+      const bpm = wrapper.findAllComponents(ElInputNumber)[0];
+      const shown = () => bpm.get('input').element.value;
+      instance.editor.setDocumentOptions({ bpm: 120.37 });
+      await nextTick();
+      // The BPM step is 0.1. The first notch takes the part under 0.1 along: 120.37 → 120.4 → 120.5.
+      // Notches can arrive faster than the box redraws.
+      void bpm.trigger('wheel', { deltaY: -100 });
+      await bpm.trigger('wheel', { deltaY: -100 });
+      expect(shown()).toBe('120.5');
+      // The wheel gesture is one edit, made when the wheel rests.
+      expect(instance.editor.doc.bpm).toBe(120.37);
+      vi.advanceTimersByTime(400);
+      await nextTick();
+      expect(instance.editor.doc.bpm).toBe(120.5);
+      instance.editor.undo();
+      await nextTick();
+      expect(instance.editor.doc.bpm).toBe(120.37);
+      // Down goes to the multiple below; the arrow keys follow the same rule and edit at once.
+      await bpm.trigger('wheel', { deltaY: 100 });
+      vi.advanceTimersByTime(400);
+      await nextTick();
+      expect(instance.editor.doc.bpm).toBe(120.3);
+      await bpm.get('input').trigger('keydown', { key: 'ArrowUp' });
+      expect(instance.editor.doc.bpm).toBe(120.4);
+      await bpm.get('input').trigger('keydown', { key: 'ArrowDown' });
+      await bpm.get('input').trigger('keydown', { key: 'ArrowDown' });
+      expect(instance.editor.doc.bpm).toBe(120.2);
+      // Typed digits stay as typed.
+      bpm.vm.$emit('update:modelValue', 172.33);
+      await nextTick();
+      expect(instance.editor.doc.bpm).toBe(172.33);
+    } finally {
+      wrapper.unmount();
+      instance.dispose();
+      vi.useRealTimers();
+    }
+  });
   it('keeps settings in the toolbar and places calibration and help in their menus', async () => {
     const instance = setup();
     const wrapper = mount(EditorToolbar, { global: instance.global });

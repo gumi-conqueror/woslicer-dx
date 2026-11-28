@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { BAND_NAMES, type BandName } from '../core/bands';
 import { useEditorStore } from '../slicing/editor-store';
 import { useDetection } from './detection';
+import NumberField from '../ui/NumberField.vue';
 
 const { t } = useI18n();
 const editor = useEditorStore();
@@ -70,7 +71,7 @@ watch(
         </el-checkbox-group>
       </el-form-item>
       <el-form-item :label="t('chrome.riseLabel')">
-        <el-input-number
+        <NumberField
           v-model="threshold"
           :min="0"
           :max="120"

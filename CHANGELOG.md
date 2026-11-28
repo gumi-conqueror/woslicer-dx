@@ -7,6 +7,7 @@
 ### Added
 
 - **Edit → Copy the markers of the measure** and **Cut the markers of the measure** fill the measure clipboard for **Paste markers into the measure** (Ctrl/Cmd+F), which is now in the Edit menu too. The two new commands have no default keys; assign keys in the input settings. Measure copy, cut and paste show their result in the status bar.
+- The mouse wheel changes the number box under the pointer, as it changes a volume slider. Each notch goes to the next multiple of the step of the box. BPM moves in steps of 0.1: 120.37 goes up to 120.4 and down to 120.3. The up and down keys in a number box follow the same rule. Typed values keep their digits.
 
 ### Changed
 

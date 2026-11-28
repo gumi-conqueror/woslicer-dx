@@ -12,11 +12,11 @@ import {
   ElForm,
   ElFormItem,
   ElInput,
-  ElInputNumber,
   ElOption,
   ElSelect,
 } from 'element-plus';
 import type { OpenedFile } from '../platform/contracts';
+import NumberField from '../ui/NumberField.vue';
 import { useWorkspace } from '../workspace/workspace';
 import {
   bmsSequenceClipboard,
@@ -430,7 +430,7 @@ function showDefinitions(): void {
             v-for="item in numericSettings"
             :key="item.field"
             :label="t(`chrome.${item.key}`)"
-            ><ElInputNumber
+            ><NumberField
               v-model="settings[item.field]"
               :min="0"
               :step="item.step"

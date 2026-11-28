@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onBeforeUnmount } from 'vue';
 import { ElSlider } from 'element-plus';
+import { useWheelGesture } from '../ui/wheel-gesture';
 import { useSliderDraft } from './use-slider-draft';
 
 /**
@@ -26,25 +26,13 @@ const { displayValue, onUpdate, commit, reset } = useSliderDraft(
   (value) => emit('commit', value),
   (value) => emit('preview', value),
 );
-/** The wheel commits this long after its last notch. */
-const WHEEL_COMMIT_MS = 400;
-let wheelTimer: ReturnType<typeof setTimeout> | undefined;
+const gesture = useWheelGesture(commit);
 function wheel(event: WheelEvent): void {
   if (event.deltaY === 0) return;
   const next = displayValue.value + (event.deltaY < 0 ? props.wheelStep : -props.wheelStep);
   onUpdate(Math.max(props.min, Math.min(props.max, next)));
-  clearTimeout(wheelTimer);
-  wheelTimer = setTimeout(() => {
-    wheelTimer = undefined;
-    commit();
-  }, WHEEL_COMMIT_MS);
+  gesture.notch();
 }
-onBeforeUnmount(() => {
-  if (wheelTimer !== undefined) {
-    clearTimeout(wheelTimer);
-    commit();
-  }
-});
 defineExpose({ reset });
 </script>
 <template>
