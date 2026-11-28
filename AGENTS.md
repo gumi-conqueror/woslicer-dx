@@ -59,8 +59,9 @@
 - Maintain the root README in English, Chinese, Japanese and Korean. Keep user-facing content consistent across all four languages.
 - Maintain the changelog in English and Chinese only. Keep release entries consistent across both languages.
 - Release descriptions must use the matching English and Chinese changelog entries. Describe user-visible changes; omit build results, CI details and artifact inventories.
-- Include only changes that end users can see, interact with or hear. Keep entries brief. Describe the effect on everyday use.
-- Omit implementation choices, dependencies, developer tooling, internal refactors, documentation maintenance and minor optimizations. If unsure whether users care about a change, omit it.
+- Include only changes that end users notice and care about. Write one short line for each change; users read only the summary. Describe the effect on everyday use.
+- Omit implementation choices, dependencies, developer tooling, internal refactors, documentation maintenance and minor optimizations. Omit changes that users notice but do not care about. If unsure whether users care about a change, omit it.
+- The first changelog entry is the version in work; `package.json` names the same version. Do not add an Unreleased section. Do not write that a version is unreleased or is a prerelease.
 - Use Added and Fixed sections when applicable. Translate these headings in Chinese. Omit empty sections. Use blame and commit history to place changes in the appropriate release. Do not present old behavior as new.
 - Write `docs/` in English by default. Put architecture, formats, build/release procedures and other developer details there. Do not maintain translated copies of technical documents.
 - Keep original-language quotations or UI labels only when needed as reference evidence. Add an English explanation.
