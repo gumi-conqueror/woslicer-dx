@@ -476,7 +476,7 @@ export function createWorkspace(options: WorkspaceOptions) {
       }
     } catch (error) {
       if (!disposed && version === generation)
-        editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
+        editor.setStatus('projectSaveFailed', { message: errorMessage(error) }, true);
     }
   }
   /**
@@ -631,7 +631,7 @@ export function createWorkspace(options: WorkspaceOptions) {
     resetPending = persistence
       .clear()
       .catch((error) => {
-        editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
+        editor.setStatus('sessionClearFailed', { message: errorMessage(error) }, true);
       })
       .finally(() => {
         resetPending = null;

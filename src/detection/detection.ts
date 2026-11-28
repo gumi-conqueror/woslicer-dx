@@ -9,7 +9,7 @@ export function createDetection(editor: EditorStore, audio: WorkspaceAudio) {
   /** Band analysis and both detectors report a failure the same way; stale results stay silent. */
   function reportFailure(error: unknown, version: number): void {
     if (audio.generation() === version)
-      editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
+      editor.setStatus('detectionFailed', { message: errorMessage(error) }, true);
   }
   let analysisTask: { generation: number; task: Promise<void> } | null = null;
   function ensureBands(): Promise<void> {

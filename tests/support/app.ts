@@ -45,7 +45,8 @@ export function createTestApp(
       calibrate() {},
       openProject: () => app.workspace.openProject(),
       newProjectFromWos: () => app.workspace.newProjectFromWos(),
-      report: (error) => app.editor.setStatus('loadFailed', { message: errorMessage(error) }, true),
+      report: (error) =>
+        app.editor.setStatus('commandFailed', { message: errorMessage(error) }, true),
     },
   });
   return Object.assign(app, {

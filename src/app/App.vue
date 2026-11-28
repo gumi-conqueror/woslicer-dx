@@ -150,7 +150,7 @@ watch(
 let disposed = false;
 let stopAppearance: (() => void) | undefined;
 function report(error: unknown): void {
-  if (!disposed) editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
+  if (!disposed) editor.setStatus('commandFailed', { message: errorMessage(error) }, true);
 }
 const execute = commands.run;
 provideCommandRunner(execute);

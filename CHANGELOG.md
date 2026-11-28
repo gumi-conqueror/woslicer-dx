@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- When saving a project, detection, a clipboard copy or a BMHelper action fails, the status bar names that action. It no longer reports a failed load.
+
 ## 2.0.0-alpha.9 — 2026-11-28
 
 ### Added

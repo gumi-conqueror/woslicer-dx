@@ -308,7 +308,7 @@ it('surfaces confirmation errors through the status bar', async () => {
     await flushPromises();
     expect(effects.openProject).not.toHaveBeenCalled();
     expect(editor.isError).toBe(true);
-    expect(editor.status.segments[0]?.key).toBe('loadFailed');
+    expect(editor.status.segments[0]?.key).toBe('commandFailed');
     expect(editor.status.segments[0]?.params).toEqual({ message: 'confirm boom' });
   } finally {
     wrapper.unmount();
@@ -384,7 +384,7 @@ it('releases the close lock and surfaces the error when the reset fails', async 
     await flushPromises();
     expect(effects.reset).toHaveBeenCalledOnce();
     expect(editor.isError).toBe(true);
-    expect(editor.status.segments[0]?.key).toBe('loadFailed');
+    expect(editor.status.segments[0]?.key).toBe('commandFailed');
     expect(editor.status.segments[0]?.params).toEqual({ message: 'disk full' });
     // The lock is released: a second close re-confirms and retries the reset.
     // (Workspace clearing after a successful reset is pinned by the dedicated

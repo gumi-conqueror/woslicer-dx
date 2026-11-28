@@ -83,7 +83,7 @@ export function createLegacyInterop(
         start: editor.clipStartNumber,
       });
     } catch (error) {
-      editor.setStatus('bmseReadFailed', { message: errorMessage(error) }, true);
+      editor.setStatus('bmseWriteFailed', { message: errorMessage(error) }, true);
     }
   }
   async function bmseIn(): Promise<void> {
