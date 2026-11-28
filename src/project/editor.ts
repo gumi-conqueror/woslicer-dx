@@ -30,7 +30,6 @@ export class ProjectEditor {
   private undoHistory: ProjectFile[] = [];
   private redoHistory: ProjectFile[] = [];
   private revisionValue = 0;
-  private savedRevisionValue = 0;
 
   constructor(document: ProjectDocument) {
     const parsed = parseProject(document);
@@ -45,9 +44,6 @@ export class ProjectEditor {
   }
   get revision(): number {
     return this.revisionValue;
-  }
-  get savedRevision(): number {
-    return this.savedRevisionValue;
   }
   get isDirty(): boolean {
     return !equal(this.documentValue, this.savedValue);
@@ -97,7 +93,6 @@ export class ProjectEditor {
   markSaved(revision: number): boolean {
     if (revision !== this.revisionValue) return false;
     this.savedValue = this.documentValue;
-    this.savedRevisionValue = revision;
     return true;
   }
 
@@ -110,6 +105,5 @@ export class ProjectEditor {
     this.undoHistory = [];
     this.redoHistory = [];
     this.revisionValue++;
-    if (options.saved !== false) this.savedRevisionValue = this.revisionValue;
   }
 }

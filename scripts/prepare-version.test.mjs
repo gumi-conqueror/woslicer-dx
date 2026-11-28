@@ -1,35 +1,31 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { releaseChangelog } from './prepare-version.mjs';
+import { startEntry } from './prepare-version.mjs';
 
 const changelog = `# Changelog
-
-## Unreleased
-
-### Fixed
-
-- A fix.
 
 ## 2.0.0-alpha.1 — 2026-11-26
 
 - Earlier.
 `;
 
-test('the unreleased section becomes the version entry and a new empty section stays on top', () => {
+test('a new version gets an entry above the other versions', () => {
   assert.equal(
-    releaseChangelog(changelog, 'Unreleased', '2.0.0-alpha.2', '2026-12-01'),
-    changelog.replace('## Unreleased\n', '## Unreleased\n\n## 2.0.0-alpha.2 — 2026-12-01\n'),
+    startEntry(changelog, '2.0.0-alpha.2', '2026-12-01'),
+    changelog.replace('## 2.0.0-alpha.1', '## 2.0.0-alpha.2 — 2026-12-01\n\n## 2.0.0-alpha.1'),
   );
 });
 
-test('a missing or empty unreleased section stops the preparation', () => {
-  assert.throws(
-    () => releaseChangelog(changelog, '未发布', '2.0.0-alpha.2', '2026-12-01'),
-    /Missing "## 未发布"/,
+test('the entry of the same version keeps its changes and takes the new date', () => {
+  assert.equal(
+    startEntry(changelog, '2.0.0-alpha.1', '2026-12-01'),
+    changelog.replace('2026-11-26', '2026-12-01'),
   );
-  const empty = changelog.replace('### Fixed\n\n- A fix.\n\n', '');
+});
+
+test('a changelog without a version entry stops the preparation', () => {
   assert.throws(
-    () => releaseChangelog(empty, 'Unreleased', '2.0.0-alpha.2', '2026-12-01'),
-    /empty/,
+    () => startEntry('# Changelog\n\n- A change.\n', '2.0.0-alpha.2', '2026-12-01'),
+    /Missing a version entry/,
   );
 });

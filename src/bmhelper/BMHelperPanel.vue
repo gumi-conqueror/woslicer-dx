@@ -12,11 +12,11 @@ import {
   ElForm,
   ElFormItem,
   ElInput,
-  ElInputNumber,
   ElOption,
   ElSelect,
 } from 'element-plus';
 import type { OpenedFile } from '../platform/contracts';
+import NumberField from '../ui/NumberField.vue';
 import { useWorkspace } from '../workspace/workspace';
 import {
   bmsSequenceClipboard,
@@ -26,10 +26,11 @@ import {
   type SortType,
 } from '../core/bmhelper';
 import type { SmfTrackInfo } from '../core/formats/smf';
+import { useEditorActions } from '../slicing/editor-actions';
 import { useBmhelperStore } from './store';
 import PianoRoll from './PianoRoll.vue';
 
-const emit = defineEmits<{ applyCuts: [value: { ticks: number[] }] }>();
+const actions = useEditorActions();
 const { t } = useI18n();
 const store = useBmhelperStore();
 const divisionName = ref('');
@@ -105,7 +106,15 @@ const numericSettings = [
   { field: 'mlThreshold', key: 'bmhMlThreshold', step: 0.125 },
 ] as const;
 // Shared action wrapper: re-entrancy guard, error capture, busy release in finally.
-async function run(action: () => void | Promise<void>): Promise<void> {
+// `failure` is the status text that names the action when it fails.
+type Failure =
+  | 'bmhOpenFailed'
+  | 'bmhSaveFailed'
+  | 'bmhDivisionFailed'
+  | 'bmhEditFailed'
+  | 'bmhCopyFailed'
+  | 'exportFailed';
+async function run(failure: Failure, action: () => void | Promise<void>): Promise<void> {
   if (busy.value) return;
   busy.value = true;
   error.value = '';
@@ -113,9 +122,7 @@ async function run(action: () => void | Promise<void>): Promise<void> {
   try {
     await action();
   } catch (cause: unknown) {
-    error.value = t('status.bmhOpenFailed', {
-      message: errorMessage(cause),
-    });
+    error.value = t(`status.${failure}`, { message: errorMessage(cause) });
   } finally {
     busy.value = false;
   }
@@ -141,7 +148,7 @@ function resetSettings(): void {
 }
 // Import flow: pick a MIDI file, inspect its tracks, then open the settings dialog.
 async function openMidi(): Promise<void> {
-  await run(async () => {
+  await run('bmhOpenFailed', async () => {
     const file = await platform.openFile('midi');
     if (!file) return;
     const inspection = store.inspectMidi(file.bytes);
@@ -168,7 +175,7 @@ function parseStart(value: string): number {
 // if present, then add the division; Math.trunc floors each beat-level value to
 // whole ticks at the project quantize (velocityThreshold stays a plain count).
 async function create(): Promise<void> {
-  await run(() => {
+  await run('bmhDivisionFailed', () => {
     const start = parseStart(settings.startDefinition);
     const name = settings.name.trim() || 'division';
     if (pending.value && !channels.value.length) throw new Error('no-notes');
@@ -200,14 +207,14 @@ async function create(): Promise<void> {
 }
 // Project IO: open a saved .bmh file into the store.
 async function openProject(): Promise<void> {
-  await run(async () => {
+  await run('bmhOpenFailed', async () => {
     const file = await platform.openFile('bmh');
     if (file) store.openProject(file.bytes, file.name);
   });
 }
 // Cancelled saves leave the stored byte baseline unchanged.
 async function saveProject(): Promise<void> {
-  await run(async () => {
+  await run('bmhSaveFailed', async () => {
     await store.saveBmhProject((bytes, changes) => {
       if (changes.length)
         warning.value = t('status.bmhNameConverted', {
@@ -223,7 +230,7 @@ async function saveProject(): Promise<void> {
 }
 // Export the selected division recording as a .mid file.
 async function exportMidi(): Promise<void> {
-  await run(async () => {
+  await run('exportFailed', async () => {
     await platform.saveFile(
       'midi',
       `${store.selectedDivision?.name ?? 'recording'}.mid`,
@@ -234,7 +241,7 @@ async function exportMidi(): Promise<void> {
 // Clipboard variants: cut positions, BMS sequence, or the definition text.
 // The division/source guard runs for all three kinds, as before.
 async function copy(kind: 'cuts' | 'bms' | 'definitions'): Promise<void> {
-  await run(async () => {
+  await run('bmhCopyFailed', async () => {
     const division = store.selectedDivision;
     const source = store.project?.source;
     if (!division || !source) return;
@@ -325,7 +332,7 @@ function showDefinitions(): void {
             v-model="divisionName"
             :aria-label="t('chrome.bmhNameLabel')"
             :disabled="busy"
-            @change="(name: string) => run(() => store.renameDivision(name))"
+            @change="(name: string) => run('bmhEditFailed', () => store.renameDivision(name))"
           />
         </label>
         <PianoRoll
@@ -340,7 +347,7 @@ function showDefinitions(): void {
           >
           <ElButton
             :disabled="busy"
-            @click="emit('applyCuts', { ticks: store.cutTicks() })"
+            @click="actions.applyBmhelperCuts(store.cutTicks())"
             >{{ t('chrome.bmhApply') }}</ElButton
           >
           <ElButton
@@ -372,7 +379,7 @@ function showDefinitions(): void {
             :aria-label="t('chrome.bmhStartNumber')"
             class="start-number"
           />
-          <ElButton @click="run(() => store.setStart(parseStart(startNumber)))">{{
+          <ElButton @click="run('bmhEditFailed', () => store.setStart(parseStart(startNumber)))">{{
             t('chrome.bmhStartNumber')
           }}</ElButton>
           <span class="definitions">{{ selectedDefinitionNumbers.join(' · ') }}</span>
@@ -423,7 +430,7 @@ function showDefinitions(): void {
             v-for="item in numericSettings"
             :key="item.field"
             :label="t(`chrome.${item.key}`)"
-            ><ElInputNumber
+            ><NumberField
               v-model="settings[item.field]"
               :min="0"
               :step="item.step"

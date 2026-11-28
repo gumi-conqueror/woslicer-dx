@@ -585,28 +585,20 @@ async function connectPage(port) {
 
 function stopTree(child) {
   if (!child.pid) return;
-  if (process.platform === 'win32') {
-    // Verify the kill: a graceful Browser.close leaves the app shell alive and
-    // taskkill can race a still-exiting process tree, so retry once.
-    for (let attempt = 0; attempt < 2; attempt++) {
-      spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], {
-        stdio: 'ignore',
-        windowsHide: true,
-        timeout: 5_000,
-      });
-      const listing = spawnSync('tasklist', ['/FI', 'PID eq ' + child.pid], {
-        encoding: 'utf8',
-        windowsHide: true,
-        timeout: 5_000,
-      });
-      if (!(listing.stdout ?? '').includes('woslicer-dx')) return;
-    }
-    console.warn(`process tree for pid ${child.pid} survived two kill attempts`);
-  } else {
-    try {
-      child.kill('SIGKILL');
-    } catch {
-      // Already gone.
-    }
+  // Verify the kill: a graceful Browser.close leaves the app shell alive and
+  // taskkill can race a still-exiting process tree, so retry once.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], {
+      stdio: 'ignore',
+      windowsHide: true,
+      timeout: 5_000,
+    });
+    const listing = spawnSync('tasklist', ['/FI', 'PID eq ' + child.pid], {
+      encoding: 'utf8',
+      windowsHide: true,
+      timeout: 5_000,
+    });
+    if (!(listing.stdout ?? '').includes('woslicer-dx')) return;
   }
+  console.warn(`process tree for pid ${child.pid} survived two kill attempts`);
 }

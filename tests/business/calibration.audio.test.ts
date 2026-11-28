@@ -63,7 +63,6 @@ describe('calibration audio session', () => {
     const result = session.finish();
     expect(result.matched).toBe(2);
     expect(result.medianMs).toBeCloseTo(30);
-    expect(session.isActive()).toBe(false);
     for (const node of fixture.oscillators) {
       expect(node.stop).toHaveBeenCalledTimes(2);
       expect(node.disconnect).toHaveBeenCalled();
@@ -79,7 +78,7 @@ describe('calibration audio session', () => {
     const fixture = audioFixture();
     const session = new TapCalibrator(fixture.context);
     expect(() => session.start(0)).toThrow();
-    expect(session.isActive()).toBe(false);
+    expect(session.elapsedBeats()).toBe(0);
     expect(fixture.oscillators).toHaveLength(0);
   });
 });

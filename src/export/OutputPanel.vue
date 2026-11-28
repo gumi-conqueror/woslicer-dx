@@ -2,11 +2,15 @@
 import { shortcutLabel } from '../input/bindings';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useWorkspace } from '../workspace/workspace';
+import { useLegacyInterop } from '../interop/legacy';
+import { useEditorStore } from '../slicing/editor-store';
+import { useExporter } from './exporter';
 import { FIELD_RANGES, inRange } from '../project/schema';
+import NumberField from '../ui/NumberField.vue';
 const { t } = useI18n();
-const workspace = useWorkspace();
-const editor = workspace.editor;
+const interop = useLegacyInterop();
+const editor = useEditorStore();
+const exporter = useExporter();
 // Output fields written through editor transactions.
 const clipStart = computed({
   get: () => editor.clipStartNumber,
@@ -63,7 +67,7 @@ const gate = computed({
           :aria-label="t('chrome.baseNameLabel')"
       /></el-form-item>
       <el-form-item :label="t('chrome.fadeLabel')"
-        ><el-input-number
+        ><NumberField
           v-model="fade"
           :min="FIELD_RANGES.fadeoutMs.min"
           :max="FIELD_RANGES.fadeoutMs.max"
@@ -71,7 +75,7 @@ const gate = computed({
           :aria-label="t('chrome.fadeLabel')"
       /></el-form-item>
       <el-form-item :label="t('chrome.gateLabel')"
-        ><el-input-number
+        ><NumberField
           v-model="gate"
           :min="FIELD_RANGES.noisegateDb.min"
           :max="FIELD_RANGES.noisegateDb.max"
@@ -82,7 +86,7 @@ const gate = computed({
         }}</el-checkbox></el-form-item
       >
       <el-form-item :label="t('chrome.clipStartNoLabel')"
-        ><el-input-number
+        ><NumberField
           v-model="clipStart"
           :min="FIELD_RANGES.clipStartNumber.min"
           :max="FIELD_RANGES.clipStartNumber.max"
@@ -97,29 +101,29 @@ const gate = computed({
         type="primary"
         :loading="editor.exportLock"
         :disabled="!editor.source || !editor.ticks.length"
-        @click="workspace.exportAll()"
+        @click="exporter.exportAll()"
         >{{ t('chrome.export') }}</el-button
       >
       <el-button
         :disabled="!editor.source || !editor.ticks.length || editor.exportLock"
-        @click="workspace.exportSlice()"
+        @click="exporter.exportSlice()"
         >{{ t('chrome.exportSliceAtCursor') }}</el-button
       >
       <el-button
         :title="shortcutLabel('export-wos')"
-        @click="workspace.saveWos()"
+        @click="interop.saveWos()"
         >{{ t('chrome.saveWos') }}</el-button
       >
-      <el-button @click="workspace.importWosSettings()">{{ t('menu.importWos') }}</el-button>
+      <el-button @click="interop.importWosSettings()">{{ t('menu.importWos') }}</el-button>
       <el-button
         :disabled="!editor.ticks.length"
         :title="shortcutLabel('copy-bmse')"
-        @click="workspace.bmseOut()"
+        @click="interop.bmseOut()"
         >{{ t('chrome.bmseOut') }}</el-button
       >
       <el-button
         :title="shortcutLabel('paste-bmse')"
-        @click="workspace.bmseIn()"
+        @click="interop.bmseIn()"
         >{{ t('chrome.bmseIn') }}</el-button
       >
     </div>

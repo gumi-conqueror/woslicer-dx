@@ -9,7 +9,7 @@ import {
   type UiNavigation,
 } from './gamepad';
 import { useInputState } from './state';
-import { visibleDialog } from './context';
+import { visibleDialog } from '../ui/focus';
 
 /** One controller poll: its events and the pointing direction for the command wheel. */
 export interface GamepadFrame {

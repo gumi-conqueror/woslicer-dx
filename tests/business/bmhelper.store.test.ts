@@ -19,6 +19,17 @@ const midi = writeSmfSequence({
   controls: [],
 });
 
+/** The bytes that saving the `.bmh` file writes. The save is declined, so the saved state stays. */
+async function bmhBytes(store: ReturnType<typeof useBmhelperStore>): Promise<Uint8Array> {
+  let written: Uint8Array | undefined;
+  await store.saveBmhProject((bytes) => {
+    written = bytes;
+    return Promise.resolve(false);
+  });
+  if (!written) throw new Error('The save wrote nothing');
+  return written;
+}
+
 describe('BMHelper project state', () => {
   it('writes and reopens large note chunks without spreading bytes onto the call stack', () => {
     const notes = Array.from({ length: 100_000 }, (_, i) => ({
@@ -37,7 +48,7 @@ describe('BMHelper project state', () => {
     expect(restored.source.notes[99_999]).toEqual(notes[99_999]);
     expect(writeBmh(restored)).toEqual(bytes);
   });
-  it('imports, creates, selects, renumbers and round-trips project and recording MIDI', () => {
+  it('imports, creates, selects, renumbers and round-trips project and recording MIDI', async () => {
     const pinia = createPinia();
     const store = useBmhelperStore(pinia);
     const info = store.inspectMidi(midi);
@@ -56,7 +67,7 @@ describe('BMHelper project state', () => {
     expect(readSmfSequence(recording, recordingTrack?.index ?? 0, new Set([0])).notes).toEqual(
       store.selectedDivision?.recording,
     );
-    const saved = store.saveProjectBytes();
+    const saved = await bmhBytes(store);
     store.addDivision(defaultDivisionSetting('second', 480));
     expect(store.selectedIndex).toBe(1);
     store.selectDivision(0);
@@ -92,7 +103,6 @@ describe('BMHelper project integration', () => {
     try {
       const store = useBmhelperStore(pinia);
       const editor = useEditorStore(pinia);
-      store.bindEditor(editor);
       const original = new Uint8Array(readFileSync('tests/fixtures/bmh/original.bmh'));
       store.openProject(original, 'original.bmh');
       const name = '简体中文・한국어・🎵';
@@ -119,34 +129,33 @@ describe('BMHelper project integration', () => {
       expect(writes).toBe(1);
       expect(editor.document).toBe(before);
       store.renameDivision('日本語');
-      expect(readBmh(store.saveProjectBytes()).divisions[1].name).toBe('日本語');
+      expect(readBmh(await bmhBytes(store)).divisions[1].name).toBe('日本語');
       editor.undo();
       expect(store.selectedDivision?.name).toBe(name);
     } finally {
       disposePinia(pinia);
     }
   });
-  it('retains original BMH bytes through project saving, reopening and editing', () => {
+  it('retains original BMH bytes through project saving, reopening and editing', async () => {
     const original = new Uint8Array(readFileSync('tests/fixtures/bmh/original-events.bmh'));
     const pinia = createPinia();
     try {
       const store = useBmhelperStore(pinia);
       const editor = useEditorStore(pinia);
-      store.bindEditor(editor);
       store.openProject(original, 'original.bmh');
       const saved = decodeProject(encodeProject(editor.document));
       if (saved.kind !== 'supported') throw new Error('Expected a supported project');
       editor.replaceDocument(createEmptyProject('other'));
       editor.replaceDocument(saved.project);
-      expect(store.saveProjectBytes()).toEqual(original);
+      expect(await bmhBytes(store)).toEqual(original);
       expect(store.project?.divisions.map((division) => division.name)).toEqual([
         'コード分割',
         'copy',
       ]);
       store.transpose(1);
-      expect(readBmh(store.saveProjectBytes()).divisions[0].definitions[0].zz).toBe(2);
+      expect(readBmh(await bmhBytes(store)).divisions[0].definitions[0].zz).toBe(2);
       editor.undo();
-      expect(store.saveProjectBytes()).toEqual(original);
+      expect(await bmhBytes(store)).toEqual(original);
     } finally {
       disposePinia(pinia);
     }
@@ -157,7 +166,6 @@ describe('BMHelper project integration', () => {
     const pinia = createPinia();
     const store = useBmhelperStore(pinia);
     const editor = useEditorStore(pinia);
-    store.bindEditor(editor);
     store.importMidi(midi, 'source.mid', trackOf(store), new Set([0]));
     expect(editor.document.bmhelper).not.toBeNull();
     const afterImport = editor.document.bmhelper;
@@ -168,10 +176,10 @@ describe('BMHelper project integration', () => {
     editor.undo();
     expect(editor.document.bmhelper).toEqual(afterImport);
     expect(store.selectedDivision).toBeNull();
-    const importedBytes = store.saveProjectBytes();
+    const importedBytes = await bmhBytes(store);
     editor.redo();
     expect(store.selectedDivision?.name).toBe('first');
-    expect(store.saveProjectBytes()).not.toEqual(importedBytes);
+    expect(await bmhBytes(store)).not.toEqual(importedBytes);
     editor.replaceDocument(createEmptyProject('other'));
     await nextTick();
     expect(store.project).toBeNull();
@@ -182,7 +190,6 @@ describe('BMHelper project integration', () => {
     const pinia = createPinia();
     const store = useBmhelperStore(pinia);
     const editor = useEditorStore(pinia);
-    store.bindEditor(editor);
     store.importMidi(midi, 'source.mid', trackOf(store), new Set([0]));
     store.addDivision(defaultDivisionSetting('first', 480));
     let release: (() => void) | undefined;
@@ -207,7 +214,6 @@ describe('BMHelper project integration', () => {
     const pinia = createPinia();
     const store = useBmhelperStore(pinia);
     const editor = useEditorStore(pinia);
-    store.bindEditor(editor);
     store.importMidi(midi, 'source.mid', trackOf(store), new Set([0]));
     store.addDivision(defaultDivisionSetting('removed', 480));
     editor.undo();
@@ -216,19 +222,18 @@ describe('BMHelper project integration', () => {
     expect(editor.canRedo).toBe(false);
     disposePinia(pinia);
   });
-  it('reloads changed payloads when the replacement document keeps the same project ID', () => {
+  it('reloads changed payloads when the replacement document keeps the same project ID', async () => {
     const pinia = createPinia();
     const store = useBmhelperStore(pinia);
     const editor = useEditorStore(pinia);
-    store.bindEditor(editor);
     store.importMidi(midi, 'source.mid', trackOf(store), new Set([0]));
     store.addDivision(defaultDivisionSetting('first', 480));
     const original = structuredClone(editor.document);
-    const bytes = store.saveProjectBytes();
+    const bytes = await bmhBytes(store);
     store.addDivision(defaultDivisionSetting('second', 480));
     editor.replaceDocument(original);
     expect(store.project?.divisions.map((division) => division.name)).toEqual(['first']);
-    expect(store.saveProjectBytes()).toEqual(bytes);
+    expect(await bmhBytes(store)).toEqual(bytes);
     expect(store.selectedIndex).toBe(0);
     expect(store.name).toBe('');
     expect(store.dirty).toBe(false);
@@ -237,18 +242,16 @@ describe('BMHelper project integration', () => {
     expect(store.cutTicks()).toEqual([]);
     disposePinia(pinia);
   });
-  it('resets session-only numbering when the same BMH bytes are opened again', () => {
+  it('resets session-only numbering when the same BMH bytes are opened again', async () => {
     const pinia = createPinia();
     const store = useBmhelperStore(pinia);
-    const editor = useEditorStore(pinia);
-    store.bindEditor(editor);
     store.importMidi(midi, 'source.mid', trackOf(store), new Set([0]));
     store.addDivision({ ...defaultDivisionSetting('ff', 480), zzDefinition: false });
-    const bytes = store.saveProjectBytes();
+    const bytes = await bmhBytes(store);
     expect(store.selectedDivision?.zzDefinition).toBe(false);
     store.openProject(bytes, 'reopened.bmh');
     expect(store.selectedDivision?.zzDefinition).toBe(true);
-    expect(store.saveProjectBytes()).toEqual(bytes);
+    expect(await bmhBytes(store)).toEqual(bytes);
     expect(store.dirty).toBe(false);
     disposePinia(pinia);
   });
@@ -256,7 +259,6 @@ describe('BMHelper project integration', () => {
     const pinia = createPinia();
     const store = useBmhelperStore(pinia);
     const editor = useEditorStore(pinia);
-    store.bindEditor(editor);
     store.importMidi(midi, 'source.mid', trackOf(store), new Set([0]));
     let release = () => {};
     const saving = store.saveBmhProject(
@@ -279,7 +281,6 @@ describe('BMHelper project integration', () => {
     const pinia = createPinia();
     const store = useBmhelperStore(pinia);
     const editor = useEditorStore(pinia);
-    store.bindEditor(editor);
     store.importMidi(midi, 'source.mid', trackOf(store), new Set([0]));
     store.addDivision(defaultDivisionSetting('first', 480));
     store.addDivision({ ...defaultDivisionSetting('ff', 480), zzDefinition: false });
@@ -320,7 +321,6 @@ describe('BMHelper project integration', () => {
     const pinia = createPinia();
     const store = useBmhelperStore(pinia);
     const editor = useEditorStore(pinia);
-    store.bindEditor(editor);
     store.importMidi(midi, 'source.mid', trackOf(store), new Set([0]));
     const original = editor.document;
     let release = () => {};

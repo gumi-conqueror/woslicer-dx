@@ -7,7 +7,7 @@ import { silentPlayback } from '../support/app';
 import TimelineEditor from '../../src/timeline/TimelineEditor.vue';
 import { setupI18n } from '../../src/i18n/setup';
 import { useEditorStore } from '../../src/slicing/editor-store';
-import { provideCommandRunner } from '../../src/app/commands';
+import { provideCommandRunner } from '../../src/commands/commands';
 import { createEmptyTrack } from '../../src/project/codec';
 
 afterEach(() => {

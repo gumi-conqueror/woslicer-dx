@@ -1,6 +1,7 @@
 /**
- * Where application input goes. Keyboard, gamepad and YuanCon input all ask
- * this module, so a new dialog or editable control changes one place.
+ * What holds the focus: a visible dialog or an editable control. Commands and
+ * every input device ask this module before they act, so a new kind of dialog
+ * or editable control changes one place.
  */
 
 /** Focus inside these controls belongs to the control, for every input device. */

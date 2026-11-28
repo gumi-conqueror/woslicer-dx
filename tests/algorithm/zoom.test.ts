@@ -1,6 +1,6 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { zoomAt } from '../../src/timeline/waveform/zoom.js';
+import { zoomAt } from '../../src/core/zoom.js';
 test('anchor invariant, origin clamp and bounded unloaded view', () => {
   const bounds = { min: 0.01, max: 1000000 },
     initial = { scroll: 20, scale: 2 };

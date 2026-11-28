@@ -15,24 +15,46 @@ See [Project format](PROJECT_FORMAT.md) for that compatibility boundary.
 | Behavior | Main source locations |
 | --- | --- |
 | Application assembly and project replacement | [`src/app/App.vue`](../src/app/App.vue) |
-| Menu entries and availability | [`src/app/menu.ts`](../src/app/menu.ts), [`ApplicationMenu.vue`](../src/app/components/ApplicationMenu.vue) |
-| Commands: ids, labels, help groups, availability and execution | [`src/app/commands.ts`](../src/app/commands.ts) |
+| Menu entries and availability | [`src/commands/menu.ts`](../src/commands/menu.ts), [`ApplicationMenu.vue`](../src/app/components/ApplicationMenu.vue) |
+| Commands: ids, labels, help groups, availability and execution | [`src/commands/commands.ts`](../src/commands/commands.ts) |
 | Keyboard, controller and YuanCon bindings, including recording keys 1–7 | [`src/input/bindings.ts`](../src/input/bindings.ts) |
-| Where input goes (dialogs, menus, wheel, text fields) | `inputContext` in [`App.vue`](../src/app/App.vue), [`src/input/router.ts`](../src/input/router.ts), [`context.ts`](../src/input/context.ts) |
-| Command wheel | [`src/input/wheel.ts`](../src/input/wheel.ts), [`use-wheel.ts`](../src/input/use-wheel.ts), [`CommandWheel.vue`](../src/app/components/CommandWheel.vue) |
-| Timeline rendering and gestures | [`src/timeline/`](../src/timeline/) |
-| Marker edits and undoable document state | [`editor-store.ts`](../src/slicing/editor-store.ts), [`editor-actions.ts`](../src/slicing/editor-actions.ts) |
+| Where input goes (dialogs, menus, wheel, text fields) | `inputContext` in [`App.vue`](../src/app/App.vue), [`src/input/router.ts`](../src/input/router.ts), [`src/ui/focus.ts`](../src/ui/focus.ts) |
+| Command wheel | [`src/input/wheel.ts`](../src/input/wheel.ts), [`use-wheel.ts`](../src/input/use-wheel.ts), [`CommandWheel.vue`](../src/input/CommandWheel.vue) |
+| Timeline rendering and gestures, track header | [`src/timeline/`](../src/timeline/) |
+| Marker edits, the marker clipboards and undoable document state | [`editor-store.ts`](../src/slicing/editor-store.ts), [`editor-actions.ts`](../src/slicing/editor-actions.ts) |
 | Project loading, saving and recovery | [`src/workspace/`](../src/workspace/), [`src/project/`](../src/project/) |
 | Playback and input timestamps | [`src/playback/`](../src/playback/) |
 | Decoding and Worker requests | [`src/audio/`](../src/audio/) |
 | Slice rendering, peaks and analysis | [`src/core/`](../src/core/) |
-| Slice export controls | [`src/export/OutputPanel.vue`](../src/export/OutputPanel.vue) |
+| Slice export | [`src/export/exporter.ts`](../src/export/exporter.ts); controls in [`OutputPanel.vue`](../src/export/OutputPanel.vue) and [`ExportDialog.vue`](../src/export/ExportDialog.vue) |
+| Band and edge detection | [`src/detection/detection.ts`](../src/detection/detection.ts), [`DetectionPanel.vue`](../src/detection/DetectionPanel.vue) |
 | BMHelper MIDI division | [`src/bmhelper/`](../src/bmhelper/) |
+| WOS settings import and export, BMSE clipboard | [`src/interop/legacy.ts`](../src/interop/legacy.ts); the file formats are in `src/core/formats/` and `@gumi-conqueror/wos-file` |
 | OS/browser services | [`src/platform/`](../src/platform/) |
 | Gamepad reader, fixed menu and dialog navigation, polling | [`src/input/gamepad.ts`](../src/input/gamepad.ts), [`use-gamepad.ts`](../src/input/use-gamepad.ts) |
 | YuanCon protocol, device session and recording | [`src/input/yuancon/`](../src/input/yuancon/) |
 | Languages, fonts and theme | [`src/i18n/`](../src/i18n/), [`src/ui/`](../src/ui/), [`build-fonts.mjs`](../scripts/build-fonts.mjs) |
+| Input settings, key and controller icons, recording guide, YuanCon dialog | `.vue` files in [`src/input/`](../src/input/) |
 | Native commands and permissions | [`src-tauri/src/`](../src-tauri/src/), [`capabilities/`](../src-tauri/capabilities/), [`permissions/`](../src-tauri/permissions/) |
+
+## Layers
+
+A file imports only from its own layer or from a lower layer. `scripts/import-layers.test.mjs` holds the same table and fails on an import of a higher layer.
+In a feature folder the `.vue` files are views and the `.ts` files are services.
+
+| Layer | Contents | Location |
+| ---: | --- | --- |
+| 7 | App shell: assembly, menu bar, title bar, panel dock, status bar, help, About | `src/app/` |
+| 6 | Views: the components of each feature | `src/timeline/`; `.vue` files in other folders |
+| 5 | Input: devices, bindings, command wheel | `.ts` files in `src/input/` |
+| 4 | Commands and menus | `src/commands/` |
+| 3 | Feature services | `.ts` files in `src/playback/`, `src/workspace/`, `src/export/`, `src/detection/`, `src/bmhelper/`, `src/calibration/`, `src/interop/` |
+| 2 | Editor state | `editor-store.ts` and `editor-actions.ts` in `src/slicing/` |
+| 1 | Boundaries: project format, platform, audio Worker, languages, shared UI parts | `src/project/`, `src/platform/`, `src/audio/`, `src/i18n/`, `src/ui/` |
+| 0 | Rules: pure computations and file formats | `src/core/` |
+
+Every layer can import the generated message data in `src/i18n/generated.ts`.
+A new source folder needs a row in the table of the test.
 
 ## Fact owners
 
@@ -51,13 +73,16 @@ Each fact below has one owner. Change the fact there; other code reads it.
 | Timeline length, also with a track that is still loading | `timelineLength` in [`editor-store.ts`](../src/slicing/editor-store.ts) |
 | Tempo estimate of new audio | `estimateTempo` in [`src/core/tempo.ts`](../src/core/tempo.ts) |
 | Export matrix: marker rows, default selection, job names | [`src/export/export-plan.ts`](../src/export/export-plan.ts) |
-| Dropped files: page drops in the browser, granted native drops on the desktop | `watchDrops` in [`src/platform/`](../src/platform/); `openDroppedFiles` in [`workspace.ts`](../src/workspace/workspace.ts) |
+| Dropped files: page drops in the browser, granted native drops on the desktop | `watchDrops` in [`src/platform/`](../src/platform/); `openChosenFiles` in [`workspace.ts`](../src/workspace/workspace.ts) |
 | Supported audio formats | [`src/core/audio-formats.ts`](../src/core/audio-formats.ts); `src-tauri/src/files.rs` repeats the extensions and a consistency test compares them |
-| Commands, their labels and availability | `COMMANDS` in [`src/app/commands.ts`](../src/app/commands.ts) |
+| Commands, their labels and availability | `COMMANDS` in [`src/commands/commands.ts`](../src/commands/commands.ts) |
 | Default key, controller and YuanCon bindings | `BINDINGS` in [`src/input/bindings.ts`](../src/input/bindings.ts) |
 | The user's binding changes (local preference) and the one-control-one-command rule | [`src/input/binding-overrides.ts`](../src/input/binding-overrides.ts) |
 | Fixed controller navigation | `UI_NAVIGATION` in [`src/input/gamepad.ts`](../src/input/gamepad.ts) |
-| Status bar input hints: areas and their mouse and keyboard actions | `HINT_AREAS` in [`src/app/hint-areas.ts`](../src/app/hint-areas.ts); controller hints in [`GamepadHints.vue`](../src/app/components/GamepadHints.vue) |
+| Status bar input hints: areas and their mouse and keyboard actions | `HINT_AREAS` in [`src/app/hint-areas.ts`](../src/app/hint-areas.ts); controller hints in [`GamepadHints.vue`](../src/input/GamepadHints.vue) |
+| How a number box steps with the mouse wheel and the arrow keys | [`src/ui/NumberField.vue`](../src/ui/NumberField.vue); every number box uses it |
+| When a mouse wheel gesture on a number box or a volume slider becomes one edit | `useWheelGesture` in [`src/ui/wheel-gesture.ts`](../src/ui/wheel-gesture.ts) |
+| Level text in dB, with a plus sign above 0 dB | `formatDb` in [`src/core/volume.ts`](../src/core/volume.ts) |
 | Which cursor moves keep the cursor centered | `moveCursorTo` in [`editor-store.ts`](../src/slicing/editor-store.ts) |
 | Controller thresholds and repeat timing | top of [`src/input/gamepad.ts`](../src/input/gamepad.ts) |
 | Command wheel travel and size; default slots | [`src/input/wheel.ts`](../src/input/wheel.ts), [`use-wheel.ts`](../src/input/use-wheel.ts) |
@@ -68,7 +93,9 @@ Each fact below has one owner. Change the fact there; other code reads it.
 ## State and commands
 
 The editor store owns document state and undo history. Feature components read its reactive projections and commit document edits through transactions.
-The workspace owns file operations, recovery and transient loading state. `TrackHeader.vue` displays the current audio load activity.
+The workspace owns file operations, recovery, each track's audio engine and transient loading state. `TrackHeader.vue` displays the current audio load activity.
+`App.vue` creates the other services beside the workspace: the editor actions, the exporter, detection and the legacy exchange. Each service provides itself to its views, for example `useExporter()` in `src/export/exporter.ts`.
+The exporter, detection and the legacy exchange get the tracks' audio from `workspace.audio`; they drop a result when its generation changed meanwhile.
 Playback and device sessions keep runtime resources outside the portable project document.
 Revision checks reject stale asynchronous results and gestures after document replacement.
 
@@ -76,13 +103,14 @@ Discrete actions follow input → command → feature action. Menus, keyboard sh
 To add a command, add one entry to `COMMANDS` and, if it needs keys, one row to `BINDINGS`. Menus, tooltips, help and the controller hint row read both.
 Bindings have two layers. The recording layer lies over the editing layer and hides only the controls that it binds or reserves.
 Menu, dialog and wheel navigation on a controller is fixed in `UI_NAVIGATION` and is not part of the binding table.
-`run` does nothing while a dialog is visible or `modalOpen` in `App.vue` is true. Register every new app dialog in `modalOpen`.
+`run` does nothing while a dialog is visible or `modalOpen` in `App.vue` is true. `App.vue` keeps one switch for each of its dialogs in `dialogs` and derives `modalOpen` from them.
+To add a dialog, add a key to `dialogs` and a tag to the template. If a command opens it without a condition, add its id to `DialogId` in `commands.ts` and run `hosts.openDialog`.
 The feature action owns validation and undo behavior. Continuous pointer gestures and form drafts remain local to their feature.
 
 `WindowTitlebar.vue` delegates native controls through `src/platform/desktop-window.ts`.
 Native window-state restoration excludes decorations so it preserves the frameless window configuration.
 `App.vue` confirms exit and saves recovery data before native window closure.
-`WorkspacePanels.vue` owns panel visibility and order.
+`WorkspacePanels.vue` owns panel visibility and order. Its `panels` table has one row for each side panel; to add a panel, add a row.
 
 ## Audio path
 

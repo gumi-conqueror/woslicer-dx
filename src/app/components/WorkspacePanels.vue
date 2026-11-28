@@ -2,7 +2,6 @@
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
 import { useResizeObserver } from '@vueuse/core';
 import { useI18n } from 'vue-i18n';
-import { useWorkspace } from '../../workspace/workspace';
 import MarkerList from '../../slicing/MarkerList.vue';
 import DetectionPanel from '../../detection/DetectionPanel.vue';
 import OutputPanel from '../../export/OutputPanel.vue';
@@ -10,14 +9,15 @@ import BMHelperPanel from '../../bmhelper/BMHelperPanel.vue';
 import SourceInfo from './SourceInfo.vue';
 import AppIcon from '../../ui/AppIcon.vue';
 
-const workspace = useWorkspace();
 const { t } = useI18n();
+// One row for each side panel: its switch, title and content. A new panel adds
+// one row. `ownScroll` is for content that scrolls itself, such as a virtual list.
 const panels = [
-  { id: 'source', title: 'chrome.tabSource', icon: 'wave' },
-  { id: 'cuts', title: 'chrome.tabCuts', icon: 'cuts' },
-  { id: 'detect', title: 'chrome.bandDetect', icon: 'detect' },
-  { id: 'output', title: 'chrome.tabOutput', icon: 'output' },
-  { id: 'bmhelper', title: 'chrome.tabBmhelper', icon: 'notes' },
+  { id: 'source', title: 'chrome.tabSource', icon: 'wave', component: SourceInfo },
+  { id: 'cuts', title: 'chrome.tabCuts', icon: 'cuts', component: MarkerList, ownScroll: true },
+  { id: 'detect', title: 'chrome.bandDetect', icon: 'detect', component: DetectionPanel },
+  { id: 'output', title: 'chrome.tabOutput', icon: 'output', component: OutputPanel },
+  { id: 'bmhelper', title: 'chrome.tabBmhelper', icon: 'notes', component: BMHelperPanel },
 ] as const;
 type PanelId = (typeof panels)[number]['id'];
 // Oldest modules are on the left; new modules open beside the rail on the right.
@@ -106,16 +106,9 @@ function close(id: PanelId): void {
         </header>
         <div
           class="panel-content"
-          :class="{ 'cuts-pane': panel.id === 'cuts' }"
+          :class="{ 'own-scroll': 'ownScroll' in panel }"
         >
-          <SourceInfo v-if="panel.id === 'source'" />
-          <MarkerList v-else-if="panel.id === 'cuts'" />
-          <DetectionPanel v-else-if="panel.id === 'detect'" />
-          <OutputPanel v-else-if="panel.id === 'output'" />
-          <BMHelperPanel
-            v-else
-            @apply-cuts="workspace.actions.applyBmhelperCuts($event.ticks)"
-          />
+          <component :is="panel.component" />
         </div>
       </section>
     </div>
@@ -198,7 +191,7 @@ function close(id: PanelId): void {
   padding: 12px;
   overflow: auto;
 }
-.cuts-pane {
+.own-scroll {
   overflow: hidden;
 }
 .panel-switches {

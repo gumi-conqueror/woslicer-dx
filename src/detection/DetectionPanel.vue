@@ -2,11 +2,13 @@
 import { computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { BAND_NAMES, type BandName } from '../core/bands';
-import { useWorkspace } from '../workspace/workspace';
+import { useEditorStore } from '../slicing/editor-store';
+import { useDetection } from './detection';
+import NumberField from '../ui/NumberField.vue';
 
 const { t } = useI18n();
-const workspace = useWorkspace();
-const editor = workspace.editor;
+const editor = useEditorStore();
+const detection = useDetection();
 // Rise threshold accepted only when a finite number within 0–120 dB.
 const threshold = computed({
   get: () => editor.bandDetection.thresholdDb,
@@ -39,7 +41,7 @@ const range = computed(() =>
 watch(
   () => [editor.bandsVisible, editor.source],
   () => {
-    if (editor.bandsVisible && editor.source) void workspace.ensureBands();
+    if (editor.bandsVisible && editor.source) void detection.ensureBands();
   },
 );
 </script>
@@ -69,7 +71,7 @@ watch(
         </el-checkbox-group>
       </el-form-item>
       <el-form-item :label="t('chrome.riseLabel')">
-        <el-input-number
+        <NumberField
           v-model="threshold"
           :min="0"
           :max="120"
@@ -104,12 +106,12 @@ watch(
         type="primary"
         :loading="editor.bandBusy"
         :disabled="!editor.source || !selectedBands.length"
-        @click="workspace.detect()"
+        @click="detection.detect()"
         >{{ t(editor.bandBusy ? 'chrome.detecting' : 'chrome.detect') }}</el-button
       >
       <el-button
         :disabled="!editor.source || editor.bandBusy"
-        @click="workspace.edgeDetect()"
+        @click="detection.edgeDetect()"
         >{{ t('chrome.edgeDetect') }}</el-button
       >
     </el-form>

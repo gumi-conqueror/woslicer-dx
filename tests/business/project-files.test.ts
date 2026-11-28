@@ -24,9 +24,9 @@ describe('portable project workflow', () => {
     await restored.workspace.openProject();
     expect(resolve).toHaveBeenCalledWith(
       'project-grant',
-      f.editor.document.tracks[0].media.mediaId,
+      f.editor.document.tracks[0].media?.mediaId,
     );
-    expect(restored.editor.document.tracks[0].media.originHint).toEqual({
+    expect(restored.editor.document.tracks[0].media?.originHint).toEqual({
       kind: 'desktop',
       pathHint: file.absolutePath,
     });
@@ -46,13 +46,13 @@ describe('portable project workflow', () => {
     await f.workspace.saveProject();
     f.opened = { ...audioFile(), absolutePath: 'D:\\New\\tone.wav' };
     await f.workspace.relinkAudio();
-    expect(f.editor.document.tracks[0].media.originHint).toEqual({
+    expect(f.editor.document.tracks[0].media?.originHint).toEqual({
       kind: 'desktop',
       pathHint: 'D:\\New\\tone.wav',
     });
     expect(f.editor.isDirty).toBe(true);
-    f.workspace.actions.undo();
-    expect(f.editor.document.tracks[0].media.originHint).toEqual({
+    f.actions.undo();
+    expect(f.editor.document.tracks[0].media?.originHint).toEqual({
       kind: 'desktop',
       pathHint: 'C:\\Old\\tone.wav',
     });
@@ -73,7 +73,7 @@ describe('portable project workflow', () => {
     await f.workspace.saveProject();
     expect(f.editor.isDirty).toBe(false);
     f.editor.setTicks([0, 48]);
-    f.workspace.actions.undo();
+    f.actions.undo();
     expect(f.editor.isDirty).toBe(false);
     const saved = f.saved[0];
     if (!saved) throw new Error('Missing project output');
@@ -114,7 +114,7 @@ describe('portable project workflow', () => {
     });
     expect(f.editor.source).toBe(source);
     expect(f.editor.document).toBe(original);
-    await f.workspace.exportAll();
+    await f.exporter.exportAll();
     f.opened = null;
     await f.workspace.relinkAudio();
     expect(f.editor.source).toBe(source);
@@ -137,7 +137,7 @@ describe('portable project workflow', () => {
     expect(updated?.framesPerChannel).toBe(24000);
     expect(f.editor.isDirty).toBe(true);
     expect(f.editor.canUndo).toBe(true);
-    f.workspace.actions.undo();
+    f.actions.undo();
     expect(f.editor.document.tracks[0].media).toEqual(media);
   });
   it('keeps the current audio when a relink difference is declined', async () => {
@@ -344,7 +344,7 @@ describe('portable project workflow', () => {
     wos.shift = 2;
     wos.markers[5] = 1;
     f.opened = { name: 'cuts.wos', reference: null, bytes: writeWos(wos) };
-    await f.workspace.importWosSettings();
+    await f.interop.importWosSettings();
     expect(f.editor.doc.bpm).toBe(150);
     expect(f.editor.doc.shift).toBe(2);
     expect(f.editor.ticks).toEqual([5]);
@@ -354,7 +354,7 @@ describe('portable project workflow', () => {
     expect(f.editor.document.tracks[0].output).toEqual(output);
     expect(f.editor.isDirty).toBe(true);
     expect(f.editor.canUndo).toBe(true);
-    f.workspace.actions.undo();
+    f.actions.undo();
     expect(f.editor.doc.bpm).toBe(120);
     expect(f.editor.ticks).toEqual([]);
     await f.workspace.saveProject();
@@ -370,7 +370,7 @@ describe('portable project workflow', () => {
     wos.bpm = 90;
     wos.markers[3] = 1;
     f.opened = { name: 'cuts.wos', reference: null, bytes: writeWos(wos) };
-    await f.workspace.importWosSettings();
+    await f.interop.importWosSettings();
     expect(f.editor.doc.bpm).toBe(90);
     expect(f.editor.ticks).toEqual([3]);
     expect(f.editor.document.projectId).toBe(projectId);
@@ -381,7 +381,7 @@ describe('portable project workflow', () => {
   it('creates a fresh project from WOS, discarding the previous workspace content', async () => {
     const f = setup();
     await f.workspace.loadAudio(audioFile());
-    f.workspace.actions.setMarker(24);
+    f.actions.setMarker(24);
     const oldProjectId = f.editor.document.projectId;
     const wos = projectToWos(createEmptyProject());
     wos.bpm = 90;
@@ -436,7 +436,7 @@ describe('portable project workflow', () => {
     await f.workspace.openProject();
     expect(reopen).not.toHaveBeenCalled();
     expect(f.editor.source).toBeNull();
-    expect(f.editor.document.tracks[0].media.originHint).toEqual({
+    expect(f.editor.document.tracks[0].media?.originHint).toEqual({
       kind: 'desktop',
       pathHint: 'C:/untrusted/secret.wav',
     });
@@ -470,11 +470,11 @@ it('keeps markers past 256 measures in the project and drops them only from .wos
     reference: null,
     bytes: wavFile([new Int16Array(8000 * 600)], 8000),
   });
-  f.workspace.actions.setMarker(192 * 10);
-  f.workspace.actions.setMarker(192 * 280);
+  f.actions.setMarker(192 * 10);
+  f.actions.setMarker(192 * 280);
   expect(f.editor.ticks).toEqual([1920, 53760]);
   expect(f.editor.timelineTicks).toBeGreaterThan(192 * 280);
-  await f.workspace.saveWos();
+  await f.interop.saveWos();
   expect(f.editor.status.segments.map((segment) => segment.key)).toEqual([
     'savedWos',
     'wosMarkersDropped',

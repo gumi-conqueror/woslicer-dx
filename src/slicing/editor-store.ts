@@ -26,7 +26,7 @@ import {
   tickToSampleExport,
   type TimeBase,
 } from '../core/timebase';
-import { zoomAt as zoomView } from '../timeline/waveform/zoom';
+import { zoomAt as zoomView } from '../core/zoom';
 import { ampToDb, dbToAmp } from '../core/volume';
 import type { PeakCache } from '../core/peaks';
 import type { BandAnalysis } from '../core/bands';

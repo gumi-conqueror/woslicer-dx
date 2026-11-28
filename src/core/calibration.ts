@@ -1,13 +1,11 @@
 /**
- * Tap calibration: the user taps Enter along with 16 quarter-note clicks at
- * the project BPM. The median tap-to-beat offset (ms) is the latency to
+ * Tap calibration: the user taps Enter along with quarter-note clicks at the
+ * project BPM, for as long as they want. The median tap-to-beat offset (ms) is the latency to
  * subtract from Enter break-point placements during playback (audio output
  * latency + human reaction + key input all show up as a consistent late bias).
  *
  * Pure math only — the renderer owns the AudioContext and timing.
  */
-
-export const DEFAULT_CALIBRATION_BEATS = 16;
 
 /**
  * Reference tempo for the single-beat fallback match: a tap counts when it

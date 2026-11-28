@@ -2,15 +2,15 @@ import { mount } from '@vue/test-utils';
 import { createPinia, disposePinia } from 'pinia';
 import { nextTick } from 'vue';
 import { ElInputNumber, ElSelect, ElOption } from 'element-plus';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import { clearMocks, mockIPC } from '@tauri-apps/api/mocks';
 import DocumentOptions from '../../src/app/components/DocumentOptions.vue';
 import EditorToolbar from '../../src/app/components/EditorToolbar.vue';
 import WorkspacePanels from '../../src/app/components/WorkspacePanels.vue';
 import AboutDialog from '../../src/app/components/AboutDialog.vue';
 import ApplicationMenu from '../../src/app/components/ApplicationMenu.vue';
-import { APPLICATION_MENU } from '../../src/app/menu';
-import { APP_COMMANDS, commandEnabled, commandLabel } from '../../src/app/commands';
+import { APPLICATION_MENU } from '../../src/commands/menu';
+import { APP_COMMANDS, commandEnabled, commandLabel } from '../../src/commands/commands';
 import { setupI18n } from '../../src/i18n/setup';
 import { useEditorStore } from '../../src/slicing/editor-store';
 import { useBmhelperStore } from '../../src/bmhelper/store';
@@ -19,9 +19,7 @@ import { GRID_DENSITIES } from '../../src/core/gridlines';
 import { MAX_TICKS } from '../../src/core/timebase';
 import { createI18n } from 'vue-i18n';
 import en from '../../src/i18n/en.json';
-import { workspaceKey } from '../../src/workspace/workspace';
 import { fixture } from '../support/app';
-import BMHelperPanel from '../../src/bmhelper/BMHelperPanel.vue';
 import { creditLinks } from '../../src/platform/about-links';
 import * as platformApi from '../../src/platform';
 import { createTauriPlatform } from '../../src/platform/tauri';
@@ -87,22 +85,70 @@ describe('application controls', () => {
       instance.dispose();
     }
   });
+  it('steps a number box with the wheel and the arrow keys to multiples of its step', async () => {
+    vi.useFakeTimers();
+    const instance = setup();
+    const wrapper = mount(DocumentOptions, { global: instance.global });
+    try {
+      const bpm = wrapper.findAllComponents(ElInputNumber)[0];
+      const shown = () => bpm.get('input').element.value;
+      instance.editor.setDocumentOptions({ bpm: 120.37 });
+      await nextTick();
+      // The BPM step is 0.1. The first notch takes the part under 0.1 along: 120.37 → 120.4 → 120.5.
+      // Notches can arrive faster than the box redraws.
+      void bpm.trigger('wheel', { deltaY: -100 });
+      await bpm.trigger('wheel', { deltaY: -100 });
+      expect(shown()).toBe('120.5');
+      // The wheel gesture is one edit, made when the wheel rests.
+      expect(instance.editor.doc.bpm).toBe(120.37);
+      vi.advanceTimersByTime(400);
+      await nextTick();
+      expect(instance.editor.doc.bpm).toBe(120.5);
+      instance.editor.undo();
+      await nextTick();
+      expect(instance.editor.doc.bpm).toBe(120.37);
+      // Down goes to the multiple below; the arrow keys follow the same rule and edit at once.
+      await bpm.trigger('wheel', { deltaY: 100 });
+      vi.advanceTimersByTime(400);
+      await nextTick();
+      expect(instance.editor.doc.bpm).toBe(120.3);
+      await bpm.get('input').trigger('keydown', { key: 'ArrowUp' });
+      expect(instance.editor.doc.bpm).toBe(120.4);
+      await bpm.get('input').trigger('keydown', { key: 'ArrowDown' });
+      await bpm.get('input').trigger('keydown', { key: 'ArrowDown' });
+      expect(instance.editor.doc.bpm).toBe(120.2);
+      // Typed digits stay as typed.
+      bpm.vm.$emit('update:modelValue', 172.33);
+      await nextTick();
+      expect(instance.editor.doc.bpm).toBe(172.33);
+    } finally {
+      wrapper.unmount();
+      instance.dispose();
+      vi.useRealTimers();
+    }
+  });
   it('keeps settings in the toolbar and places calibration and help in their menus', async () => {
     const instance = setup();
     const wrapper = mount(EditorToolbar, { global: instance.global });
     try {
       expect(wrapper.findComponent(DocumentOptions).exists()).toBe(true);
       expect(wrapper.text()).not.toContain('Calibrate');
-      expect(
-        APPLICATION_MENU.find((group) => group.label === 'menu.tools')?.commands.map(
-          (item) => item.id,
-        ),
-      ).toEqual(['toggle-recording', 'connect-yuancon', 'calibrate', 'input-settings']);
-      expect(
-        APPLICATION_MENU.find((group) => group.label === 'menu.help')?.commands.map(
-          (item) => item.id,
-        ),
-      ).toEqual(['help', 'troubleshoot', 'open-data-folder', 'about']);
+      const commandsOf = (label: string) =>
+        APPLICATION_MENU.find((group) => group.label === label)?.commands.flatMap((item) =>
+          item ? [item.id] : [],
+        );
+      expect(commandsOf('menu.tools')).toEqual([
+        'toggle-recording',
+        'connect-yuancon',
+        'calibrate',
+        'input-settings',
+      ]);
+      expect(commandsOf('menu.help')).toEqual([
+        'help',
+        'troubleshoot',
+        'open-data-folder',
+        'about',
+      ]);
       expect(commandEnabled('calibrate', instance.editor)).toBe(false);
       instance.editor.setSource(source);
       await nextTick();
@@ -117,7 +163,9 @@ describe('application controls', () => {
     const wrapper = mount(ApplicationMenu, { global: instance.global });
     try {
       const groups = APPLICATION_MENU;
-      const menuCommands = groups.flatMap((group) => group.commands.map((item) => item.id));
+      const menuCommands = groups.flatMap((group) =>
+        group.commands.flatMap((item) => (item ? [item.id] : [])),
+      );
       expect(new Set(menuCommands).size).toBe(menuCommands.length);
       expect(menuCommands.every((command) => APP_COMMANDS.includes(command))).toBe(true);
       expect(wrapper.find('[role="menubar"]').exists()).toBe(true);
@@ -130,9 +178,30 @@ describe('application controls', () => {
           // labels are verified through the same translator the component uses.
           expect(wrapper.text()).toContain(translate(group.label));
           for (const item of group.commands)
-            expect(translate(commandLabel(item.id))).not.toMatch(/^(menu|chrome)\./);
+            if (item) expect(translate(commandLabel(item.id))).not.toMatch(/^(menu|chrome)\./);
         }
       }
+    } finally {
+      wrapper.unmount();
+      instance.dispose();
+    }
+  });
+  it.each([false, true])('draws lines only between menu commands (desktop: %s)', (desktop) => {
+    const instance = setup();
+    const wrapper = mount(ApplicationMenu, { props: { desktop }, global: instance.global });
+    try {
+      const popups = wrapper.findAll('.menu-popup');
+      expect(popups).toHaveLength(APPLICATION_MENU.length);
+      for (const popup of popups) {
+        const kinds = popup
+          .findAll('hr, [role="menuitem"]')
+          .map((node) => (node.element.tagName === 'HR' ? 'line' : 'command'));
+        expect(kinds[0]).toBe('command');
+        expect(kinds.at(-1)).toBe('command');
+        expect(kinds.join(' ')).not.toContain('line line');
+      }
+      // The web version has no data folder to open.
+      expect(wrapper.find('[data-command="open-data-folder"]').exists()).toBe(desktop);
     } finally {
       wrapper.unmount();
       instance.dispose();
@@ -157,15 +226,29 @@ describe('application controls', () => {
       instance.dispose();
     }
   });
-  it('filters BMHelper cuts with one undo entry and preserves BPM and project when its module is toggled', async () => {
-    // WorkspacePanels reads the workspace through injection, so this test
-    // mounts against the real workspace fixture instead of a bare pinia.
+  it('filters BMHelper cuts with one undo entry and preserves the BPM', () => {
+    const f = fixture();
+    onTestFinished(() => f.dispose());
+    f.editor.setDocumentOptions({ bpm: 120 });
+    f.editor.setTicks([24]);
+    f.editor.setSource(source);
+    f.actions.applyBmhelperCuts([-1, 0, 48, 1000, MAX_TICKS, 0.5]);
+    expect(f.editor.ticks).toEqual([0, 48]);
+    expect(f.editor.doc.bpm).toBe(120);
+    expect(f.editor.status.segments[0]).toMatchObject({
+      key: 'bmhAppliedDropped',
+      params: { count: 2, dropped: 4 },
+    });
+    f.editor.undo();
+    expect(f.editor.ticks).toEqual([24]);
+  });
+  it('keeps the BMHelper file name while its panel is hidden and shown again', async () => {
     const f = fixture();
     const i18n = createI18n({ legacy: false, locale: 'en', messages: { en } });
     const wrapper = mount(WorkspacePanels, {
       global: {
         plugins: [f.pinia, i18n],
-        provide: { [workspaceKey]: f.workspace },
+        provide: f.provide,
         stubs: {
           BMHelperPanel: true,
           SourceInfo: true,
@@ -176,23 +259,6 @@ describe('application controls', () => {
       },
     });
     try {
-      f.editor.setDocumentOptions({ bpm: 120 });
-      f.editor.setTicks([24]);
-      f.editor.setSource(source);
-      await wrapper.get('button[aria-label="BMHelper"]').trigger('click');
-      await nextTick();
-      wrapper
-        .findComponent(BMHelperPanel)
-        .vm.$emit('applyCuts', { ticks: [-1, 0, 48, 1000, MAX_TICKS, 0.5] });
-      await nextTick();
-      expect(f.editor.ticks).toEqual([0, 48]);
-      expect(f.editor.doc.bpm).toBe(120);
-      expect(f.editor.status.segments[0]).toMatchObject({
-        key: 'bmhAppliedDropped',
-        params: { count: 2, dropped: 4 },
-      });
-      f.editor.undo();
-      expect(f.editor.ticks).toEqual([24]);
       const bmh = useBmhelperStore(f.pinia);
       bmh.name = 'retained';
       await wrapper.get('button[aria-label="BMHelper"]').trigger('click');
@@ -200,9 +266,6 @@ describe('application controls', () => {
       await wrapper.get('button[aria-label="BMHelper"]').trigger('click');
       await nextTick();
       expect(bmh.name).toBe('retained');
-      bmh.reset();
-      expect(bmh.name).toBe('');
-      expect(bmh.project).toBeNull();
     } finally {
       wrapper.unmount();
       await f.dispose();

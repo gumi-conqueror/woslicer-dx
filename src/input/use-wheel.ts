@@ -1,5 +1,5 @@
 import { computed, onMounted, onUnmounted, shallowRef } from 'vue';
-import { commandEnabled, type AppCommand, type CommandState } from '../app/commands';
+import { commandEnabled, type AppCommand, type CommandState } from '../commands/commands';
 import { stepWheel, type WheelEvent, type WheelState } from './wheel';
 import { useWheelLayout } from './wheel-layout';
 

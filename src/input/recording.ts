@@ -1,13 +1,4 @@
-import type { MarkerKey } from '../project/schema';
-
-/** One recording tap: the input time and the pressed recording keys 1–7. */
-export interface RecordingInput {
-  time?: number;
-  keys: readonly MarkerKey[];
-}
-export const RECORDING_SEEK_SECONDS = 0.5;
-/** A fast seek, for a long stick push, moves four ordinary seeks at once. */
-export const FAST_SEEK_SECONDS = 4 * RECORDING_SEEK_SECONDS;
+import type { RecordingInput } from '../commands/commands';
 
 /** The `KeyboardEvent.code` of a key text; synthetic events can lack `code`. */
 export function codeForKey(key: string): string {

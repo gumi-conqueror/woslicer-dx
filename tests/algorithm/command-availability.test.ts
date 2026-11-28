@@ -5,15 +5,25 @@ import {
   commandEnabled,
   type AppCommand,
   type CommandState as MenuEditorState,
-} from '../../src/app/commands';
-import { APPLICATION_MENU } from '../../src/app/menu';
+} from '../../src/commands/commands';
+import { APPLICATION_MENU } from '../../src/commands/menu';
 
-const track = (media: unknown) => ({ media }) as unknown as MenuEditorState['track'];
+/** The current track; it is the first track `t0` unless another id is given. */
+const track = (media: unknown, trackId = 't0') =>
+  ({ trackId, media }) as unknown as MenuEditorState['track'];
 const linked = (links: number[]) =>
-  ({ media: null, slicing: { markers: links, links } }) as unknown as MenuEditorState['track'];
-const tracks = (count: number) =>
   ({
-    tracks: Array.from({ length: count }, () => ({ slicing: { markers: [] } })),
+    trackId: 't0',
+    media: null,
+    slicing: { markers: links, links },
+  }) as unknown as MenuEditorState['track'];
+/** A project with tracks `t0`, `t1`, … that all have the same markers. */
+const tracks = (count: number, markers: number[] = []) =>
+  ({
+    tracks: Array.from({ length: count }, (_, index) => ({
+      trackId: `t${index}`,
+      slicing: { markers },
+    })),
   }) as unknown as MenuEditorState['document'];
 const state = (overrides: Partial<MenuEditorState> = {}): MenuEditorState => ({
   track: track(null),
@@ -59,6 +69,9 @@ const table: ReadonlyArray<readonly [AppCommand, MenuEditorState, boolean]> = [
   ['export-slice', state({ source: { name: 'a' } as unknown as MenuEditorState['source'] }), false],
   ['export-slice', withSource, true],
   ['export-all', withSource, true],
+  // Several tracks open the export window: markers on any track are enough.
+  ['export-all', state({ document: tracks(2) }), false],
+  ['export-all', state({ document: tracks(2, [12]) }), true],
   // History availability mirrors the editor.
   ['undo', state({ canUndo: true }), true],
   ['undo', withSource, false],
@@ -66,7 +79,9 @@ const table: ReadonlyArray<readonly [AppCommand, MenuEditorState, boolean]> = [
   // Selection helpers need markers.
   ['select-all', withSource, true],
   ['select-all', state(), false],
-  ['copy-selection', withSource, true],
+  // Copy and cut take the selection.
+  ['copy-selection', withSource, false],
+  ['copy-selection', busy, true],
   ['clear-markers', withSource, true],
   ['clear-markers', state(), false],
   ['cut-selection', state({ ticks: [12], selectedTicks: [12] }), true],
@@ -89,21 +104,31 @@ const table: ReadonlyArray<readonly [AppCommand, MenuEditorState, boolean]> = [
   ['shift-markers-later', withSource, true],
   ['copy-bmse', state(), false],
   ['paste-bmse', state(), true],
+  ['measure-copy', state(), false],
+  ['measure-cut', withSource, true],
   ['measure-paste', state(), true],
   ['open-wheel', state(), true],
   // A project keeps at least one track.
   ['add-track', state(), true],
   ['zoom-fit', state(), true],
-  ['rename-track', state(), true],
+  // A track without audio shows no name.
+  ['rename-track', state(), false],
+  ['rename-track', busy, true],
   ['toggle-track-mute', state(), true],
   ['toggle-track-solo', state(), true],
-  ['previous-track', state(), true],
-  ['next-track', state(), true],
-  // One track cannot move.
+  // One track cannot move, and there is no other track to select.
   ['move-track-up', state(), false],
   ['move-track-down', state(), false],
+  ['previous-track', state(), false],
+  ['next-track', state(), false],
+  // The first of two tracks goes down only, the last one up only.
+  ['next-track', state({ document: tracks(2) }), true],
+  ['move-track-down', state({ document: tracks(2) }), true],
+  ['previous-track', state({ document: tracks(2) }), false],
+  ['previous-track', state({ document: tracks(2), track: track(null, 't1') }), true],
+  ['move-track-up', state({ document: tracks(2), track: track(null, 't1') }), true],
+  ['next-track', state({ document: tracks(2), track: track(null, 't1') }), false],
   ['input-settings', state(), true],
-  ['export-all-tracks', state(), false],
   ['remove-track', state(), false],
   ['remove-track', state({ document: tracks(2) }), true],
   // Links need markers and another track; unlinking needs linked markers.
@@ -122,7 +147,7 @@ describe('command availability rules', () => {
     for (const id of APP_COMMANDS)
       if ('enabled' in COMMANDS[id]) expect(ids.has(id), id).toBe(true);
     for (const group of APPLICATION_MENU)
-      for (const item of group.commands) expect(ids.has(item.id), item.id).toBe(true);
+      for (const item of group.commands) if (item) expect(ids.has(item.id), item.id).toBe(true);
   });
   it.each(table)('enables %s per the shared rule', (id, editorState, expected) => {
     expect(commandEnabled(id, editorState)).toBe(expected);

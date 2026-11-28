@@ -4,8 +4,8 @@ import { createTestApp as setup, audioFile, processorEngine } from '../support/a
 import type { DecodedAudio } from '../../src/audio/audio-jobs';
 
 it('decodes PCM, builds peaks, keeps buffers raw, and keeps cuts when changing audio', async () => {
-  const { editor, workspace } = setup();
-  workspace.actions.setMarker(24);
+  const { editor, workspace, actions } = setup();
+  actions.setMarker(24);
   await workspace.loadAudio(audioFile());
   expect(editor.source?.sampleRate).toBe(48000);
   expect(editor.peaks).not.toBeNull();

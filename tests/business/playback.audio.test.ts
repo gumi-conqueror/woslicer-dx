@@ -4,9 +4,8 @@ import { useEditorStore } from '../../src/slicing/editor-store';
 import type { CueMode } from '../../src/project/schema';
 import { createPlayback, type Playback } from '../../src/playback';
 import { renderSlice } from '../../src/core/audio/slice';
-import { createCommands } from '../../src/app/commands';
 import { handleKeyDown } from '../../src/input/keyboard';
-import { createTestApp, audioFile } from '../support/app';
+import { createTestApp, audioFile, processorEngine } from '../support/app';
 
 class AudioNodeDouble {
   connect = vi.fn();
@@ -106,6 +105,12 @@ afterEach(() => {
   for (const owner of owners.splice(0)) owner.dispose();
   vi.unstubAllGlobals();
 });
+/** The real playback on the audio doubles; the test releases it when it ends. */
+function listening(editor: ReturnType<typeof useEditorStore>): Playback {
+  const playback = createPlayback(editor);
+  owners.push(playback);
+  return playback;
+}
 function fixture(length = 480000) {
   const editor = useEditorStore();
   const data = Int16Array.from({ length }, (_, index) => Math.round(Math.sin(index / 8) * 16000));
@@ -119,8 +124,7 @@ function fixture(length = 480000) {
     sourceFormat: { kind: 'pcm' as const, bits: 16 },
     floatData: [Float32Array.from(data, (sample) => sample / 32768)],
   });
-  const playback = createPlayback(editor);
-  owners.push(playback);
+  const playback = listening(editor);
   return { editor, playback, context: required(contexts.at(-1)) };
 }
 
@@ -128,27 +132,9 @@ describe('Pinia playback lifetime and audio clock', () => {
   it('places queued input before rate, pause and seek boundaries at its captured position', async () => {
     let now = 1000;
     vi.spyOn(performance, 'now').mockImplementation(() => now);
-    const { editor, workspace } = createTestApp();
+    const { editor, workspace, playback, commands } = createTestApp(processorEngine, listening);
     await workspace.loadAudio(audioFile('queued.wav', 480000));
-    const playback = createPlayback(editor);
-    owners.push(playback);
     const context = required(contexts.at(-1));
-    const commands = createCommands({
-      editor,
-      workspace,
-      playback,
-      hosts: {
-        close() {},
-        about() {},
-        help() {},
-        calibrate() {},
-        openProject() {},
-        newProjectFromWos() {},
-        report(error) {
-          throw error;
-        },
-      },
-    });
     editor.snap = false;
     editor.tapOffsetMs = 0;
     playback.play();
@@ -180,27 +166,9 @@ describe('Pinia playback lifetime and audio clock', () => {
     expect(playback.positionAt(1500)).toBeNull();
   });
   it('records at the playhead and seeks fixed seconds without changing playback state', async () => {
-    const { editor, workspace } = createTestApp();
+    const { editor, workspace, playback, commands } = createTestApp(processorEngine, listening);
     await workspace.loadAudio(audioFile('recording.wav', 480000));
-    const playback = createPlayback(editor);
-    owners.push(playback);
     const context = required(contexts.at(-1));
-    const commands = createCommands({
-      editor,
-      workspace,
-      playback,
-      hosts: {
-        close() {},
-        about() {},
-        help() {},
-        calibrate() {},
-        openProject() {},
-        newProjectFromWos() {},
-        report(error) {
-          throw error;
-        },
-      },
-    });
     editor.snap = false;
     editor.tapOffsetMs = 100;
     editor.setCursorTick(900);

@@ -1,16 +1,25 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, shallowRef, useTemplateRef, watch } from 'vue';
+import {
+  computed,
+  onMounted,
+  onUnmounted,
+  reactive,
+  ref,
+  shallowRef,
+  useTemplateRef,
+  watch,
+} from 'vue';
 import { errorMessage } from '../core/messages';
 import { ElConfigProvider, ElMessageBox } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { pinia, localization } from './runtime';
-import { createCommands, provideCommandRunner } from './commands';
+import { createCommands, provideCommandRunner, type DialogId } from '../commands/commands';
 import ApplicationMenu from './components/ApplicationMenu.vue';
 import WindowTitlebar from './components/WindowTitlebar.vue';
 import { getPlatform, getBuildIdentity } from '../platform';
 import type { BuildIdentity, ChosenFile } from '../platform/contracts';
 import { useEditorStore } from '../slicing/editor-store';
-import { useBmhelperStore } from '../bmhelper/store';
+import { createEditorActions, provideEditorActions } from '../slicing/editor-actions';
 import { createWorkspace, provideWorkspace } from '../workspace/workspace';
 import { createPlayback, providePlayback } from '../playback';
 import TimelineEditor from '../timeline/TimelineEditor.vue';
@@ -23,17 +32,20 @@ import HelpDialog from './components/HelpDialog.vue';
 import AboutDialog from './components/AboutDialog.vue';
 import TroubleshootDialog from './components/TroubleshootDialog.vue';
 import { useInputControls, navigateDialog } from '../input/use-gamepad';
-import { editingControl, visibleDialog } from '../input/context';
-import { canRecord } from './commands';
+import { editingControl, visibleDialog } from '../ui/focus';
+import { canRecord } from '../commands/commands';
 import { handleKeyDown } from '../input/keyboard';
 import { routeGamepad, type InputContext, type WheelAction } from '../input/router';
 import { useCommandWheel } from '../input/use-wheel';
-import CommandWheel from './components/CommandWheel.vue';
+import CommandWheel from '../input/CommandWheel.vue';
 import { openDataFolder } from '../platform/app-data';
 import { useInputState } from '../input/state';
-import YuanconDialog from './components/YuanconDialog.vue';
-import InputSettingsDialog from './components/InputSettingsDialog.vue';
+import YuanconDialog from '../input/YuanconDialog.vue';
+import InputSettingsDialog from '../input/InputSettingsDialog.vue';
 import ExportDialog from '../export/ExportDialog.vue';
+import { createExporter, provideExporter } from '../export/exporter';
+import { createDetection, provideDetection } from '../detection/detection';
+import { createLegacyInterop, provideLegacyInterop } from '../interop/legacy';
 import { reservedControl, useBindingOverrides } from '../input/binding-overrides';
 import { useYuanconRecording } from '../input/yuancon/use-recording';
 
@@ -41,8 +53,6 @@ import { useYuanconRecording } from '../input/yuancon/use-recording';
 const platform = getPlatform();
 const editor = useEditorStore(pinia);
 const input = useInputState(pinia);
-const bmhelper = useBmhelperStore(pinia);
-bmhelper.bindEditor(editor);
 const workspace = createWorkspace({
   platform,
   editor,
@@ -50,67 +60,58 @@ const workspace = createWorkspace({
   confirmRelinkDifference,
 });
 const loading = workspace.loading;
+const actions = createEditorActions(editor);
+const exporter = createExporter(platform, editor, workspace.audio);
+const interop = createLegacyInterop(platform, editor, workspace.audio);
 const playback = createPlayback(editor);
 provideWorkspace(workspace);
+provideEditorActions(actions);
+provideExporter(exporter);
+provideDetection(createDetection(editor, workspace.audio));
+provideLegacyInterop(interop);
 providePlayback(playback);
 // Localized app state.
 const { t } = useI18n({ useScope: 'global' });
 const { elementLocale } = localization;
-const calibrating = ref(false);
-const aboutOpen = ref(false);
-const helpOpen = ref(false);
-const troubleshootOpen = ref(false);
-const yuanconOpen = ref(false);
-const inputSettingsOpen = ref(false);
-const exportOpen = ref(false);
+// One switch for each app-owned dialog. A new dialog adds a key here and a tag in the template.
+const dialogs = reactive<Record<DialogId | 'calibration' | 'export', boolean>>({
+  about: false,
+  help: false,
+  troubleshoot: false,
+  yuancon: false,
+  inputSettings: false,
+  calibration: false,
+  export: false,
+});
 const applicationMenu = useTemplateRef<InstanceType<typeof ApplicationMenu>>('applicationMenu');
 const closing = ref(false);
-// Every app-owned dialog and the close lock: while one is open, app input does nothing.
-const modalOpen = computed(
-  () =>
-    calibrating.value ||
-    aboutOpen.value ||
-    helpOpen.value ||
-    troubleshootOpen.value ||
-    yuanconOpen.value ||
-    inputSettingsOpen.value ||
-    exportOpen.value ||
-    closing.value,
-);
+// While a dialog is open or the close lock is held, app input does nothing.
+const modalOpen = computed(() => closing.value || Object.values(dialogs).some(Boolean));
 const dragActive = ref(false);
 const panelGeneration = ref(0);
 const identity = shallowRef<BuildIdentity | null>(null);
 // Command dispatch for menu and toolbar events.
 const commands = createCommands({
   editor,
+  actions,
   workspace,
+  exporter,
+  interop,
   playback,
   hosts: {
     close: closeWorkspace,
     openProject,
     newProjectFromWos,
     calibrate,
-    help: () => {
-      helpOpen.value = true;
-    },
-    troubleshoot: () => {
-      troubleshootOpen.value = true;
+    openDialog: (id) => {
+      dialogs[id] = true;
     },
     openDataFolder,
-    about: () => {
-      aboutOpen.value = true;
-    },
     toggleRecording: () => {
       input.recording = !input.recording;
     },
-    connectYuancon: () => {
-      yuanconOpen.value = true;
-    },
-    inputSettings: () => {
-      inputSettingsOpen.value = true;
-    },
     exportSlices: () => {
-      exportOpen.value = true;
+      dialogs.export = true;
     },
     openWheel: () => {
       // Opened without a held control, the wheel stays open like after a tap.
@@ -149,7 +150,7 @@ watch(
 let disposed = false;
 let stopAppearance: (() => void) | undefined;
 function report(error: unknown): void {
-  if (!disposed) editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
+  if (!disposed) editor.setStatus('commandFailed', { message: errorMessage(error) }, true);
 }
 const execute = commands.run;
 provideCommandRunner(execute);
@@ -225,13 +226,13 @@ async function confirmRelinkDifference(difference: {
 // Project open and import commands that require confirmation.
 async function openProject(): Promise<void> {
   if (await confirmProjectReplacement()) {
-    calibrating.value = false;
+    dialogs.calibration = false;
     await workspace.openProject();
   }
 }
 async function newProjectFromWos(): Promise<void> {
   if (await confirmProjectReplacement()) {
-    calibrating.value = false;
+    dialogs.calibration = false;
     await workspace.newProjectFromWos();
   }
 }
@@ -304,7 +305,7 @@ function calibrate(): void {
     return;
   }
   playback.stop();
-  calibrating.value = true;
+  dialogs.calibration = true;
 }
 function applyOffset(offset: number): void {
   if (!Number.isFinite(offset)) return;
@@ -323,10 +324,9 @@ async function closeWorkspace(): Promise<void> {
       type: 'warning',
     });
     if (disposed) return;
-    calibrating.value = false;
+    dialogs.calibration = false;
     playback.stop();
     await workspace.reset();
-    bmhelper.reset();
     panelGeneration.value++;
   } catch (error: unknown) {
     if (error !== 'cancel' && error !== 'close') report(error);
@@ -338,7 +338,7 @@ async function closeWorkspace(): Promise<void> {
 async function dropFiles(files: ChosenFile[]): Promise<void> {
   if (files.some((file) => /\.wosdx$/i.test(file.name)) && !(await confirmProjectReplacement()))
     return;
-  calibrating.value = false;
+  dialogs.calibration = false;
   await workspace.openChosenFiles(files);
 }
 let stopDrops: (() => void) | undefined;
@@ -389,7 +389,7 @@ onUnmounted(() => {
       <EditorToolbar />
       <div
         class="playback-strip"
-        :inert="calibrating"
+        :inert="dialogs.calibration"
       >
         <PlaybackControls @command="execute" />
       </div>
@@ -406,32 +406,32 @@ onUnmounted(() => {
       <!-- status bar -->
       <StatusBar
         :identity="identity"
-        @about="aboutOpen = true"
+        @about="dialogs.about = true"
       />
       <!-- dialogs -->
       <CalibrationDialog
-        v-model="calibrating"
+        v-model="dialogs.calibration"
         :audio-context="playback.getAudioContext()"
         :offset-ms="editor.tapOffsetMs"
         :bpm="editor.doc.bpm"
         @apply="applyOffset"
       />
-      <HelpDialog v-model="helpOpen" />
+      <HelpDialog v-model="dialogs.help" />
       <YuanconDialog
-        v-model="yuanconOpen"
+        v-model="dialogs.yuancon"
         :connection="yuancon"
       />
-      <InputSettingsDialog v-model="inputSettingsOpen" />
+      <InputSettingsDialog v-model="dialogs.inputSettings" />
       <ExportDialog
-        v-model="exportOpen"
-        @export="(jobs) => void workspace.exportTracks(jobs)"
+        v-model="dialogs.export"
+        @export="(jobs) => void exporter.exportTracks(jobs)"
       />
       <TroubleshootDialog
-        v-model="troubleshootOpen"
+        v-model="dialogs.troubleshoot"
         :identity="identity"
       />
       <AboutDialog
-        v-model="aboutOpen"
+        v-model="dialogs.about"
         :identity="identity"
       />
       <CommandWheel

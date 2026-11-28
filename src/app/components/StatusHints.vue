@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { commandLabel } from '../commands';
+import { commandLabel } from '../../commands/commands';
 import { HINT_AREAS, isHintArea, type HintArea, type MouseHint } from '../hint-areas';
 import { chordKeys, keyboardChords } from '../../input/bindings';
 import { useInputState } from '../../input/state';
-import GamepadHints from './GamepadHints.vue';
-import KeyCaps from '../../ui/KeyCaps.vue';
+import GamepadHints from '../../input/GamepadHints.vue';
+import KeyCaps from '../../input/KeyCaps.vue';
 import MouseIcon from '../../ui/MouseIcon.vue';
 
 /**
