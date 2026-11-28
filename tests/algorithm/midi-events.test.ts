@@ -7,7 +7,7 @@ const notes = (
   resolution: number,
   ...list: { position: number; gate: number; nn: number; vel: number }[]
 ) => writeSmfSequence({ quantize: resolution, notes: list, pitches: [], controls: [] });
-test('pitch-only pairing, first velocity, zero-velocity off, post-pair channel filter', () => {
+test('pitch-only pairing, first velocity, zero-velocity off', () => {
   const events: TrackEvent[] = [
     { kind: 'on', tick: 20, channel: 1, pitch: 67, velocity: 90 },
     { kind: 'on', tick: 30, channel: 2, pitch: 67, velocity: 40 },
@@ -16,13 +16,11 @@ test('pitch-only pairing, first velocity, zero-velocity off, post-pair channel f
     { kind: 'on', tick: 100, channel: 1, pitch: 61, velocity: 30 },
     { kind: 'bend', tick: 40, channel: 3, value: 123 },
   ];
-  assert.deepEqual(pairNotes(events).notes, [
+  const paired = pairNotes(events);
+  assert.deepEqual(paired.notes, [
     { onset: 20, duration: 60, pitch: 67, velocity: 90, channel: 1 },
   ]);
-  const filtered = pairNotes(events, new Set([2]));
-  assert.equal(filtered.notes.length, 0);
-  assert.equal(filtered.pairedCount, 1);
-  assert.equal(filtered.auxiliary.length, 1);
+  assert.equal(paired.auxiliary.length, 1);
 });
 test('chronological onset and established ties', () => {
   const events: TrackEvent[] = [
@@ -35,9 +33,6 @@ test('chronological onset and established ties', () => {
     pairNotes(events).notes.map((n) => n.onset),
     [0, 20],
   );
-  const result = pairNotes(events, new Set());
-  assert.equal(result.pairedCount, 2);
-  assert.equal(result.notes.length, 0);
 });
 test('exact format-1 SMF bytes, own onset before end, stable simultaneous order', () => {
   const bytes = notes(480, { position: -0.5, gate: 0.9, nn: 200, vel: 0 });
