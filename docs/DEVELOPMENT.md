@@ -108,6 +108,7 @@ npm run test:ui
 node scripts/package-web.mjs
 ```
 
+`npm run check` type-checks three projects: the application (`tsconfig.app.json`), the core rules without the DOM library (`tests/tsconfig.tests.json`), and all tests and build configuration (`tsconfig.lint.json`).
 Linux hosts also need Playwright's browser system dependencies. CI uses a matching Playwright container with those dependencies installed.
 The UI runner tests low and high device pixel ratios (DPR 1 and 2) separately at 1000×640 CSS pixels.
 Each profile starts a fresh process and browser contexts, with a 30-second total deadline.
