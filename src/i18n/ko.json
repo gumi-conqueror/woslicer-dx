@@ -420,7 +420,7 @@
     "openDataFolder": "데이터 폴더 열기",
     "addTrack": "오디오 트랙 추가…",
     "removeTrack": "현재 트랙 삭제",
-    "inputSettings": "입력 설정…",
+    "inputSettings": "입력 설정",
     "track": "트랙",
     "renameTrack": "트랙 이름 변경",
     "zoomFit": "전체 타임라인 표시",
@@ -429,8 +429,7 @@
     "relinkMarkers": "같은 위치의 분할점 다시 링크",
     "sharedMarkers": "트랙 간 분할점 공유",
     "closeProject": "프로젝트 닫기",
-    "calibrate": "입력 보정…",
-    "yuancon": "YuanCon 컨트롤러…"
+    "calibrate": "입력 보정…"
   },
   "dialogs": {
     "loadAudio": "음원 열기",

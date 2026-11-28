@@ -420,7 +420,7 @@
     "openDataFolder": "Open data folder",
     "addTrack": "Add audio track…",
     "removeTrack": "Remove current track",
-    "inputSettings": "Input settings…",
+    "inputSettings": "Input settings",
     "track": "Track",
     "renameTrack": "Rename track",
     "zoomFit": "Show the whole timeline",
@@ -429,8 +429,7 @@
     "relinkMarkers": "Relink markers at the same position",
     "sharedMarkers": "Share markers across tracks",
     "closeProject": "Close project",
-    "calibrate": "Calibrate…",
-    "yuancon": "YuanCon controller…"
+    "calibrate": "Calibrate…"
   },
   "dialogs": {
     "loadAudio": "Open audio",

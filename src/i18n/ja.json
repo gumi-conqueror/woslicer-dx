@@ -420,7 +420,7 @@
     "openDataFolder": "データフォルダーを開く",
     "addTrack": "オーディオトラックを追加…",
     "removeTrack": "現在のトラックを削除",
-    "inputSettings": "入力設定…",
+    "inputSettings": "入力設定",
     "track": "トラック",
     "renameTrack": "トラック名を変更",
     "zoomFit": "タイムライン全体を表示",
@@ -429,8 +429,7 @@
     "relinkMarkers": "同位置の分割点を再リンク",
     "sharedMarkers": "分割点をトラック間で共有",
     "closeProject": "プロジェクトを閉じる",
-    "calibrate": "入力補正…",
-    "yuancon": "YuanCon コントローラー…"
+    "calibrate": "入力補正…"
   },
   "dialogs": {
     "loadAudio": "音声を開く",

@@ -220,7 +220,7 @@ export const COMMANDS = {
     run: ({ hosts }) => hosts.calibrate(),
   },
   'connect-yuancon': {
-    label: 'menu.yuancon',
+    label: 'recording.controller',
     group: 'playback',
     run: ({ hosts }) => hosts.openDialog('yuancon'),
   },
