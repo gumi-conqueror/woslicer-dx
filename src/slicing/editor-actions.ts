@@ -1,3 +1,4 @@
+import { inject, provide, type InjectionKey } from 'vue';
 import { gridStepTicks } from '../core/gridlines';
 import { MAX_TICKS, MEASURE_TICKS } from '../core/timebase';
 import {
@@ -64,8 +65,18 @@ export interface LinkPoints {
 }
 
 export function createEditorActions(editor: EditorStore) {
-  let measureClipboard: { offsets: number[]; keys: MarkerKeys } | null = null;
-  let selectionClipboard: { offsets: number[]; origin: number; keys: MarkerKeys } | null = null;
+  // A clipboard belongs to the document it was copied in. After the document
+  // is replaced, a paste finds the clipboard empty.
+  interface Clipboard {
+    generation: number;
+    offsets: number[];
+    keys: MarkerKeys;
+  }
+  let measureClipboard: Clipboard | null = null;
+  let selectionClipboard: (Clipboard & { origin: number }) | null = null;
+  function ofThisDocument<T extends Clipboard>(clipboard: T | null): T | null {
+    return clipboard?.generation === editor.documentGeneration ? clipboard : null;
+  }
   function setMarker(tick: number, enabled = true, keys: readonly MarkerKey[] = []): boolean {
     editor.cancelDraft();
     if (
@@ -113,6 +124,7 @@ export function createEditorActions(editor: EditorStore) {
       origin === undefined
         ? null
         : {
+            generation: editor.documentGeneration,
             offsets: selectionToOffsets(selected),
             origin,
             keys: remapMarkerKeys(
@@ -127,11 +139,12 @@ export function createEditorActions(editor: EditorStore) {
   }
   function pasteSelection(): boolean {
     editor.cancelDraft();
-    if (!selectionClipboard) {
+    const clipboard = ofThisDocument(selectionClipboard);
+    if (!clipboard) {
       editor.setStatus('pasteClipboardEmpty', true);
       return false;
     }
-    const { offsets, origin, keys } = selectionClipboard;
+    const { offsets, origin, keys } = clipboard;
     if (offsets.some((t) => !editor.legalTick(t + editor.cursorTick))) {
       editor.setStatus('cutBeyondEnd', true);
       return false;
@@ -215,6 +228,7 @@ export function createEditorActions(editor: EditorStore) {
     editor.cancelDraft();
     const base = measureBase();
     measureClipboard = {
+      generation: editor.documentGeneration,
       offsets: editor.ticks
         .filter((tick) => tick >= base && tick < base + MEASURE_TICKS)
         .map((tick) => tick - base),
@@ -233,18 +247,19 @@ export function createEditorActions(editor: EditorStore) {
   }
   function measurePaste(): boolean {
     editor.cancelDraft();
-    if (!measureClipboard) return false;
+    const clipboard = ofThisDocument(measureClipboard);
+    if (!clipboard) return false;
     const measure = Math.floor(editor.cursorTick / MEASURE_TICKS);
-    if (measureClipboard.offsets.some((tick) => !editor.legalTick(measure * MEASURE_TICKS + tick)))
+    if (clipboard.offsets.some((tick) => !editor.legalTick(measure * MEASURE_TICKS + tick)))
       return false;
     const base = measure * MEASURE_TICKS;
     const ticks = editor.ticks.filter((t) => t < base || t >= base + MEASURE_TICKS);
-    ticks.push(...measureClipboard.offsets.map((tick) => base + tick));
+    ticks.push(...clipboard.offsets.map((tick) => base + tick));
     return editor.setTicks(ticks, [
       ...editor.markerKeys.filter(
         (entry) => entry.tick < base || entry.tick >= base + MEASURE_TICKS,
       ),
-      ...remapMarkerKeys(measureClipboard.keys, (tick) => tick + base),
+      ...remapMarkerKeys(clipboard.keys, (tick) => tick + base),
     ]);
   }
   /** The selected markers, or all markers of the current track when none are selected. */
@@ -354,10 +369,6 @@ export function createEditorActions(editor: EditorStore) {
     editor.sharedMarkers = !editor.sharedMarkers;
     editor.setStatus(editor.sharedMarkers ? 'sharedMarkersOn' : 'sharedMarkersOff');
   }
-  function reset(): void {
-    measureClipboard = null;
-    selectionClipboard = null;
-  }
   return {
     setMarker,
     toggleMarker,
@@ -385,6 +396,15 @@ export function createEditorActions(editor: EditorStore) {
     linkPoints,
     unlinkPoints,
     toggleTrackMarker,
-    reset,
   };
+}
+export type EditorActions = ReturnType<typeof createEditorActions>;
+export const editorActionsKey: InjectionKey<EditorActions> = Symbol('editor-actions');
+export function provideEditorActions(actions: EditorActions): void {
+  provide(editorActionsKey, actions);
+}
+export function useEditorActions(): EditorActions {
+  const actions = inject(editorActionsKey);
+  if (!actions) throw new Error('Editor actions provider is missing');
+  return actions;
 }

@@ -2,7 +2,12 @@ import { createPinia, disposePinia } from 'pinia';
 import type { DecodeProgress } from '../../src/audio/decode';
 import { createAudioProcessor, type AudioEngine } from '../../src/audio/audio-jobs';
 import { useEditorStore } from '../../src/slicing/editor-store';
-import { createWorkspace, type WorkspaceOptions } from '../../src/workspace/workspace';
+import { createEditorActions, editorActionsKey } from '../../src/slicing/editor-actions';
+import {
+  createWorkspace,
+  workspaceKey,
+  type WorkspaceOptions,
+} from '../../src/workspace/workspace';
 import { wavFile } from './audio';
 import type { Platform, OpenedFile, OutputFile } from '../../src/platform/contracts';
 import { onTestFinished } from 'vitest';
@@ -22,6 +27,7 @@ export function createTestApp(createEngine = processorEngine) {
   const playback = silentPlayback();
   const commands = createCommands({
     editor: app.editor,
+    actions: app.actions,
     workspace: app.workspace,
     playback,
     hosts: {
@@ -206,10 +212,14 @@ export function fixture(createEngine = processorEngine) {
     confirmRelinkDifference: async (difference) =>
       (await confirmOptions.confirmRelinkDifference?.(difference)) ?? false,
   });
+  const actions = createEditorActions(editor);
   return {
     pinia,
     editor,
+    actions,
     workspace,
+    /** What `App.vue` provides to its components: pass it as `global.provide` to mount one. */
+    provide: { [workspaceKey]: workspace, [editorActionsKey]: actions },
     platform,
     saved: memory.saved,
     exported: memory.exported,

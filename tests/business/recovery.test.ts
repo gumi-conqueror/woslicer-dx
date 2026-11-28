@@ -8,7 +8,7 @@ it('restores versioned sessions and custom export prefix without persisting drop
     file = audioFile();
   await f.workspace.loadAudio(file);
   f.editor.setOutputOptions({ baseName: 'custom' });
-  f.workspace.actions.setMarker(20);
+  f.actions.setMarker(20);
   await f.workspace.flushSession();
   const session = f.session;
   expect(parseEditorSession(session)?.version).toBe(4);
@@ -63,7 +63,7 @@ it('keeps recovery data of an earlier version unchanged instead of reading it', 
   f.session = earlier;
   await f.workspace.restoreSession();
   expect(f.editor.status.segments[0]?.key).toBe('sessionRecoverEarlier');
-  f.workspace.actions.setMarker(5);
+  f.actions.setMarker(5);
   await f.workspace.flushSession();
   expect(f.session).toBe(earlier);
 });
@@ -157,7 +157,7 @@ it('restores the entire committed project and independent session controls with 
   expect(restored.editor.volume).toBeCloseTo(0.2, 12);
   expect(restored.editor.playbackRate).toBe(0.5);
   restored.editor.setDocumentOptions({ bpm: 180 });
-  restored.workspace.actions.undo();
+  restored.actions.undo();
   expect(restored.editor.document).toEqual(snapshot.project);
   expect(restored.editor.volume).toBeCloseTo(0.2, 12);
 });
@@ -172,7 +172,7 @@ it('serializes a reset behind already-running session writes', async () => {
         resolve();
       };
     });
-  f.workspace.actions.setMarker(5);
+  f.actions.setMarker(5);
   const saving = f.workspace.flushSession();
   await Promise.resolve();
   await Promise.resolve();
@@ -197,7 +197,7 @@ it('reports a failed recovery write and retries the same content without new edi
     return Promise.resolve();
   };
   try {
-    f.workspace.actions.setMarker(5);
+    f.actions.setMarker(5);
     await vi.advanceTimersByTimeAsync(650);
     expect(attempts).toBe(1);
     expect(f.session).toBeNull();
@@ -223,7 +223,7 @@ it('keeps edits made during a failed write pending and retries the newest snapsh
     f.session = value;
     return Promise.resolve();
   };
-  f.workspace.actions.setMarker(5);
+  f.actions.setMarker(5);
   const first = f.workspace.flushSession();
   await Promise.resolve();
   await Promise.resolve();
@@ -244,7 +244,7 @@ it('propagates an in-flight recovery failure to a second flush during exit', asy
     new Promise<void>((_resolve, reject) => {
       rejectWrite = reject;
     });
-  f.workspace.actions.setMarker(5);
+  f.actions.setMarker(5);
   const autosave = f.workspace.flushSession();
   await Promise.resolve();
   const exitSave = f.workspace.flushSession();
@@ -275,7 +275,7 @@ it('keeps newer edits pending when an older write settles first', async () => {
         resolve();
       };
     });
-  f.workspace.actions.setMarker(5);
+  f.actions.setMarker(5);
   const saving = f.workspace.flushSession();
   await Promise.resolve();
   await Promise.resolve();
@@ -292,7 +292,7 @@ it('keeps newer edits pending when an older write settles first', async () => {
 it('surfaces a failing final write from dispose instead of reporting success', async () => {
   const f = setup();
   f.platform.writeSession = () => Promise.reject(new Error('gone'));
-  f.workspace.actions.setMarker(3);
+  f.actions.setMarker(3);
   await expect(f.workspace.dispose()).rejects.toThrow('gone');
   expect(f.editor.status.segments.some((segment) => segment.key === 'sessionSaveFailed')).toBe(
     true,
@@ -342,7 +342,7 @@ it('keeps a damaged recovery record unchanged and pauses recovery writes', async
   expect(f.editor.ticks).toEqual([]);
   expect(f.editor.canUndo).toBe(false);
   const write = vi.spyOn(f.platform, 'writeSession');
-  f.workspace.actions.setMarker(5);
+  f.actions.setMarker(5);
   await f.workspace.flushSession();
   expect(write).not.toHaveBeenCalled();
   expect(f.session).toBe(raw);
@@ -374,7 +374,7 @@ it('keeps recovery paused when the recovery record cannot be read', async () => 
         segment.key === 'sessionRecoverReadFailed' && segment.params?.message === 'storage busy',
     ),
   ).toBe(true);
-  f.workspace.actions.setMarker(5);
+  f.actions.setMarker(5);
   await f.workspace.flushSession();
   expect(write).not.toHaveBeenCalled();
   expect(f.session).toBeNull();
@@ -412,7 +412,7 @@ it('lets an explicit close discard a blocked record and resume archiving', async
   await f.workspace.reset();
   expect(confirm).not.toHaveBeenCalled();
   expect(f.session).toBeNull();
-  f.workspace.actions.setMarker(5);
+  f.actions.setMarker(5);
   await f.workspace.flushSession();
   expect(parseEditorSession(f.session)?.project.tracks[0].slicing.markers).toEqual([5]);
 });
@@ -440,7 +440,7 @@ it('starts archiving later edits after reset without recreating an untouched emp
   await f.workspace.reset();
   await f.workspace.flushSession();
   expect(f.session).toBeNull();
-  f.workspace.actions.setMarker(12);
+  f.actions.setMarker(12);
   await f.workspace.flushSession();
   expect(parseEditorSession(f.session)?.project.tracks[0].slicing.markers).toEqual([12]);
 });

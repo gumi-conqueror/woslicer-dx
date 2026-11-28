@@ -4,7 +4,7 @@ import { createTestApp as setup, audioFile, processorEngine } from '../support/a
 it('refuses re-entrant detection and export while their busy flags hold', async () => {
   const f = setup();
   await f.workspace.loadAudio(audioFile());
-  f.workspace.actions.setMarker(12);
+  f.actions.setMarker(12);
   let complete: (() => void) | undefined;
   let started = 0;
   f.platform.exportFiles = () => {
@@ -78,7 +78,7 @@ it('does not render any output when the host cancels destination selection', asy
     };
   });
   await f.workspace.loadAudio(audioFile());
-  f.workspace.actions.setMarker(0);
+  f.actions.setMarker(0);
   f.platform.exportFiles = () => Promise.resolve(null);
   await f.workspace.exportAll();
   expect(renders).toBe(0);

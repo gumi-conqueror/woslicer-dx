@@ -19,6 +19,7 @@ import WindowTitlebar from './components/WindowTitlebar.vue';
 import { getPlatform, getBuildIdentity } from '../platform';
 import type { BuildIdentity, ChosenFile } from '../platform/contracts';
 import { useEditorStore } from '../slicing/editor-store';
+import { createEditorActions, provideEditorActions } from '../slicing/editor-actions';
 import { useBmhelperStore } from '../bmhelper/store';
 import { createWorkspace, provideWorkspace } from '../workspace/workspace';
 import { createPlayback, providePlayback } from '../playback';
@@ -59,8 +60,10 @@ const workspace = createWorkspace({
   confirmRelinkDifference,
 });
 const loading = workspace.loading;
+const actions = createEditorActions(editor);
 const playback = createPlayback(editor);
 provideWorkspace(workspace);
+provideEditorActions(actions);
 providePlayback(playback);
 // Localized app state.
 const { t } = useI18n({ useScope: 'global' });
@@ -85,6 +88,7 @@ const identity = shallowRef<BuildIdentity | null>(null);
 // Command dispatch for menu and toolbar events.
 const commands = createCommands({
   editor,
+  actions,
   workspace,
   playback,
   hosts: {

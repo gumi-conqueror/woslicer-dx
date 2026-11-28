@@ -128,13 +128,14 @@ describe('Pinia playback lifetime and audio clock', () => {
   it('places queued input before rate, pause and seek boundaries at its captured position', async () => {
     let now = 1000;
     vi.spyOn(performance, 'now').mockImplementation(() => now);
-    const { editor, workspace } = createTestApp();
+    const { editor, workspace, actions } = createTestApp();
     await workspace.loadAudio(audioFile('queued.wav', 480000));
     const playback = createPlayback(editor);
     owners.push(playback);
     const context = required(contexts.at(-1));
     const commands = createCommands({
       editor,
+      actions,
       workspace,
       playback,
       hosts: {
@@ -179,13 +180,14 @@ describe('Pinia playback lifetime and audio clock', () => {
     expect(playback.positionAt(1500)).toBeNull();
   });
   it('records at the playhead and seeks fixed seconds without changing playback state', async () => {
-    const { editor, workspace } = createTestApp();
+    const { editor, workspace, actions } = createTestApp();
     await workspace.loadAudio(audioFile('recording.wav', 480000));
     const playback = createPlayback(editor);
     owners.push(playback);
     const context = required(contexts.at(-1));
     const commands = createCommands({
       editor,
+      actions,
       workspace,
       playback,
       hosts: {

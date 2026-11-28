@@ -26,7 +26,6 @@ import { markerTickAllowed } from '../core/timebase';
 import { buildBmseClipboard, parseBmseClipboard } from '../core/formats/bmse';
 import type { ChosenFile, Platform, OpenedFile } from '../platform/contracts';
 import type { EditorStore } from '../slicing/editor-store';
-import { createEditorActions } from '../slicing/editor-actions';
 import { createAudioEngine } from '../audio/audio-client';
 import type { AudioEngine } from '../audio/audio-jobs';
 import type { DecodeProgress } from '../audio/decode';
@@ -75,7 +74,6 @@ export function createWorkspace(options: WorkspaceOptions) {
   let opening = 0;
   const loading = shallowRef<LoadingActivity | null>(null);
   let resetPending: Promise<void> | null = null;
-  const actions = createEditorActions(editor);
   const persistence = createSessionPersistence(platform, editor, (error) => {
     editor.setStatus('sessionSaveFailed', { message: errorMessage(error) }, true);
   });
@@ -227,7 +225,6 @@ export function createWorkspace(options: WorkspaceOptions) {
       worker = null;
       if (next) {
         editor.replaceDocument(next, { saved: preserveBaseName });
-        actions.reset();
       } else if (newTrack) {
         const track = createEmptyTrack(trackId, file.name);
         setTrackAudio(track, file, identity, result);
@@ -394,7 +391,6 @@ export function createWorkspace(options: WorkspaceOptions) {
     persistence.resume();
     editor.setLastFile(null);
     editor.replaceDocument(project);
-    actions.reset();
     editor.setSource(null);
     editor.setPhase({ kind: 'empty' });
   }
@@ -673,7 +669,6 @@ export function createWorkspace(options: WorkspaceOptions) {
       if (outcome.kind === 'absent') return;
       if (outcome.kind === 'restored') {
         restoreEditorSession(editor, outcome.session);
-        actions.reset();
         const restoredGeneration = editor.documentGeneration;
         for (const [trackId, file] of Object.entries(outcome.session.files)) {
           if (disposed || editor.documentGeneration !== restoredGeneration) return;
@@ -709,7 +704,6 @@ export function createWorkspace(options: WorkspaceOptions) {
     recoveryBlock = null;
     persistence.pause();
     invalidate();
-    actions.reset();
     editor.reset();
     resetPending = persistence
       .clear()
@@ -733,7 +727,6 @@ export function createWorkspace(options: WorkspaceOptions) {
     editor,
     loading: readonly(loading),
     platform,
-    actions,
     openAudio,
     addTrack,
     removeTrack,

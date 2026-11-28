@@ -5,7 +5,7 @@ import { projectToWos } from '../../src/project/codec';
 
 it('rejects fractional WOS gate, then saves exact original format and resets undo on load', async () => {
   const f = setup();
-  f.workspace.actions.setMarker(5);
+  f.actions.setMarker(5);
   f.editor.setDocumentOptions({ noisegateDb: -48.5 });
   await f.workspace.saveWos();
   expect(f.saved).toHaveLength(0);

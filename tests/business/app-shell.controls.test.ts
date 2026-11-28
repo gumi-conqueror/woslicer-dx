@@ -19,7 +19,6 @@ import { GRID_DENSITIES } from '../../src/core/gridlines';
 import { MAX_TICKS } from '../../src/core/timebase';
 import { createI18n } from 'vue-i18n';
 import en from '../../src/i18n/en.json';
-import { workspaceKey } from '../../src/workspace/workspace';
 import { fixture } from '../support/app';
 import BMHelperPanel from '../../src/bmhelper/BMHelperPanel.vue';
 import { creditLinks } from '../../src/platform/about-links';
@@ -165,7 +164,7 @@ describe('application controls', () => {
     const wrapper = mount(WorkspacePanels, {
       global: {
         plugins: [f.pinia, i18n],
-        provide: { [workspaceKey]: f.workspace },
+        provide: f.provide,
         stubs: {
           BMHelperPanel: true,
           SourceInfo: true,

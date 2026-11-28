@@ -3,13 +3,14 @@ import { computed, onMounted, onBeforeUnmount, shallowRef, watch, useTemplateRef
 import { ElButton, ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { MEASURE_TICKS, tickToSampleExport } from '../core/timebase';
-import { useWorkspace } from '../workspace/workspace';
+import { useEditorStore } from './editor-store';
+import { useEditorActions } from './editor-actions';
 import { primaryPressed } from '../input/bindings';
 import { useUiPreferencesStore } from '../ui/preferences';
 import { paletteFor } from '../ui/palette';
 const { t } = useI18n();
-const workspace = useWorkspace();
-const editor = workspace.editor;
+const editor = useEditorStore();
+const actions = useEditorActions();
 const preferences = useUiPreferencesStore();
 // Cells use the marker colors of the waveform.
 const palette = computed(() => paletteFor(preferences.theme));
@@ -97,8 +98,8 @@ function applyLinks(column: Column, tick: number): void {
     groups.set(point, [...(groups.get(point) ?? []), trackId]);
   }
   const points = [...groups].map(([point, trackIds]) => ({ tick: point, trackIds }));
-  if (unlinked) workspace.actions.linkPoints(points);
-  else workspace.actions.unlinkPoints(points);
+  if (unlinked) actions.linkPoints(points);
+  else actions.unlinkPoints(points);
   picked.value = new Set();
 }
 /** Two right clicks on one cell within this time are a double right click. */
@@ -113,7 +114,7 @@ function goTo(column: Column, tick: number, event: MouseEvent): void {
   const key = cellKey(column.trackId, tick);
   if (lastRightClick?.key === key && event.timeStamp - lastRightClick.time <= DOUBLE_CLICK_MS) {
     lastRightClick = null;
-    workspace.actions.toggleTrackMarker(column.trackId, tick);
+    actions.toggleTrackMarker(column.trackId, tick);
     return;
   }
   lastRightClick = { key, time: event.timeStamp };
@@ -177,7 +178,7 @@ function nextSelection(tick: number, event: MouseEvent): number[] {
   return editor.selectedTicks.filter((t) => t !== tick);
 }
 function linkTo(trackId: unknown): void {
-  if (typeof trackId === 'string') workspace.actions.linkMarkersTo([trackId]);
+  if (typeof trackId === 'string') actions.linkMarkersTo([trackId]);
 }
 // Reset the scroll window when the row list shrinks below the current offset.
 watch(
@@ -203,20 +204,20 @@ watch(
       <ElButton
         size="small"
         :disabled="!editor.selectedTicks.length"
-        @click="workspace.actions.quantizeSelection()"
+        @click="actions.quantizeSelection()"
         >{{ t('chrome.quantize') }}</ElButton
       >
       <ElButton
         size="small"
         :disabled="!editor.ticks.length"
-        @click="workspace.actions.clearMarkers()"
+        @click="actions.clearMarkers()"
         >{{ t('chrome.clearMarkers') }}</ElButton
       >
       <template v-if="multiTrack">
         <ElButton
           size="small"
           :disabled="!editor.ticks.length"
-          @click="workspace.actions.linkMarkersToAllTracks()"
+          @click="actions.linkMarkersToAllTracks()"
           >{{ t('menu.linkMarkersAll') }}</ElButton
         >
         <ElDropdown
@@ -243,13 +244,13 @@ watch(
         <ElButton
           size="small"
           :disabled="!editor.linkedTicks.size"
-          @click="workspace.actions.unlinkMarkers()"
+          @click="actions.unlinkMarkers()"
           >{{ t('menu.unlinkMarkers') }}</ElButton
         >
         <ElButton
           size="small"
           :disabled="!editor.ticks.length"
-          @click="workspace.actions.relinkMarkers()"
+          @click="actions.relinkMarkers()"
           >{{ t('menu.relinkMarkers') }}</ElButton
         >
       </template>

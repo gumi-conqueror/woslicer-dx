@@ -8,6 +8,7 @@ import {
   tickToSampleExport,
 } from '../core/timebase';
 import { formatRate, stepPlaybackRate } from '../core/rate';
+import type { EditorActions } from '../slicing/editor-actions';
 import type { EditorStore } from '../slicing/editor-store';
 import { FIELD_RANGES, type MarkerKey } from '../project/schema';
 import type { Workspace } from '../workspace/workspace';
@@ -56,6 +57,7 @@ export interface CommandHosts {
 }
 interface CommandContext {
   editor: EditorStore;
+  actions: EditorActions;
   workspace: Workspace;
   playback: Playback;
   hosts: CommandHosts;
@@ -213,85 +215,83 @@ export const COMMANDS = {
     label: 'menu.undo',
     group: 'edit',
     enabled: (state) => state.canUndo,
-    run: ({ editor, workspace }) =>
-      editor.setStatus(workspace.actions.undo() ? 'undo' : 'nothingToUndo'),
+    run: ({ editor, actions }) => editor.setStatus(actions.undo() ? 'undo' : 'nothingToUndo'),
   },
   redo: {
     label: 'menu.redo',
     group: 'edit',
     enabled: (state) => state.canRedo,
-    run: ({ editor, workspace }) =>
-      editor.setStatus(workspace.actions.redo() ? 'redo' : 'nothingToRedo'),
+    run: ({ editor, actions }) => editor.setStatus(actions.redo() ? 'redo' : 'nothingToRedo'),
   },
   'copy-selection': {
     label: 'menu.copySelection',
     group: 'edit',
     enabled: hasMarkers,
-    run: ({ workspace }) => workspace.actions.copySelection(),
+    run: ({ actions }) => actions.copySelection(),
   },
   'cut-selection': {
     label: 'menu.cutSelection',
     group: 'edit',
     enabled: (state) => state.selectedTicks.length > 0,
-    run: ({ workspace }) => workspace.actions.cutSelection(),
+    run: ({ actions }) => actions.cutSelection(),
   },
   'paste-selection': {
     label: 'menu.pasteSelection',
     group: 'edit',
-    run: ({ workspace }) => workspace.actions.pasteSelection(),
+    run: ({ actions }) => actions.pasteSelection(),
   },
   'measure-paste': {
     label: 'help.measurePaste',
     group: 'edit',
-    run: ({ workspace }) => workspace.actions.measurePaste(),
+    run: ({ actions }) => actions.measurePaste(),
   },
   'select-all': {
     label: 'menu.selectAll',
     group: 'edit',
     enabled: hasMarkers,
-    run: ({ workspace }) => workspace.actions.selectAll(),
+    run: ({ actions }) => actions.selectAll(),
   },
   'clear-selection': {
     label: 'help.clearSelection',
     group: 'edit',
-    run: ({ workspace }) => workspace.actions.clearSelection(),
+    run: ({ actions }) => actions.clearSelection(),
   },
   'link-markers-all-tracks': {
     label: 'menu.linkMarkersAll',
     group: 'edit',
     enabled: canLink,
-    run: ({ workspace }) => workspace.actions.linkMarkersToAllTracks(),
+    run: ({ actions }) => actions.linkMarkersToAllTracks(),
   },
   'unlink-markers': {
     label: 'menu.unlinkMarkers',
     group: 'edit',
     enabled: (state) => (state.track.slicing.links?.length ?? 0) > 0,
-    run: ({ workspace }) => workspace.actions.unlinkMarkers(),
+    run: ({ actions }) => actions.unlinkMarkers(),
   },
   'relink-markers': {
     label: 'menu.relinkMarkers',
     group: 'edit',
     enabled: canLink,
-    run: ({ workspace }) => workspace.actions.relinkMarkers(),
+    run: ({ actions }) => actions.relinkMarkers(),
   },
   'toggle-shared-markers': {
     label: 'menu.sharedMarkers',
     group: 'edit',
-    run: ({ workspace }) => workspace.actions.toggleSharedMarkers(),
+    run: ({ actions }) => actions.toggleSharedMarkers(),
   },
   'clear-markers': {
     label: 'menu.clearMarkers',
     group: 'edit',
     enabled: hasMarkers,
-    run: ({ editor, workspace }) => {
-      workspace.actions.clearMarkers();
+    run: ({ editor, actions }) => {
+      actions.clearMarkers();
       editor.setStatus('allMarkersCleared');
     },
   },
   'toggle-marker': {
     label: 'help.toggleMarker',
     group: 'edit',
-    run: ({ workspace }) => workspace.actions.toggleMarker(),
+    run: ({ actions }) => actions.toggleMarker(),
   },
   'place-marker': {
     label: 'help.placeBreakpoint',
@@ -309,13 +309,13 @@ export const COMMANDS = {
     label: 'help.shiftAllMinus',
     group: 'edit',
     enabled: hasMarkers,
-    run: ({ workspace }) => workspace.actions.shiftAll(-1),
+    run: ({ actions }) => actions.shiftAll(-1),
   },
   'shift-markers-later': {
     label: 'help.shiftAllPlus',
     group: 'edit',
     enabled: hasMarkers,
-    run: ({ workspace }) => workspace.actions.shiftAll(1),
+    run: ({ actions }) => actions.shiftAll(1),
   },
   'play-pause': {
     label: 'help.playPause',
@@ -496,14 +496,8 @@ export function commandEnabled(id: AppCommand, state: CommandState): boolean {
   return definitions[id].enabled?.(state) ?? true;
 }
 
-export function createCommands(options: {
-  editor: EditorStore;
-  workspace: Workspace;
-  playback: Playback;
-  hosts: CommandHosts;
-}) {
-  const context: CommandContext = options;
-  const { hosts } = options;
+export function createCommands(context: CommandContext) {
+  const { hosts } = context;
   /** The one execution entry. A dialog blocks every source; failures are reported here. */
   async function run<C extends AppCommand>(id: C, args?: CommandArgs<C>): Promise<CommandResult> {
     if (visibleDialog() || hosts.modalOpen?.()) return 'blocked';
@@ -551,7 +545,7 @@ function seekBy({ editor, playback }: CommandContext, seconds: number): void {
   if (editor.timeBase) editor.moveCursorTo(sampleToTickNearest(sample, editor.timeBase));
 }
 function placeMarker(
-  { editor, workspace, playback }: CommandContext,
+  { editor, actions, playback }: CommandContext,
   bypassSnap: boolean,
   position: 'cursor' | 'playhead' = 'cursor',
   input?: RecordingInput,
@@ -583,8 +577,7 @@ function placeMarker(
   }
   editor.setCursorTick(tick);
   if (!editor.playing && position === 'cursor') playback.seekSample(tickToSampleExport(tick, base));
-  if (workspace.actions.setMarker(tick, true, input?.keys))
-    editor.setStatus('breakPointAtTick', { tick });
+  if (actions.setMarker(tick, true, input?.keys)) editor.setStatus('breakPointAtTick', { tick });
   else
     editor.setStatus('breakPointAlreadyAtTick', {
       measure: Math.floor(tick / MEASURE_TICKS) + 1,

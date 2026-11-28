@@ -17,7 +17,7 @@ it('detects real burst onsets in one undo transaction and preserves legacy edge 
   await f.workspace.detect();
   expect(f.editor.ticks.length).toBeGreaterThan(0);
   expect(f.editor.ticks.every(f.editor.legalTick)).toBe(true);
-  f.workspace.actions.undo();
+  f.actions.undo();
   expect(f.editor.ticks).toEqual([]);
   const source = f.editor.source;
   if (!source) throw new Error('Expected source');
@@ -28,7 +28,7 @@ it('detects real burst onsets in one undo transaction and preserves legacy edge 
   }).filter(f.editor.legalTick);
   await f.workspace.edgeDetect();
   expect(f.editor.ticks).toEqual(expected);
-  f.workspace.actions.undo();
+  f.actions.undo();
   expect(f.editor.ticks).toEqual([]);
 });
 
@@ -67,7 +67,7 @@ it('keeps detection settings with the track as undoable project edits', () => {
     snap: true,
   });
   expect(f.editor.isDirty).toBe(true);
-  f.workspace.actions.undo();
+  f.actions.undo();
   expect(f.editor.bandDetection.thresholdDb).toBe(6);
   expect(f.editor.bandDetection.bands.low).toBe(true);
 });
