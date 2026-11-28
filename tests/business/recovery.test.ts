@@ -129,17 +129,6 @@ it('restores the entire committed project and independent session controls with 
       integrity: null,
       originHint: null,
     };
-    const track = draft.tracks[0];
-    if (!track) throw new Error('Missing default track');
-    track.clips = [
-      {
-        clipId: 'c1',
-        mediaId: 'm1',
-        timelineStartSeconds: 0,
-        sourceOffsetFrames: 0,
-        frameCount: 400,
-      },
-    ];
     draft.bmhelper = {
       format: 'bmhelper',
       source: { quantize: 480, notes: [], pitches: [], controls: [] },

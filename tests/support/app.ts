@@ -120,17 +120,21 @@ export function audioFile(name = 'tone.wav', frames = 48000): OpenedFile {
   const pcm = Int16Array.from({ length: frames }, (_, i) => Math.round(Math.sin(i / 12) * 16000));
   return { name, reference: `/audio/${name}`, bytes: wavFile([pcm], 48000) };
 }
-export function fixture(createEngine = processorEngine) {
-  const pinia = createPinia(),
-    editor = useEditorStore(pinia);
-  const saved: OutputFile[] = [],
-    exported: OutputFile[] = [];
-  let session: unknown = null;
-  /** What the next picker returns: one file, or several for a multiple choice. */
-  let opened: OpenedFile | readonly OpenedFile[] | null = null;
+/**
+ * The platform double of every test: files, clipboard and recovery data live in
+ * memory. A test that adds a member to `Platform` changes this one place.
+ */
+export function memoryPlatform() {
+  const memory = {
+    saved: [] as OutputFile[],
+    exported: [] as OutputFile[],
+    session: null as unknown,
+    /** What the next picker returns: one file, or several for a multiple choice. */
+    opened: null as OpenedFile | readonly OpenedFile[] | null,
+    clipboard: '',
+  };
   const pickedFiles = (): readonly OpenedFile[] =>
-    opened === null ? [] : 'name' in opened ? [opened] : opened;
-  let clipboard = '';
+    memory.opened === null ? [] : 'name' in memory.opened ? [memory.opened] : memory.opened;
   const platform: Platform = {
     kind: 'browser',
     openProjectMedia() {
@@ -153,37 +157,43 @@ export function fixture(createEngine = processorEngine) {
       return () => {};
     },
     saveFile(_kind, name, bytes) {
-      saved.push({ name, bytes });
+      memory.saved.push({ name, bytes });
       return Promise.resolve(true);
     },
     async exportFiles(files) {
       let count = 0;
       for await (const file of files) {
-        exported.push(file);
+        memory.exported.push(file);
         count++;
       }
       return count;
     },
     readClipboard() {
-      return Promise.resolve(clipboard);
+      return Promise.resolve(memory.clipboard);
     },
     writeClipboard(value) {
-      clipboard = value;
+      memory.clipboard = value;
       return Promise.resolve();
     },
     readSession() {
-      return Promise.resolve(session);
+      return Promise.resolve(memory.session);
     },
     writeSession(value) {
-      session = value;
+      memory.session = value;
       return Promise.resolve();
     },
     clearSession() {
-      session = null;
+      memory.session = null;
       return Promise.resolve();
     },
     async setTheme() {},
   };
+  return { platform, memory };
+}
+export function fixture(createEngine = processorEngine) {
+  const pinia = createPinia(),
+    editor = useEditorStore(pinia);
+  const { platform, memory } = memoryPlatform();
   const confirmOptions: {
     confirmDiscardRecovery?: WorkspaceOptions['confirmDiscardRecovery'];
     confirmRelinkDifference?: WorkspaceOptions['confirmRelinkDifference'];
@@ -192,26 +202,27 @@ export function fixture(createEngine = processorEngine) {
     editor,
     platform,
     createEngine,
-    confirmDiscardRecovery: (block) => confirmOptions.confirmDiscardRecovery?.(block) ?? false,
-    confirmRelinkDifference: (difference) =>
-      confirmOptions.confirmRelinkDifference?.(difference) ?? false,
+    confirmDiscardRecovery: async (block) =>
+      (await confirmOptions.confirmDiscardRecovery?.(block)) ?? false,
+    confirmRelinkDifference: async (difference) =>
+      (await confirmOptions.confirmRelinkDifference?.(difference)) ?? false,
   });
   return {
     pinia,
     editor,
     workspace,
     platform,
-    saved,
-    exported,
+    saved: memory.saved,
+    exported: memory.exported,
     confirmOptions,
     get session() {
-      return session;
+      return memory.session;
     },
     set session(value: unknown) {
-      session = value;
+      memory.session = value;
     },
     set opened(value: OpenedFile | readonly OpenedFile[] | null) {
-      opened = value;
+      memory.opened = value;
     },
     async dispose() {
       await workspace.dispose();

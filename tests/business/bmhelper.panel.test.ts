@@ -15,6 +15,7 @@ import {
   wavDefinitionText,
 } from '../../src/core/bmhelper';
 import { writeSmfSequence } from '../../src/core/formats/smf';
+import { memoryPlatform } from '../support/app';
 
 /**
  * Dialog double for every panel test: renders the default slot (settings
@@ -23,7 +24,7 @@ import { writeSmfSequence } from '../../src/core/formats/smf';
  * in template order — the settings dialog mounts first, the definitions
  * dialog second.
  */
-const dialogEmits: Array<(event: string, ...args: unknown[]) => void> = [];
+const dialogEmits: Array<(event: 'update:modelValue' | 'closed', ...args: unknown[]) => void> = [];
 const dialogStub = defineComponent({
   name: 'ElDialog',
   emits: ['update:modelValue', 'closed'],
@@ -33,22 +34,17 @@ const dialogStub = defineComponent({
   },
 });
 
-// The return type stays inferred: annotating Platform would widen the vi.fn
-// mocks into plain method signatures.
+/**
+ * The shared in-memory platform, with spies on the three calls these tests
+ * check. The return type stays inferred: annotating Platform would widen the
+ * spies into plain method signatures.
+ */
 function createPlatform() {
   return {
-    kind: 'browser' as const,
-    openFile: vi.fn<() => Promise<OpenedFile | null>>(() => Promise.resolve(null)),
-    reopenFile: vi.fn(() => Promise.reject(new Error('unused'))),
-    openProjectMedia: vi.fn(() => Promise.resolve(null)),
-    saveFile: vi.fn(() => Promise.resolve(true)),
-    exportFiles: vi.fn(() => Promise.resolve(null)),
-    readClipboard: vi.fn(() => Promise.resolve('')),
-    writeClipboard: vi.fn(async () => {}),
-    readSession: vi.fn(() => Promise.resolve(null)),
-    writeSession: vi.fn(async () => {}),
-    clearSession: vi.fn(async () => {}),
-    setTheme: vi.fn(async () => {}),
+    ...memoryPlatform().platform,
+    openFile: vi.fn<Platform['openFile']>(() => Promise.resolve(null)),
+    saveFile: vi.fn<Platform['saveFile']>(() => Promise.resolve(true)),
+    writeClipboard: vi.fn<Platform['writeClipboard']>(async () => {}),
   } satisfies Platform;
 }
 
@@ -277,7 +273,7 @@ it('keeps the pending MIDI until the settings dialog finishes closing', async ()
     await flushPromises();
     const channels = () => harness.wrapper.find('[aria-label="MIDI channels"]');
     expect(channels().exists()).toBe(true);
-    const emitSettingsDialog = (event: string, ...args: unknown[]) => {
+    const emitSettingsDialog = (event: 'update:modelValue' | 'closed', ...args: unknown[]) => {
       const emit = dialogEmits[0];
       if (!emit) throw new Error('Missing settings dialog emit');
       emit(event, ...args);

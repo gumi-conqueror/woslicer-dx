@@ -24,9 +24,9 @@ describe('portable project workflow', () => {
     await restored.workspace.openProject();
     expect(resolve).toHaveBeenCalledWith(
       'project-grant',
-      f.editor.document.tracks[0].media.mediaId,
+      f.editor.document.tracks[0].media?.mediaId,
     );
-    expect(restored.editor.document.tracks[0].media.originHint).toEqual({
+    expect(restored.editor.document.tracks[0].media?.originHint).toEqual({
       kind: 'desktop',
       pathHint: file.absolutePath,
     });
@@ -46,13 +46,13 @@ describe('portable project workflow', () => {
     await f.workspace.saveProject();
     f.opened = { ...audioFile(), absolutePath: 'D:\\New\\tone.wav' };
     await f.workspace.relinkAudio();
-    expect(f.editor.document.tracks[0].media.originHint).toEqual({
+    expect(f.editor.document.tracks[0].media?.originHint).toEqual({
       kind: 'desktop',
       pathHint: 'D:\\New\\tone.wav',
     });
     expect(f.editor.isDirty).toBe(true);
     f.workspace.actions.undo();
-    expect(f.editor.document.tracks[0].media.originHint).toEqual({
+    expect(f.editor.document.tracks[0].media?.originHint).toEqual({
       kind: 'desktop',
       pathHint: 'C:\\Old\\tone.wav',
     });
@@ -436,7 +436,7 @@ describe('portable project workflow', () => {
     await f.workspace.openProject();
     expect(reopen).not.toHaveBeenCalled();
     expect(f.editor.source).toBeNull();
-    expect(f.editor.document.tracks[0].media.originHint).toEqual({
+    expect(f.editor.document.tracks[0].media?.originHint).toEqual({
       kind: 'desktop',
       pathHint: 'C:/untrusted/secret.wav',
     });
