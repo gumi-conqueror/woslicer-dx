@@ -1,13 +1,21 @@
 import { createPinia, disposePinia } from 'pinia';
 import type { DecodeProgress } from '../../src/audio/decode';
 import { createAudioProcessor, type AudioEngine } from '../../src/audio/audio-jobs';
-import { useEditorStore } from '../../src/slicing/editor-store';
-import { createWorkspace, type WorkspaceOptions } from '../../src/workspace/workspace';
+import { useEditorStore, type EditorStore } from '../../src/slicing/editor-store';
+import { createEditorActions, editorActionsKey } from '../../src/slicing/editor-actions';
+import {
+  createWorkspace,
+  workspaceKey,
+  type WorkspaceOptions,
+} from '../../src/workspace/workspace';
 import { wavFile } from './audio';
 import type { Platform, OpenedFile, OutputFile } from '../../src/platform/contracts';
 import { onTestFinished } from 'vitest';
 import { readEditorSession } from '../../src/workspace/session';
-import { createCommands } from '../../src/app/commands';
+import { createCommands } from '../../src/commands/commands';
+import { createExporter, exporterKey } from '../../src/export/exporter';
+import { createDetection, detectionKey } from '../../src/detection/detection';
+import { createLegacyInterop, legacyInteropKey } from '../../src/interop/legacy';
 import { errorMessage } from '../../src/core/messages';
 import type { Playback } from '../../src/playback';
 
@@ -16,22 +24,29 @@ import type { Playback } from '../../src/playback';
  * doubles only at the platform, audio output and Worker transport boundaries.
  * The driver owns its lifetime within the current test.
  */
-export function createTestApp(createEngine = processorEngine) {
+export function createTestApp(
+  createEngine = processorEngine,
+  /** Tests that listen pass the real playback; the others get one that does nothing. */
+  createPlayback: (editor: EditorStore) => Playback = silentPlayback,
+) {
   const app = fixture(createEngine);
   onTestFinished(() => app.dispose());
-  const playback = silentPlayback();
+  const playback = createPlayback(app.editor);
   const commands = createCommands({
     editor: app.editor,
+    actions: app.actions,
     workspace: app.workspace,
+    exporter: app.exporter,
+    interop: app.interop,
     playback,
     hosts: {
       close() {},
-      about() {},
-      help() {},
+      openDialog() {},
       calibrate() {},
       openProject: () => app.workspace.openProject(),
       newProjectFromWos: () => app.workspace.newProjectFromWos(),
-      report: (error) => app.editor.setStatus('loadFailed', { message: errorMessage(error) }, true),
+      report: (error) =>
+        app.editor.setStatus('commandFailed', { message: errorMessage(error) }, true),
     },
   });
   return Object.assign(app, {
@@ -120,17 +135,21 @@ export function audioFile(name = 'tone.wav', frames = 48000): OpenedFile {
   const pcm = Int16Array.from({ length: frames }, (_, i) => Math.round(Math.sin(i / 12) * 16000));
   return { name, reference: `/audio/${name}`, bytes: wavFile([pcm], 48000) };
 }
-export function fixture(createEngine = processorEngine) {
-  const pinia = createPinia(),
-    editor = useEditorStore(pinia);
-  const saved: OutputFile[] = [],
-    exported: OutputFile[] = [];
-  let session: unknown = null;
-  /** What the next picker returns: one file, or several for a multiple choice. */
-  let opened: OpenedFile | readonly OpenedFile[] | null = null;
+/**
+ * The platform double of every test: files, clipboard and recovery data live in
+ * memory. A test that adds a member to `Platform` changes this one place.
+ */
+export function memoryPlatform() {
+  const memory = {
+    saved: [] as OutputFile[],
+    exported: [] as OutputFile[],
+    session: null as unknown,
+    /** What the next picker returns: one file, or several for a multiple choice. */
+    opened: null as OpenedFile | readonly OpenedFile[] | null,
+    clipboard: '',
+  };
   const pickedFiles = (): readonly OpenedFile[] =>
-    opened === null ? [] : 'name' in opened ? [opened] : opened;
-  let clipboard = '';
+    memory.opened === null ? [] : 'name' in memory.opened ? [memory.opened] : memory.opened;
   const platform: Platform = {
     kind: 'browser',
     openProjectMedia() {
@@ -153,37 +172,43 @@ export function fixture(createEngine = processorEngine) {
       return () => {};
     },
     saveFile(_kind, name, bytes) {
-      saved.push({ name, bytes });
+      memory.saved.push({ name, bytes });
       return Promise.resolve(true);
     },
     async exportFiles(files) {
       let count = 0;
       for await (const file of files) {
-        exported.push(file);
+        memory.exported.push(file);
         count++;
       }
       return count;
     },
     readClipboard() {
-      return Promise.resolve(clipboard);
+      return Promise.resolve(memory.clipboard);
     },
     writeClipboard(value) {
-      clipboard = value;
+      memory.clipboard = value;
       return Promise.resolve();
     },
     readSession() {
-      return Promise.resolve(session);
+      return Promise.resolve(memory.session);
     },
     writeSession(value) {
-      session = value;
+      memory.session = value;
       return Promise.resolve();
     },
     clearSession() {
-      session = null;
+      memory.session = null;
       return Promise.resolve();
     },
     async setTheme() {},
   };
+  return { platform, memory };
+}
+export function fixture(createEngine = processorEngine) {
+  const pinia = createPinia(),
+    editor = useEditorStore(pinia);
+  const { platform, memory } = memoryPlatform();
   const confirmOptions: {
     confirmDiscardRecovery?: WorkspaceOptions['confirmDiscardRecovery'];
     confirmRelinkDifference?: WorkspaceOptions['confirmRelinkDifference'];
@@ -192,26 +217,43 @@ export function fixture(createEngine = processorEngine) {
     editor,
     platform,
     createEngine,
-    confirmDiscardRecovery: (block) => confirmOptions.confirmDiscardRecovery?.(block) ?? false,
-    confirmRelinkDifference: (difference) =>
-      confirmOptions.confirmRelinkDifference?.(difference) ?? false,
+    confirmDiscardRecovery: async (block) =>
+      (await confirmOptions.confirmDiscardRecovery?.(block)) ?? false,
+    confirmRelinkDifference: async (difference) =>
+      (await confirmOptions.confirmRelinkDifference?.(difference)) ?? false,
   });
+  const actions = createEditorActions(editor);
+  const exporter = createExporter(platform, editor, workspace.audio);
+  const detection = createDetection(editor, workspace.audio);
+  const interop = createLegacyInterop(platform, editor, workspace.audio);
   return {
     pinia,
     editor,
+    actions,
     workspace,
+    exporter,
+    detection,
+    interop,
+    /** What `App.vue` provides to its components: pass it as `global.provide` to mount one. */
+    provide: {
+      [workspaceKey]: workspace,
+      [editorActionsKey]: actions,
+      [exporterKey]: exporter,
+      [detectionKey]: detection,
+      [legacyInteropKey]: interop,
+    },
     platform,
-    saved,
-    exported,
+    saved: memory.saved,
+    exported: memory.exported,
     confirmOptions,
     get session() {
-      return session;
+      return memory.session;
     },
     set session(value: unknown) {
-      session = value;
+      memory.session = value;
     },
     set opened(value: OpenedFile | readonly OpenedFile[] | null) {
-      opened = value;
+      memory.opened = value;
     },
     async dispose() {
       await workspace.dispose();

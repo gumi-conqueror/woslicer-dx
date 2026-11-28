@@ -1,11 +1,12 @@
 import { expect, it } from 'vitest';
 import { createTestApp as setup, audioFile } from '../support/app';
 import { wavFile } from '../support/audio';
+import { defaultSelection, exportJobs, markerRows } from '../../src/export/export-plan';
 
 it('adds tracks with their own audio, markers and output names', async () => {
   const f = setup();
   await f.workspace.loadAudio(audioFile('kick.wav'));
-  f.workspace.actions.setMarker(24);
+  f.actions.setMarker(24);
   const first = f.editor.track.trackId;
   // With track markers, each track keeps its own markers.
   await f.run('toggle-shared-markers');
@@ -17,7 +18,7 @@ it('adds tracks with their own audio, markers and output names', async () => {
   expect(f.editor.source?.length).toBe(24000);
   // The new track starts without markers; the first track keeps its own.
   expect(f.editor.ticks).toEqual([]);
-  f.workspace.actions.setMarker(48);
+  f.actions.setMarker(48);
   await f.run('previous-track');
   expect(f.editor.track.trackId).toBe(first);
   expect(f.editor.ticks).toEqual([24]);
@@ -51,7 +52,7 @@ it('replaces only the current track audio in a multi-track project', async () =>
   await f.workspace.loadAudio(audioFile('kick.wav'));
   f.opened = audioFile('snare.wav', 24000);
   await f.run('add-track');
-  f.workspace.actions.setMarker(12);
+  f.actions.setMarker(12);
   await f.workspace.loadAudio(audioFile('clap.wav', 12000));
   expect(f.editor.document.tracks.map((track) => track.name)).toEqual(['kick', 'clap']);
   expect(f.editor.document.name).toBe('kick');
@@ -83,7 +84,7 @@ it('renames a track and ignores a blank name', () => {
   expect(f.editor.track.name).toBe('Bass');
   f.editor.renameTrack(id, '   ');
   expect(f.editor.track.name).toBe('Bass');
-  f.workspace.actions.undo();
+  f.actions.undo();
   expect(f.editor.track.name).toBe('Untitled');
 });
 
@@ -113,17 +114,23 @@ it('restores every track and its audio from recovery data', async () => {
 it('exports the slices of every track into one archive and refuses equal file names', async () => {
   const f = setup();
   await f.workspace.loadAudio(audioFile('kick.wav', 96000));
-  f.workspace.actions.setMarker(48);
+  f.actions.setMarker(48);
   await f.run('toggle-shared-markers');
   f.opened = audioFile('snare.wav', 96000);
   await f.run('add-track');
-  f.workspace.actions.setMarker(96);
+  f.actions.setMarker(96);
+  // The export window starts with this plan: every track cut at its own markers.
+  const plan = () => {
+    const { tracks } = f.editor.document;
+    const rows = markerRows(tracks);
+    return exportJobs(tracks, rows, defaultSelection(rows));
+  };
   f.editor.setOutputOptions({ baseName: 'kick' });
-  await f.run('export-all-tracks');
+  await f.exporter.exportTracks(plan());
   expect(f.editor.isError).toBe(true);
   expect(f.exported).toHaveLength(0);
   f.editor.setOutputOptions({ baseName: 'snare' });
-  await f.run('export-all-tracks');
+  await f.exporter.exportTracks(plan());
   expect(f.editor.isError).toBe(false);
   expect(f.exported.map((file) => file.name).sort()).toEqual(['kick_000.wav', 'snare_000.wav']);
 });
@@ -162,7 +169,7 @@ it('presets the BPM from the first audio of an empty project only', async () => 
   expect(f.editor.status.segments.map((segment) => segment.key)).toContain('tempoDetected');
   // Markers keep the BPM: another BPM would move them in time.
   const g = setup();
-  g.workspace.actions.setMarker(96);
+  g.actions.setMarker(96);
   await g.workspace.loadAudio(clicks('beat.wav'));
   expect(g.editor.document.timing.bpm).toBe(120);
 });

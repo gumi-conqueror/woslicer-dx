@@ -9,7 +9,7 @@ it('cancels an active paint gesture when the project is replaced mid-stroke', as
   vi.useFakeTimers();
   const f = setup();
   f.editor.pxPerTick = 1;
-  f.workspace.actions.setMarker(0);
+  f.actions.setMarker(0);
   const gestures = createTimelineGestures(f.editor);
   try {
     await f.workspace.flushSession();
@@ -39,7 +39,7 @@ it.each([false, true])(
   async (ctrlKey) => {
     const f = setup();
     f.editor.pxPerTick = 1;
-    f.workspace.actions.setMarker(0);
+    f.actions.setMarker(0);
     const gestures = createTimelineGestures(f.editor);
     const point = { x: 48, y: 10, button: 0, altKey: false, shiftKey: false, ctrlKey: false };
     gestures.begin(point);
@@ -53,10 +53,10 @@ it.each([false, true])(
     gestures.end({ ...point, x: 120 });
     expect(f.editor.ticks).toEqual(ctrlKey ? [] : [0, 200]);
     if (ctrlKey) {
-      f.workspace.actions.redo();
+      f.actions.redo();
       expect(f.editor.ticks).toEqual([0]);
     } else {
-      f.workspace.actions.undo();
+      f.actions.undo();
       expect(f.editor.ticks).toEqual([0]);
     }
     gestures.dispose();
@@ -67,7 +67,7 @@ it('autosaves only committed cuts while a pointer stroke remains active', async 
   vi.useFakeTimers();
   const f = setup();
   f.editor.pxPerTick = 1;
-  f.workspace.actions.setMarker(0);
+  f.actions.setMarker(0);
   const gestures = createTimelineGestures(f.editor);
   try {
     await f.workspace.flushSession();
@@ -82,7 +82,7 @@ it('autosaves only committed cuts while a pointer stroke remains active', async 
     gestures.cancel();
     await f.workspace.flushSession();
     expect(parseEditorSession(f.session)?.project.tracks[0].slicing.markers).toEqual([0]);
-    f.workspace.actions.undo();
+    f.actions.undo();
     expect(f.editor.ticks).toEqual([]);
     expect(f.editor.canUndo).toBe(false);
   } finally {

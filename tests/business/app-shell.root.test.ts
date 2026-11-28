@@ -1,14 +1,20 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, expect, it, vi } from 'vitest';
 import { nextTick, type ComponentPublicInstance } from 'vue';
-import { ElMessageBox } from 'element-plus';
+import { ElMessageBox, type MessageBoxData } from 'element-plus';
 import App from '../../src/app/App.vue';
 import ApplicationMenu from '../../src/app/components/ApplicationMenu.vue';
 import WindowTitlebar from '../../src/app/components/WindowTitlebar.vue';
 import CalibrationDialog from '../../src/calibration/CalibrationDialog.vue';
 import { pinia, localization } from '../../src/app/runtime';
 import { useEditorStore } from '../../src/slicing/editor-store';
-import { useBmhelperStore } from '../../src/bmhelper/store';
+
+/**
+ * What Element Plus resolves a confirmed box with: the action string. Its
+ * declared result type also has the fields of a prompt box, which a
+ * confirmation never carries, so the plain string needs this one assertion.
+ */
+const confirmed = 'confirm' as MessageBoxData;
 
 const effects = vi.hoisted(() => ({
   stopAudio: vi.fn(),
@@ -44,16 +50,15 @@ vi.mock('../../src/playback', () => ({
   }),
   providePlayback: () => {},
 }));
-vi.mock('../../src/app/commands', async (original) => ({
-  ...(await original<typeof import('../../src/app/commands')>()),
+vi.mock('../../src/commands/commands', async (original) => ({
+  ...(await original<typeof import('../../src/commands/commands')>()),
   createCommands: ({
     hosts,
   }: {
     hosts: {
       close: () => Promise<void>;
       openProject: () => Promise<void>;
-      about: () => void;
-      help: () => void;
+      openDialog: (id: 'help' | 'about') => void;
       calibrate: () => void;
       report: (error: unknown) => void;
     };
@@ -63,8 +68,7 @@ vi.mock('../../src/app/commands', async (original) => ({
       if (command === 'close-project') await hosts.close();
       if (command === 'open-project') await hosts.openProject();
       if (command === 'calibrate') hosts.calibrate();
-      if (command === 'help') hosts.help();
-      if (command === 'about') hosts.about();
+      if (command === 'help' || command === 'about') hosts.openDialog(command);
     }
     return { run: (command: string) => execute(command).catch(hosts.report) };
   },
@@ -74,7 +78,6 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.clearAllMocks();
   useEditorStore(pinia).reset();
-  useBmhelperStore(pinia).reset();
 });
 function render() {
   return mount(App, {
@@ -115,7 +118,7 @@ it('cancels native exit with dirty work and flushes recovery after approval', as
   const confirm = vi
     .spyOn(ElMessageBox, 'confirm')
     .mockRejectedValueOnce('cancel')
-    .mockResolvedValueOnce('confirm');
+    .mockResolvedValueOnce(confirmed);
   const wrapper = render();
   try {
     const beforeClose = wrapper
@@ -176,19 +179,14 @@ it('opens calibration from toolbar, isolates keyboard dispatch, and applies its 
     wrapper.unmount();
   }
 });
-it('coordinates confirmed workspace and BMHelper reset through the command dispatcher', async () => {
-  vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue('confirm');
-  const bmh = useBmhelperStore(pinia);
-  bmh.name = 'discarded';
-  bmh.dirty = true;
+it('resets the workspace through the command dispatcher after the close is confirmed', async () => {
+  vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue(confirmed);
   const wrapper = render();
   try {
     wrapper.findComponent(ApplicationMenu).vm.$emit('command', 'close-project');
     await flushPromises();
     expect(effects.execute).toHaveBeenCalledWith('close-project');
     expect(effects.reset).toHaveBeenCalledOnce();
-    expect(bmh.name).toBe('');
-    expect(bmh.dirty).toBe(false);
   } finally {
     wrapper.unmount();
   }
@@ -205,13 +203,13 @@ function makeDirty(): void {
 }
 
 function deferredConfirm(): {
-  resolve: (value: 'confirm') => void;
+  resolve: (value: MessageBoxData) => void;
   reject: (reason: unknown) => void;
 } {
   // The executor assigns later, so return a mutable container instead of the
   // (still undefined) closure bindings captured at return time.
   const deferred: {
-    resolve: (value: 'confirm') => void;
+    resolve: (value: MessageBoxData) => void;
     reject: (reason: unknown) => void;
   } = {
     resolve: () => {},
@@ -219,7 +217,7 @@ function deferredConfirm(): {
   };
   vi.spyOn(ElMessageBox, 'confirm').mockImplementation(
     () =>
-      new Promise<'confirm'>((innerResolve, innerReject) => {
+      new Promise<MessageBoxData>((innerResolve, innerReject) => {
         deferred.resolve = innerResolve;
         deferred.reject = innerReject;
       }),
@@ -228,7 +226,7 @@ function deferredConfirm(): {
 }
 
 it('opens the project without a dialog while the document is clean', async () => {
-  const confirmSpy = vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue('confirm');
+  const confirmSpy = vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue(confirmed);
   const wrapper = render();
   try {
     await flushPromises();
@@ -243,7 +241,7 @@ it('opens the project without a dialog while the document is clean', async () =>
 });
 
 it('runs the confirmed project replacement and releases the lock afterwards', async () => {
-  const confirmSpy = vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue('confirm');
+  const confirmSpy = vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue(confirmed);
   const wrapper = render();
   try {
     await flushPromises();
@@ -273,7 +271,7 @@ it('keeps the workspace and reports nothing when the replacement is cancelled', 
     expect(effects.openProject).not.toHaveBeenCalled();
     expect(editor.isError).toBe(false);
     // The lock is released: a later confirmation still runs.
-    vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue('confirm');
+    vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue(confirmed);
     wrapper.findComponent(ApplicationMenu).vm.$emit('command', 'open-project');
     await flushPromises();
     expect(confirmSpy).toHaveBeenCalledTimes(2);
@@ -310,7 +308,7 @@ it('surfaces confirmation errors through the status bar', async () => {
     await flushPromises();
     expect(effects.openProject).not.toHaveBeenCalled();
     expect(editor.isError).toBe(true);
-    expect(editor.status.segments[0]?.key).toBe('loadFailed');
+    expect(editor.status.segments[0]?.key).toBe('commandFailed');
     expect(editor.status.segments[0]?.params).toEqual({ message: 'confirm boom' });
   } finally {
     wrapper.unmount();
@@ -328,7 +326,7 @@ it('rejects reentry while a confirmation is pending and keeps one dialog', async
     await flushPromises();
     expect(ElMessageBox.confirm).toHaveBeenCalledOnce();
     expect(effects.openProject).not.toHaveBeenCalled();
-    deferred.resolve('confirm');
+    deferred.resolve(confirmed);
     await flushPromises();
     expect(effects.openProject).toHaveBeenCalledOnce();
   } finally {
@@ -343,13 +341,13 @@ it('ignores a confirmation that resolves after unmount', async () => {
   makeDirty();
   wrapper.findComponent(ApplicationMenu).vm.$emit('command', 'open-project');
   wrapper.unmount();
-  deferred.resolve('confirm');
+  deferred.resolve(confirmed);
   await flushPromises();
   expect(effects.openProject).not.toHaveBeenCalled();
 });
 
 it('blocks repeated close commands and keyboard dispatch while a reset is pending', async () => {
-  const confirmSpy = vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue('confirm');
+  const confirmSpy = vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue(confirmed);
   let resolveReset!: () => void;
   effects.reset.mockImplementation(
     () =>
@@ -357,9 +355,6 @@ it('blocks repeated close commands and keyboard dispatch while a reset is pendin
         resolveReset = resolve;
       }),
   );
-  const bmh = useBmhelperStore(pinia);
-  bmh.name = 'discarded';
-  bmh.dirty = true;
   const wrapper = render();
   try {
     await flushPromises();
@@ -373,14 +368,13 @@ it('blocks repeated close commands and keyboard dispatch while a reset is pendin
     resolveReset();
     await flushPromises();
     expect(effects.reset).toHaveBeenCalledOnce();
-    expect(bmh.name).toBe('');
   } finally {
     wrapper.unmount();
   }
 });
 
 it('releases the close lock and surfaces the error when the reset fails', async () => {
-  const confirmSpy = vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue('confirm');
+  const confirmSpy = vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue(confirmed);
   effects.reset.mockRejectedValueOnce(new Error('disk full'));
   const editor = useEditorStore(pinia);
   const wrapper = render();
@@ -390,7 +384,7 @@ it('releases the close lock and surfaces the error when the reset fails', async 
     await flushPromises();
     expect(effects.reset).toHaveBeenCalledOnce();
     expect(editor.isError).toBe(true);
-    expect(editor.status.segments[0]?.key).toBe('loadFailed');
+    expect(editor.status.segments[0]?.key).toBe('commandFailed');
     expect(editor.status.segments[0]?.params).toEqual({ message: 'disk full' });
     // The lock is released: a second close re-confirms and retries the reset.
     // (Workspace clearing after a successful reset is pinned by the dedicated
@@ -407,17 +401,13 @@ it('releases the close lock and surfaces the error when the reset fails', async 
 
 it('keeps the workspace and releases the lock when the close dialog is cancelled', async () => {
   const confirmSpy = vi.spyOn(ElMessageBox, 'confirm').mockRejectedValue('cancel');
-  const bmh = useBmhelperStore(pinia);
-  bmh.name = 'discarded';
-  bmh.dirty = true;
   const wrapper = render();
   try {
     await flushPromises();
     wrapper.findComponent(ApplicationMenu).vm.$emit('command', 'close-project');
     await flushPromises();
     expect(effects.reset).not.toHaveBeenCalled();
-    expect(bmh.name).toBe('discarded');
-    vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue('confirm');
+    vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue(confirmed);
     wrapper.findComponent(ApplicationMenu).vm.$emit('command', 'close-project');
     await flushPromises();
     expect(confirmSpy).toHaveBeenCalledTimes(2);

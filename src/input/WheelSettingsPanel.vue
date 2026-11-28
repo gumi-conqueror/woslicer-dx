@@ -2,8 +2,8 @@
 import { computed } from 'vue';
 import { ElButton, ElOption, ElOptionGroup, ElSelect } from 'element-plus';
 import { useI18n } from 'vue-i18n';
-import { APP_COMMANDS, COMMAND_GROUPS, commandGroup, commandLabel } from '../commands';
-import { MAX_WHEELS, useWheelLayout, wheelCommand } from '../../input/wheel-layout';
+import { APP_COMMANDS, COMMAND_GROUPS, commandGroup, commandLabel } from '../commands/commands';
+import { MAX_WHEELS, useWheelLayout, wheelCommand } from './wheel-layout';
 const { t } = useI18n();
 const layout = useWheelLayout();
 /** Grid cell (row, column) of each slot, clockwise from the top. */

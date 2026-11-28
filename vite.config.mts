@@ -3,7 +3,7 @@ import languages from './src/i18n/languages.json' with { type: 'json' };
 import { resolve } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, type Plugin, type UserConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import VueI18n from '@intlify/unplugin-vue-i18n/vite';
 import { resolveBuildProfile } from './scripts/build-profile.mjs';
@@ -39,7 +39,7 @@ const siteIcon: Plugin = {
   },
 };
 
-export default defineConfig(async ({ command }) => {
+export default defineConfig(async ({ command }): Promise<UserConfig> => {
   await buildFonts(root);
   if (command === 'serve') {
     execFileSync(process.execPath, [resolve(root, 'scripts/tauri-build-info.mjs')], {

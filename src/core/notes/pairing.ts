@@ -22,12 +22,8 @@ export type TrackEvent = NoteEvent | AuxiliaryEvent;
 export interface PairedNote extends Note {
   readonly channel: number;
 }
-export function pairNotes(
-  events: readonly TrackEvent[],
-  channels?: ReadonlySet<number>,
-): {
+export function pairNotes(events: readonly TrackEvent[]): {
   readonly notes: readonly PairedNote[];
-  readonly pairedCount: number;
   readonly auxiliary: readonly AuxiliaryEvent[];
 } {
   const active = new Map<number, { event: NoteEvent; order: number }>();
@@ -78,9 +74,5 @@ export function pairNotes(
     }
   }
   paired.sort((a, b) => a.note.onset - b.note.onset || a.order - b.order);
-  return {
-    notes: paired.map((x) => x.note).filter((n) => !channels || channels.has(n.channel)),
-    pairedCount: paired.length,
-    auxiliary,
-  };
+  return { notes: paired.map((x) => x.note), auxiliary };
 }

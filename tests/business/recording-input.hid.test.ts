@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createNativeHid, nativeClockOffset } from '../../src/platform/input/native-hid';
 import { createWebHid } from '../../src/platform/input/web-hid';
-import { decodeYuanconReport } from '../../src/input/yuancon/protocol';
+import { decodeYuanconReport, YUANCON_FILTER } from '../../src/input/yuancon/protocol';
 import type { HidEvent } from '../../src/platform/input/contracts';
 
 const ipc = vi.hoisted(() => {
@@ -70,7 +70,7 @@ describe('native HID transport', () => {
       (event) => nativeEvents.push(event),
       signal,
     );
-    const webConnection = await createWebHid().open(
+    const webConnection = await createWebHid(YUANCON_FILTER).open(
       undefined,
       (event) => webEvents.push(event),
       signal,

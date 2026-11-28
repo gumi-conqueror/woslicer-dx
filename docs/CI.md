@@ -89,7 +89,7 @@ Missing evidence, changed inputs, pending runs or API errors cause normal valida
 
 ## Artifacts and failure diagnosis
 
-Successful packages are uploaded as Actions artifacts with 14-day retention.
+Successful packages are uploaded as Actions artifacts with one-day retention. Tag a release within a day of its main build, or rerun that build first.
 Each platform artifact includes a manifest with commit, version, profile, platform, target, run ID, attempt and package checksums.
 [`release-artifacts.mjs`](../scripts/release-artifacts.mjs) owns artifact selection and validation.
 When changing targets, update its target list and the workflow matrix together.
@@ -104,7 +104,7 @@ Start with the first failed step, rather than the aggregate check:
 | Package validation | Package paths, metadata and checksum output |
 | Release selection | Exact commit, source run result, artifact expiration and profile |
 
-Diagnostics are retained for seven days. Inspect a timeout before rerunning it. Keep both browser profiles within their 30-second deadlines.
+Diagnostics are retained for one day. Inspect a timeout before rerunning it. Keep both browser profiles within their 30-second deadlines.
 
 ## Publishing and deployment
 

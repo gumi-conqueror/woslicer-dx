@@ -14,10 +14,10 @@ it('detects real burst onsets in one undo transaction and preserves legacy edge 
     bytes: wavFile([pcm], 48000),
   });
   f.editor.setBandDetection({ snap: false });
-  await f.workspace.detect();
+  await f.detection.detect();
   expect(f.editor.ticks.length).toBeGreaterThan(0);
   expect(f.editor.ticks.every(f.editor.legalTick)).toBe(true);
-  f.workspace.actions.undo();
+  f.actions.undo();
   expect(f.editor.ticks).toEqual([]);
   const source = f.editor.source;
   if (!source) throw new Error('Expected source');
@@ -26,9 +26,9 @@ it('detects real burst onsets in one undo transaction and preserves legacy edge 
     timebase: { bpm: 120, shift: 0, sampleRate: 48000 },
     grid: 4,
   }).filter(f.editor.legalTick);
-  await f.workspace.edgeDetect();
+  await f.detection.edgeDetect();
   expect(f.editor.ticks).toEqual(expected);
-  f.workspace.actions.undo();
+  f.actions.undo();
   expect(f.editor.ticks).toEqual([]);
 });
 
@@ -44,8 +44,8 @@ it('ignores late detection results when the time base was edited', async () => {
       }),
   }));
   await f.workspace.loadAudio(audioFile());
-  await f.workspace.ensureBands();
-  const detecting = f.workspace.detect();
+  await f.detection.ensureBands();
+  const detecting = f.detection.detect();
   await Promise.resolve();
   await Promise.resolve();
   f.editor.setDocumentOptions({ bpm: 180 });
@@ -67,7 +67,7 @@ it('keeps detection settings with the track as undoable project edits', () => {
     snap: true,
   });
   expect(f.editor.isDirty).toBe(true);
-  f.workspace.actions.undo();
+  f.actions.undo();
   expect(f.editor.bandDetection.thresholdDb).toBe(6);
   expect(f.editor.bandDetection.bands.low).toBe(true);
 });

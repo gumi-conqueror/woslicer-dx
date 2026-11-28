@@ -5,6 +5,8 @@ const path = require('path');
 /** `major.minor.patch`, or an alpha prerelease `major.minor.patch-alpha.N` (N ≥ 1). */
 const VERSION = /^(\d+)\.(\d+)\.(\d+)(?:-alpha\.([1-9]\d*))?$/;
 const VERSION_TEXT = '\\d+\\.\\d+\\.\\d+(?:-alpha\\.[1-9]\\d*)?';
+/** The heading of a version entry in the changelogs: `## <version> — <year>-<month>-<day>`. */
+const ENTRY_HEADING = new RegExp(`^## (${VERSION_TEXT}) — \\d{4}-\\d{2}-\\d{2}$`, 'm');
 
 /** Throws when the package, lockfile and changelogs disagree about the version. */
 function checkVersion({ pkg, lock, changelogs }) {
@@ -20,14 +22,13 @@ function checkVersion({ pkg, lock, changelogs }) {
         'Lockfile version differs from package.json; run npm version <version> --no-git-tag-version --ignore-scripts',
       );
   }
-  const heading = new RegExp(`^## (${VERSION_TEXT}) — \\d{4}-\\d{2}-\\d{2}$`, 'm');
   for (const [file, contents] of Object.entries(changelogs)) {
-    if (contents.match(heading)?.[1] !== pkg.version)
+    if (contents.match(ENTRY_HEADING)?.[1] !== pkg.version)
       throw new Error(file + ' must document the current package.json version first');
   }
 }
 
-module.exports = { checkVersion, VERSION };
+module.exports = { checkVersion, ENTRY_HEADING, VERSION };
 
 if (require.main === module) {
   const root = path.resolve(__dirname, '..');

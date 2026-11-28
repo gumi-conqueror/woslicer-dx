@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { RECORDING_SEEK_SECONDS } from '../../input/recording';
 import {
   boundCommands,
   formatChords,
@@ -9,10 +8,10 @@ import {
   keyboardChords,
   recordingKeys,
   yuanconControls,
-} from '../../input/bindings';
-import { commandLabel } from '../commands';
-import GamepadIcon from '../../ui/GamepadIcon.vue';
-import YuanconIcon from '../../ui/YuanconIcon.vue';
+} from './bindings';
+import { commandLabel, RECORDING_SEEK_SECONDS } from '../commands/commands';
+import GamepadIcon from './GamepadIcon.vue';
+import YuanconIcon from './YuanconIcon.vue';
 const props = defineProps<{ device: 'keyboard' | 'gamepad' | 'yuancon' }>();
 const { t } = useI18n();
 const keys = recordingKeys();

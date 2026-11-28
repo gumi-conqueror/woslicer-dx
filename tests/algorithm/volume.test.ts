@@ -1,5 +1,12 @@
 import { expect, test } from 'vitest';
-import { ampToDb, dbToAmp, dbToSlider, sliderToDb } from '../../src/core/volume';
+import { ampToDb, dbToAmp, dbToSlider, formatDb, sliderToDb } from '../../src/core/volume';
+
+test('a level above 0 dB reads with a plus sign', () => {
+  expect([12, 0, -6].map((db) => formatDb(db))).toEqual(['+12 dB', '0 dB', '-6 dB']);
+  expect(formatDb(-10, 1)).toBe('-10.0 dB');
+  // The sign follows the rounded number.
+  expect([0.04, -0.04, 0.06].map((db) => formatDb(db, 1))).toEqual(['0.0 dB', '0.0 dB', '+0.1 dB']);
+});
 
 test('decibels convert to amplitude by 20 × log10', () => {
   expect(dbToAmp(0)).toBe(1);

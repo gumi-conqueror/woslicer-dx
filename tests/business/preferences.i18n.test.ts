@@ -49,7 +49,7 @@ describe('application Vue I18n messages', () => {
     const { i18n } = translations('zh');
     i18n.global.missingWarn = false;
     i18n.global.fallbackWarn = false;
-    i18n.global.setLocaleMessage('zh', {});
+    i18n.global.setLocaleMessage<Record<string, never>>('zh', {});
     expect(i18n.global.t('chrome.open')).toBe('Open');
     expect(i18n.global.t('status.paintedMarkers', { count: 3 })).toBe('Markers added: 3');
   });

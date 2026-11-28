@@ -1,4 +1,4 @@
-import type { AppCommand } from '../app/commands';
+import type { AppCommand } from '../commands/commands';
 
 /**
  * The command wheel: hold the wheel control, point at a slot, release to run

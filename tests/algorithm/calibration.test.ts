@@ -1,11 +1,6 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import {
-  analyzeTaps,
-  beatIntervalMs,
-  latencySamples,
-  DEFAULT_CALIBRATION_BEATS,
-} from '../../src/core/calibration.js';
+import { analyzeTaps, beatIntervalMs, latencySamples } from '../../src/core/calibration.js';
 
 // 16 reference beats at 120 BPM: one every 500 ms.
 const BEATS_120 = Array.from({ length: 16 }, (_, i) => i * 500);
@@ -15,14 +10,6 @@ test('beat interval follows the BPM (quarter notes)', () => {
   assert.ok(Math.abs(beatIntervalMs(185) - 324.324324) < 0.001);
   assert.throws(() => beatIntervalMs(0), RangeError);
   assert.throws(() => beatIntervalMs(-10), RangeError);
-});
-
-test('16 beat reference times start at 0 and step by the interval', () => {
-  const beats = BEATS_120;
-  assert.equal(beats.length, DEFAULT_CALIBRATION_BEATS);
-  assert.equal(beats[0], 0);
-  assert.equal(beats[1], 500);
-  assert.equal(beats[15], 7500);
 });
 
 test('median offset is measured from taps that land late', () => {

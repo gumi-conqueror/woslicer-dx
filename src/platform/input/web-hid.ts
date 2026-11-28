@@ -1,20 +1,18 @@
-import { YUANCON_FILTER } from '../../input/yuancon/protocol';
-import type { HidBackend } from './contracts';
+import type { HidBackend, HidFilter } from './contracts';
 
-export function createWebHid(): HidBackend {
+export function createWebHid(filter: HidFilter): HidBackend {
   return {
     available: typeof navigator !== 'undefined' && 'hid' in navigator,
     async open(_id, receive, signal) {
-      const selected = await navigator.hid.requestDevice({ filters: [YUANCON_FILTER] });
+      const selected = await navigator.hid.requestDevice({ filters: [filter] });
       signal.throwIfAborted();
       const device = selected.find(
         (item) =>
-          item.vendorId === YUANCON_FILTER.vendorId &&
-          item.productId === YUANCON_FILTER.productId &&
+          item.vendorId === filter.vendorId &&
+          item.productId === filter.productId &&
           item.collections.some(
             (collection) =>
-              collection.usagePage === YUANCON_FILTER.usagePage &&
-              collection.usage === YUANCON_FILTER.usage,
+              collection.usagePage === filter.usagePage && collection.usage === filter.usage,
           ),
       );
       if (!device) return null;

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { ElCheckbox, ElInputNumber, ElOption, ElSelect } from 'element-plus';
+import { ElCheckbox, ElOption, ElSelect } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { GRID_DENSITIES } from '../../core/gridlines';
 import { useEditorStore } from '../../slicing/editor-store';
 import { FIELD_RANGES } from '../../project/schema';
+import NumberField from '../../ui/NumberField.vue';
 const editor = useEditorStore();
 const { t } = useI18n();
 // Form edits go through document transactions so they participate in undo.
@@ -40,7 +41,7 @@ function setGrid(value: unknown): void {
          the folded closing tags below are formatter-mandated. -->
     <label
       >{{ t('chrome.bpmLabel')
-      }}<ElInputNumber
+      }}<NumberField
         v-model="bpm"
         :aria-label="t('chrome.bpmLabel')"
         :min="0.01"
@@ -73,7 +74,7 @@ function setGrid(value: unknown): void {
     >
     <label
       >{{ t('chrome.shiftLabel')
-      }}<ElInputNumber
+      }}<NumberField
         v-model="shift"
         :aria-label="t('chrome.shiftLabel')"
         :step="1"
@@ -82,7 +83,7 @@ function setGrid(value: unknown): void {
     /></label>
     <label
       >{{ t('chrome.fadeLabel')
-      }}<ElInputNumber
+      }}<NumberField
         v-model="fade"
         :aria-label="t('chrome.fadeLabel')"
         :min="FIELD_RANGES.fadeoutMs.min"
@@ -94,7 +95,7 @@ function setGrid(value: unknown): void {
     /></label>
     <label
       >{{ t('chrome.gateLabel')
-      }}<ElInputNumber
+      }}<NumberField
         v-model="gate"
         :aria-label="t('chrome.gateLabel')"
         :min="FIELD_RANGES.noisegateDb.min"

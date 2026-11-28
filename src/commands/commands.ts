@@ -8,12 +8,24 @@ import {
   tickToSampleExport,
 } from '../core/timebase';
 import { formatRate, stepPlaybackRate } from '../core/rate';
-import { FAST_SEEK_SECONDS, RECORDING_SEEK_SECONDS, type RecordingInput } from '../input/recording';
+import type { EditorActions } from '../slicing/editor-actions';
 import type { EditorStore } from '../slicing/editor-store';
-import { FIELD_RANGES } from '../project/schema';
+import { FIELD_RANGES, type MarkerKey } from '../project/schema';
 import type { Workspace } from '../workspace/workspace';
+import type { Exporter } from '../export/exporter';
+import type { LegacyInterop } from '../interop/legacy';
 import type { Playback } from '../playback';
-import { visibleDialog } from '../input/context';
+import { visibleDialog } from '../ui/focus';
+
+/** The argument of `recording-tap`: the input time and the pressed recording keys 1–7. */
+export interface RecordingInput {
+  time?: number;
+  keys: readonly MarkerKey[];
+}
+/** How far the recording seek commands move the playhead. */
+export const RECORDING_SEEK_SECONDS = 0.5;
+/** A fast seek, for a long stick push, moves four ordinary seeks at once. */
+export const FAST_SEEK_SECONDS = 4 * RECORDING_SEEK_SECONDS;
 
 /** The editor state that command availability reads. */
 export type CommandState = Pick<
@@ -24,18 +36,18 @@ export type CommandState = Pick<
 export const COMMAND_GROUPS = ['project', 'edit', 'playback', 'navigation', 'output'] as const;
 export type CommandGroup = (typeof COMMAND_GROUPS)[number];
 
+/** The windows that a command opens without a condition. The app shell keeps their switches. */
+export type DialogId = 'about' | 'help' | 'troubleshoot' | 'yuancon' | 'inputSettings';
+
 /** Application actions that commands open; the app shell supplies them. */
 export interface CommandHosts {
   close(): void | Promise<void>;
-  about(): void | Promise<void>;
-  help(): void | Promise<void>;
-  troubleshoot?(): void | Promise<void>;
+  openDialog(id: DialogId): void;
   openDataFolder?(): void | Promise<void>;
+  /** Opens tap calibration when audio is loaded; stops playback first. */
   calibrate(): void | Promise<void>;
   toggleRecording?(): void;
-  connectYuancon?(): void;
   openWheel?(): void;
-  inputSettings?(): void;
   /** Opens the export window, where tracks and marker sets are chosen. */
   exportSlices?(): void;
   openProject(): void | Promise<void>;
@@ -47,7 +59,10 @@ export interface CommandHosts {
 }
 interface CommandContext {
   editor: EditorStore;
+  actions: EditorActions;
   workspace: Workspace;
+  exporter: Exporter;
+  interop: LegacyInterop;
   playback: Playback;
   hosts: CommandHosts;
 }
@@ -67,8 +82,20 @@ export function canRecord(state: Pick<CommandState, 'source'>): boolean {
 }
 const hasSource = (state: CommandState) => state.source !== null;
 const hasMarkers = (state: CommandState) => state.ticks.length > 0;
+const hasSelection = (state: CommandState) => state.selectedTicks.length > 0;
+/** The track header shows the name and the file of a track only when it has audio. */
+const hasAudioFile = (state: CommandState) => state.track.media !== null;
+const isFirstTrack = (state: CommandState) =>
+  state.document.tracks[0]?.trackId === state.track.trackId;
+const isLastTrack = (state: CommandState) =>
+  state.document.tracks.at(-1)?.trackId === state.track.trackId;
 /** Linking needs markers on the current track and another track. */
 const canLink = (state: CommandState) => hasMarkers(state) && state.document.tracks.length > 1;
+/** One track exports its own slices. Several tracks open the export window, which lists every track. */
+const canExportAll = (state: CommandState) =>
+  state.document.tracks.length > 1
+    ? state.document.tracks.some((track) => track.slicing.markers.length > 0)
+    : hasSource(state) && hasMarkers(state);
 
 /**
  * Every application command. Menus, shortcuts, controllers, YuanCon and the
@@ -89,7 +116,7 @@ export const COMMANDS = {
   'relink-audio': {
     label: 'menu.relinkAudio',
     group: 'project',
-    enabled: (state) => state.track.media !== null,
+    enabled: hasAudioFile,
     run: ({ workspace }) => workspace.relinkAudio(),
   },
   'open-audio': {
@@ -111,8 +138,9 @@ export const COMMANDS = {
   'rename-track': {
     label: 'menu.renameTrack',
     group: 'project',
+    enabled: hasAudioFile,
     run: ({ editor }) => {
-      editor.renamingTrackId = editor.track.trackId;
+      if (editor.track.media) editor.renamingTrackId = editor.track.trackId;
     },
   },
   'toggle-track-mute': {
@@ -128,23 +156,25 @@ export const COMMANDS = {
   'previous-track': {
     label: 'help.previousTrack',
     group: 'navigation',
+    enabled: (state) => !isFirstTrack(state),
     run: ({ workspace }) => workspace.stepTrack(-1),
   },
   'next-track': {
     label: 'help.nextTrack',
     group: 'navigation',
+    enabled: (state) => !isLastTrack(state),
     run: ({ workspace }) => workspace.stepTrack(1),
   },
   'move-track-up': {
     label: 'help.moveTrackUp',
-    group: 'navigation',
-    enabled: (state) => state.document.tracks[0]?.trackId !== state.track.trackId,
+    group: 'project',
+    enabled: (state) => !isFirstTrack(state),
     run: ({ workspace }) => workspace.moveTrack(-1),
   },
   'move-track-down': {
     label: 'help.moveTrackDown',
-    group: 'navigation',
-    enabled: (state) => state.document.tracks.at(-1)?.trackId !== state.track.trackId,
+    group: 'project',
+    enabled: (state) => !isLastTrack(state),
     run: ({ workspace }) => workspace.moveTrack(1),
   },
   'new-project-wos': {
@@ -155,28 +185,36 @@ export const COMMANDS = {
   'import-wos': {
     label: 'menu.importWos',
     group: 'project',
-    run: ({ workspace }) => workspace.importWosSettings(),
+    run: ({ interop }) => interop.importWosSettings(),
   },
   'export-wos': {
     label: 'menu.exportWos',
     group: 'project',
-    run: ({ workspace }) => workspace.saveWos(),
+    run: ({ interop }) => interop.saveWos(),
   },
-  'close-project': { label: 'chrome.close', group: 'project', run: ({ hosts }) => hosts.close() },
-  help: { label: 'menu.guide', group: 'project', run: ({ hosts }) => hosts.help() },
+  'close-project': {
+    label: 'menu.closeProject',
+    group: 'project',
+    run: ({ hosts }) => hosts.close(),
+  },
+  help: { label: 'menu.guide', group: 'project', run: ({ hosts }) => hosts.openDialog('help') },
   troubleshoot: {
     label: 'menu.troubleshoot',
     group: 'project',
-    run: ({ hosts }) => hosts.troubleshoot?.(),
+    run: ({ hosts }) => hosts.openDialog('troubleshoot'),
   },
   'open-data-folder': {
     label: 'menu.openDataFolder',
     group: 'project',
     run: ({ hosts }) => hosts.openDataFolder?.(),
   },
-  about: { label: 'menu.about', group: 'project', run: ({ hosts }) => hosts.about() },
+  about: {
+    label: 'menu.about',
+    group: 'project',
+    run: ({ hosts }) => hosts.openDialog('about'),
+  },
   calibrate: {
-    label: 'chrome.calibrate',
+    label: 'menu.calibrate',
     group: 'playback',
     enabled: hasSource,
     run: ({ hosts }) => hosts.calibrate(),
@@ -184,12 +222,12 @@ export const COMMANDS = {
   'connect-yuancon': {
     label: 'recording.controller',
     group: 'playback',
-    run: ({ hosts }) => hosts.connectYuancon?.(),
+    run: ({ hosts }) => hosts.openDialog('yuancon'),
   },
   'input-settings': {
     label: 'menu.inputSettings',
     group: 'navigation',
-    run: ({ hosts }) => hosts.inputSettings?.(),
+    run: ({ hosts }) => hosts.openDialog('inputSettings'),
   },
   'open-wheel': {
     label: 'input.wheel',
@@ -200,85 +238,95 @@ export const COMMANDS = {
     label: 'menu.undo',
     group: 'edit',
     enabled: (state) => state.canUndo,
-    run: ({ editor, workspace }) =>
-      editor.setStatus(workspace.actions.undo() ? 'undo' : 'nothingToUndo'),
+    run: ({ editor, actions }) => editor.setStatus(actions.undo() ? 'undo' : 'nothingToUndo'),
   },
   redo: {
     label: 'menu.redo',
     group: 'edit',
     enabled: (state) => state.canRedo,
-    run: ({ editor, workspace }) =>
-      editor.setStatus(workspace.actions.redo() ? 'redo' : 'nothingToRedo'),
+    run: ({ editor, actions }) => editor.setStatus(actions.redo() ? 'redo' : 'nothingToRedo'),
   },
   'copy-selection': {
     label: 'menu.copySelection',
     group: 'edit',
-    enabled: hasMarkers,
-    run: ({ workspace }) => workspace.actions.copySelection(),
+    enabled: hasSelection,
+    run: ({ actions }) => actions.copySelection(),
   },
   'cut-selection': {
     label: 'menu.cutSelection',
     group: 'edit',
-    enabled: (state) => state.selectedTicks.length > 0,
-    run: ({ workspace }) => workspace.actions.cutSelection(),
+    enabled: hasSelection,
+    run: ({ actions }) => actions.cutSelection(),
   },
   'paste-selection': {
     label: 'menu.pasteSelection',
     group: 'edit',
-    run: ({ workspace }) => workspace.actions.pasteSelection(),
+    run: ({ actions }) => actions.pasteSelection(),
+  },
+  'measure-copy': {
+    label: 'help.measureCopy',
+    group: 'edit',
+    enabled: hasMarkers,
+    run: ({ actions }) => actions.measureCopy(),
+  },
+  'measure-cut': {
+    label: 'help.measureCut',
+    group: 'edit',
+    enabled: hasMarkers,
+    run: ({ actions }) => actions.measureCut(),
   },
   'measure-paste': {
     label: 'help.measurePaste',
     group: 'edit',
-    run: ({ workspace }) => workspace.actions.measurePaste(),
+    run: ({ actions }) => actions.measurePaste(),
   },
   'select-all': {
     label: 'menu.selectAll',
     group: 'edit',
     enabled: hasMarkers,
-    run: ({ workspace }) => workspace.actions.selectAll(),
+    run: ({ actions }) => actions.selectAll(),
   },
   'clear-selection': {
     label: 'help.clearSelection',
     group: 'edit',
-    run: ({ workspace }) => workspace.actions.clearSelection(),
+    run: ({ actions }) => actions.clearSelection(),
   },
   'link-markers-all-tracks': {
     label: 'menu.linkMarkersAll',
     group: 'edit',
     enabled: canLink,
-    run: ({ workspace }) => workspace.actions.linkMarkersToAllTracks(),
+    run: ({ actions }) => actions.linkMarkersToAllTracks(),
   },
   'unlink-markers': {
     label: 'menu.unlinkMarkers',
     group: 'edit',
     enabled: (state) => (state.track.slicing.links?.length ?? 0) > 0,
-    run: ({ workspace }) => workspace.actions.unlinkMarkers(),
+    run: ({ actions }) => actions.unlinkMarkers(),
   },
   'relink-markers': {
     label: 'menu.relinkMarkers',
     group: 'edit',
     enabled: canLink,
-    run: ({ workspace }) => workspace.actions.relinkMarkers(),
+    run: ({ actions }) => actions.relinkMarkers(),
   },
   'toggle-shared-markers': {
     label: 'menu.sharedMarkers',
     group: 'edit',
-    run: ({ workspace }) => workspace.actions.toggleSharedMarkers(),
+    run: ({ actions }) => actions.toggleSharedMarkers(),
   },
   'clear-markers': {
     label: 'menu.clearMarkers',
     group: 'edit',
     enabled: hasMarkers,
-    run: ({ editor, workspace }) => {
-      workspace.actions.clearMarkers();
+    run: ({ editor, actions }) => {
+      actions.clearMarkers();
       editor.setStatus('allMarkersCleared');
     },
   },
   'toggle-marker': {
     label: 'help.toggleMarker',
     group: 'edit',
-    run: ({ workspace }) => workspace.actions.toggleMarker(),
+    run: ({ actions }) => actions.toggleMarker(),
   },
   'place-marker': {
     label: 'help.placeBreakpoint',
@@ -296,13 +344,13 @@ export const COMMANDS = {
     label: 'help.shiftAllMinus',
     group: 'edit',
     enabled: hasMarkers,
-    run: ({ workspace }) => workspace.actions.shiftAll(-1),
+    run: ({ actions }) => actions.shiftAll(-1),
   },
   'shift-markers-later': {
     label: 'help.shiftAllPlus',
     group: 'edit',
     enabled: hasMarkers,
-    run: ({ workspace }) => workspace.actions.shiftAll(1),
+    run: ({ actions }) => actions.shiftAll(1),
   },
   'play-pause': {
     label: 'help.playPause',
@@ -416,30 +464,28 @@ export const COMMANDS = {
     label: 'menu.exportSlice',
     group: 'output',
     enabled: (state) => hasSource(state) && hasMarkers(state),
-    run: ({ workspace }) => workspace.exportSlice(),
+    run: ({ exporter }) => exporter.exportSlice(),
   },
   'export-all': {
     label: 'menu.exportAll',
     group: 'output',
-    enabled: (state) => hasSource(state) && hasMarkers(state),
-    run: (context) => exportSlices(context, () => context.workspace.exportAll()),
-  },
-  'export-all-tracks': {
-    label: 'menu.exportAllTracks',
-    group: 'output',
-    enabled: (state) => state.document.tracks.some((track) => track.slicing.markers.length > 0),
-    run: (context) => exportSlices(context, () => context.workspace.exportAllTracks()),
+    enabled: canExportAll,
+    // With several tracks, the export window chooses which track is cut at which markers.
+    run: ({ editor, exporter, hosts }) =>
+      editor.document.tracks.length > 1 && hosts.exportSlices
+        ? hosts.exportSlices()
+        : exporter.exportAll(),
   },
   'copy-bmse': {
     label: 'help.bmseOut',
     group: 'output',
     enabled: hasMarkers,
-    run: ({ workspace }) => workspace.bmseOut(),
+    run: ({ interop }) => interop.bmseOut(),
   },
   'paste-bmse': {
     label: 'help.bmseIn',
     group: 'output',
-    run: ({ workspace }) => workspace.bmseIn(),
+    run: ({ interop }) => interop.bmseIn(),
   },
   'clip-number-down': {
     label: 'help.clipNumberDown',
@@ -483,14 +529,8 @@ export function commandEnabled(id: AppCommand, state: CommandState): boolean {
   return definitions[id].enabled?.(state) ?? true;
 }
 
-export function createCommands(options: {
-  editor: EditorStore;
-  workspace: Workspace;
-  playback: Playback;
-  hosts: CommandHosts;
-}) {
-  const context: CommandContext = options;
-  const { hosts } = options;
+export function createCommands(context: CommandContext) {
+  const { hosts } = context;
   /** The one execution entry. A dialog blocks every source; failures are reported here. */
   async function run<C extends AppCommand>(id: C, args?: CommandArgs<C>): Promise<CommandResult> {
     if (visibleDialog() || hosts.modalOpen?.()) return 'blocked';
@@ -515,17 +555,6 @@ export function useCommandRunner(): RunCommand | null {
   return inject(runnerKey, null);
 }
 
-/**
- * With several tracks, exporting all slices opens the export window to choose
- * tracks and markers; with one track it exports at once.
- */
-function exportSlices({ editor, hosts }: CommandContext, direct: () => Promise<void>): unknown {
-  if (editor.document.tracks.length > 1 && hosts.exportSlices) {
-    hosts.exportSlices();
-    return undefined;
-  }
-  return direct();
-}
 /** Moves the playhead by whole seconds within the source; the cursor follows it. */
 function seekBy({ editor, playback }: CommandContext, seconds: number): void {
   const source = editor.source;
@@ -538,7 +567,7 @@ function seekBy({ editor, playback }: CommandContext, seconds: number): void {
   if (editor.timeBase) editor.moveCursorTo(sampleToTickNearest(sample, editor.timeBase));
 }
 function placeMarker(
-  { editor, workspace, playback }: CommandContext,
+  { editor, actions, playback }: CommandContext,
   bypassSnap: boolean,
   position: 'cursor' | 'playhead' = 'cursor',
   input?: RecordingInput,
@@ -570,8 +599,7 @@ function placeMarker(
   }
   editor.setCursorTick(tick);
   if (!editor.playing && position === 'cursor') playback.seekSample(tickToSampleExport(tick, base));
-  if (workspace.actions.setMarker(tick, true, input?.keys))
-    editor.setStatus('breakPointAtTick', { tick });
+  if (actions.setMarker(tick, true, input?.keys)) editor.setStatus('breakPointAtTick', { tick });
   else
     editor.setStatus('breakPointAlreadyAtTick', {
       measure: Math.floor(tick / MEASURE_TICKS) + 1,

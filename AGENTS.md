@@ -59,14 +59,16 @@
 - Maintain the root README in English, Chinese, Japanese and Korean. Keep user-facing content consistent across all four languages.
 - Maintain the changelog in English and Chinese only. Keep release entries consistent across both languages.
 - Release descriptions must use the matching English and Chinese changelog entries. Describe user-visible changes; omit build results, CI details and artifact inventories.
-- Include only changes that end users can see, interact with or hear. Keep entries brief. Describe the effect on everyday use.
-- Omit implementation choices, dependencies, developer tooling, internal refactors, documentation maintenance and minor optimizations. If unsure whether users care about a change, omit it.
+- Include only changes that end users notice and care about. Write one short line for each change; users read only the summary. Describe the effect on everyday use.
+- Omit implementation choices, dependencies, developer tooling, internal refactors, documentation maintenance and minor optimizations. Omit changes that users notice but do not care about. If unsure whether users care about a change, omit it.
+- The first changelog entry is the version in work; `package.json` names the same version. Do not add an Unreleased section. Do not write that a version is unreleased or is a prerelease.
 - Use Added and Fixed sections when applicable. Translate these headings in Chinese. Omit empty sections. Use blame and commit history to place changes in the appropriate release. Do not present old behavior as new.
 - Write `docs/` in English by default. Put architecture, formats, build/release procedures and other developer details there. Do not maintain translated copies of technical documents.
 - Keep original-language quotations or UI labels only when needed as reference evidence. Add an English explanation.
 - Use [ASD-STE100 guidance](.agents/skills/asd-ste100/SKILL.md) for English descriptions and instructions. Prefer short sentences, explicit actors and consistent terms. Preserve conditions, limits and uncertainty.
 - Apply the same clarity principles to Japanese and Korean descriptions. Keep natural grammar and established UI terms in each language. Do not apply English word-count rules to other languages. Use [Chinese technical writing](.agents/skills/zh-tech-writing/SKILL.md) for Chinese.
 - Use concise plain forms and nominal endings in Japanese and Korean UI text. Prefer established localized terms; keep conventional audio terms but avoid unnecessary transliteration. Use the same terms in menus, help and READMEs. Preserve conditions, placeholders and data-loss warnings when shortening text.
+- A menu command ends with one `…` (U+2026) in every language when it needs more input before it finishes, such as a file or calibration taps. A command that only shows a window, such as settings, help or About, has none. Chinese uses `……` only in sentences, such as loading messages.
 - In English and Chinese UI text, use `marker` / `切点` for a split position and `slice` / `切片` for an audio segment. Use `project` / `工程`, `panel` / `面板`, `recovery data` / `恢复数据` and `playback` / `播放` consistently. Use `项目` for the software project itself. Match menu names in help instructions.
 - The root `package.json` contains the only editable application version. Use `npm version <major.minor.patch> --no-git-tag-version --ignore-scripts`. Update both changelogs. Run `npm run check:version`.
 - Bundle the version, full commit, dirty-tree marker and fixed UTC build time for About. See the [version policy](docs/VERSIONING.md).

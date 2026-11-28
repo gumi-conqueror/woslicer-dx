@@ -20,25 +20,19 @@ if (platform() !== 'win32') {
 // Resolve the built executable without any machine-specific absolute path:
 // CARGO_TARGET_DIR (as used by the local cargo config) or the repo default.
 const targetDir = process.env.CARGO_TARGET_DIR ?? resolve('src-tauri/target');
-const exeName = platform() === 'win32' ? 'woslicer-dx.exe' : 'woslicer-dx';
 const selected = resolveBuildProfile(process.argv.slice(2));
 if (selected.args.length) throw new Error(`Unknown probe options: ${selected.args.join(' ')}`);
-const exe = resolve(targetDir, selected.profile, exeName);
+const exe = resolve(targetDir, selected.profile, 'woslicer-dx.exe');
 if (!existsSync(exe)) {
   console.error(
     `built executable not found: ${exe} — run npm run build:desktop${selected.profile === 'release' ? ' -- --release' : ''} first`,
   );
   process.exit(1);
 }
-// The probe drives WebView2 over CDP, which is Windows-specific; on other
-// platforms it exits cleanly instead of guessing at file locations.
-const grantsPath =
-  platform() === 'win32'
-    ? resolve(
-        process.env.APPDATA ?? resolve(homedir(), 'AppData/Roaming'),
-        'io.github.rirko.woslicer-dx/file-grants.json',
-      )
-    : null;
+const grantsPath = resolve(
+  process.env.APPDATA ?? resolve(homedir(), 'AppData/Roaming'),
+  'io.github.rirko.woslicer-dx/file-grants.json',
+);
 const listener = createServer();
 await new Promise((ready) => listener.listen(0, '127.0.0.1', ready));
 const port = listener.address().port;

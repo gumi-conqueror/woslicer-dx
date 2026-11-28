@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { GAMEPAD_CONTROLS, type GamepadControl } from '../input/gamepad';
+import { GAMEPAD_CONTROLS, type GamepadControl } from './gamepad';
 const props = defineProps<{ control: GamepadControl }>();
 const label = computed(() => GAMEPAD_CONTROLS.find((item) => item.id === props.control)?.label);
 /** Direction arrows at the edge of the icon, clear of the stick label. */

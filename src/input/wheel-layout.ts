@@ -1,6 +1,6 @@
 import { shallowRef, watch } from 'vue';
 import { defineStore } from 'pinia';
-import { isAppCommand, type AppCommand } from '../app/commands';
+import { isAppCommand, type AppCommand } from '../commands/commands';
 import { DEFAULT_WHEELS, WHEEL_SLOTS, type WheelSlots } from './wheel';
 
 /** Local preference key; the value is `{ version: 1, wheels }`. Absent means the defaults. */

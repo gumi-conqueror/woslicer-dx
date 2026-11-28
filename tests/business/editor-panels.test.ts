@@ -11,7 +11,6 @@ import OutputPanel from '../../src/export/OutputPanel.vue';
 import DetectionPanel from '../../src/detection/DetectionPanel.vue';
 import DocumentOptions from '../../src/app/components/DocumentOptions.vue';
 import { createEmptyProject } from '../../src/project/codec';
-import { workspaceKey } from '../../src/workspace/workspace';
 import { fixture, audioFile } from '../support/app';
 
 const fixtures: ReturnType<typeof fixture>[] = [];
@@ -26,7 +25,7 @@ function setup() {
         ElementPlus,
         createI18n({ legacy: false, locale: 'en', messages: { en } }),
       ],
-      provide: { [workspaceKey]: f.workspace },
+      provide: f.provide,
     },
   };
   return { f, options };
@@ -91,34 +90,34 @@ describe('editor panels with real Element Plus controls', () => {
     input.vm.$emit('update:modelValue', 'custom');
     await flushPromises();
     expect(f.editor.document.tracks[0].output.baseName).toBe('custom');
-    f.workspace.actions.undo();
+    f.actions.undo();
     await flushPromises();
     expect(input.props('modelValue')).toBe('slice');
-    f.workspace.actions.redo();
+    f.actions.redo();
     await flushPromises();
     expect(input.props('modelValue')).toBe('custom');
     input.vm.$emit('update:modelValue', '');
     await flushPromises();
     expect(f.editor.baseName).toBe('');
-    f.workspace.actions.undo();
+    f.actions.undo();
     expect(f.editor.baseName).toBe('custom');
     const checks = wrapper.findAllComponents(ElCheckbox);
     checks[0].vm.$emit('update:modelValue', false);
     await flushPromises();
     expect(f.editor.noisegateEnabled).toBe(false);
-    f.workspace.actions.undo();
+    f.actions.undo();
     await flushPromises();
     expect(checks[0].props('modelValue')).toBe(true);
     checks[1].vm.$emit('update:modelValue', true);
     await flushPromises();
     expect(f.editor.useFfNumbering).toBe(true);
-    f.workspace.actions.undo();
+    f.actions.undo();
     expect(f.editor.useFfNumbering).toBe(false);
     const numbers = wrapper.findAllComponents(ElInputNumber);
     numbers[2].vm.$emit('update:modelValue', 17);
     await flushPromises();
     expect(f.editor.clipStartNumber).toBe(17);
-    f.workspace.actions.undo();
+    f.actions.undo();
     expect(f.editor.clipStartNumber).toBe(1);
   });
   it('virtualizes large cut lists and selects a clicked cut', async () => {
@@ -134,7 +133,7 @@ describe('editor panels with real Element Plus controls', () => {
     expect(f.editor.selectedTicks).toEqual([5]);
     await wrapper.findAll('.marker-row')[7].trigger('click', { ctrlKey: true });
     expect(f.editor.selectedTicks).toEqual([5, 7]);
-    f.workspace.actions.clearMarkers();
+    f.actions.clearMarkers();
     await flushPromises();
     expect(wrapper.findAll('.marker-row')).toHaveLength(0);
   });
@@ -281,9 +280,9 @@ describe('editor panels with real Element Plus controls', () => {
     const { f, options } = setup();
     await f.workspace.loadAudio(audioFile('kick.wav', 96000));
     f.editor.sharedMarkers = false;
-    f.workspace.actions.setMarker(48);
+    f.actions.setMarker(48);
     await f.workspace.loadAudio(audioFile('snare.wav', 96000), false, { newTrack: true });
-    f.workspace.actions.setMarker(96);
+    f.actions.setMarker(96);
     const wrapper = mount(ExportDialog, { ...options, props: { modelValue: true } });
     wrappers.push(wrapper);
     await flushPromises();
@@ -303,7 +302,7 @@ describe('editor panels with real Element Plus controls', () => {
       ?.trigger('click');
     const jobs = wrapper.emitted('export')?.[0]?.[0];
     if (!Array.isArray(jobs)) throw new Error('Expected export jobs');
-    await f.workspace.exportTracks(jobs);
+    await f.exporter.exportTracks(jobs);
     // The snare is cut at both rows, so its files carry the row; the kick keeps its name.
     expect(f.exported.map((file) => file.name).sort()).toEqual([
       'kick_000.wav',
@@ -319,7 +318,7 @@ describe('editor panels with real Element Plus controls', () => {
     if (!button) throw new Error('Missing export button');
     expect(button.attributes('disabled')).toBeDefined();
     await f.workspace.loadAudio(audioFile());
-    f.workspace.actions.setMarker(0);
+    f.actions.setMarker(0);
     await flushPromises();
     expect(button.attributes('disabled')).toBeUndefined();
     await button.trigger('click');

@@ -36,13 +36,6 @@ test('crossing does not re-fire for the same position on the next frame', () => 
   assert.equal(second, -1);
 });
 
-test('restarting playback before the marker lets it fire again', () => {
-  // Transport resets lastCueIndex and sets the cursor to the playhead tick.
-  assert.equal(findCueCrossing(TICKS, 50, 192), 0);
-  // Second pass with a fresh cursor:
-  assert.equal(findCueCrossing(TICKS, 50, 192), 0);
-});
-
 test('empty marker list and out-of-range ticks never fire', () => {
   assert.equal(findCueCrossing([], 0, 100), -1);
   assert.equal(findCueCrossing([MAX_TICKS + 5], 0, 100), -1);

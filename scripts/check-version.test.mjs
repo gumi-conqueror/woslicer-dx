@@ -29,5 +29,5 @@ test('requires the lockfile and the first changelog entry to name the same versi
   lockMismatch.lock.version = '2.0.0-alpha.1';
   assert.throws(() => checkVersion(lockMismatch), /Lockfile/);
   assert.throws(() => checkVersion(release('2.0.0-alpha.2', '2.0.0-alpha.1')), /CHANGELOG/);
-  assert.throws(() => checkVersion(release('2.0.0-alpha.1', 'Unreleased')), /CHANGELOG/);
+  assert.throws(() => checkVersion(release('2.0.0-alpha.1', 'Next')), /CHANGELOG/);
 });

@@ -2,12 +2,12 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useEditorStore } from '../../slicing/editor-store';
-import { APPLICATION_MENU } from '../menu';
-import { commandEnabled, commandLabel, type AppCommand } from '../commands';
+import { APPLICATION_MENU } from '../../commands/menu';
+import { commandEnabled, commandLabel, type AppCommand } from '../../commands/commands';
 import { shortcutLabel, gamepadShortcut } from '../../input/bindings';
 import { useInputState } from '../../input/state';
 import type { UiNavigation } from '../../input/gamepad';
-import GamepadIcon from '../../ui/GamepadIcon.vue';
+import GamepadIcon from '../../input/GamepadIcon.vue';
 import MnemonicLabel from './MnemonicLabel.vue';
 const props = defineProps<{ disabled?: boolean; desktop?: boolean }>();
 const emit = defineEmits<{ command: [command: AppCommand] }>();
@@ -21,7 +21,7 @@ const cues = ref(false);
 const groups = computed(() =>
   APPLICATION_MENU.map((group) => ({
     ...group,
-    commands: group.commands.filter((item) => item.id !== 'open-data-folder' || props.desktop),
+    commands: group.commands.filter((item) => item?.id !== 'open-data-folder' || props.desktop),
   })),
 );
 let previousFocus: HTMLElement | null = null;
@@ -142,7 +142,7 @@ function menuKey(event: KeyboardEvent): boolean {
     return false;
   } else if (expanded.value) {
     const letter = event.key.toLowerCase();
-    const item = groups.value[active.value]?.commands.find((item) => item.mnemonic === letter);
+    const item = groups.value[active.value]?.commands.find((item) => item?.mnemonic === letter);
     if (item) dispatch(item.id);
   } else mnemonicKey(event);
   return true;
@@ -246,33 +246,41 @@ defineExpose({ navigate, isActive: () => active.value >= 0 });
         :aria-label="t(group.label)"
         :hidden="active !== index || !expanded"
       >
-        <button
-          v-for="item in group.commands"
-          :key="item.id"
-          type="button"
-          role="menuitem"
-          tabindex="-1"
-          :data-command="item.id"
-          :aria-label="t(commandLabel(item.id))"
-          :disabled="!commandEnabled(item.id, editor)"
-          @click="dispatch(item.id)"
+        <template
+          v-for="(item, position) in group.commands"
+          :key="item?.id ?? `separator-${position}`"
         >
-          <MnemonicLabel
-            :label="t(commandLabel(item.id))"
-            :mnemonic="item.mnemonic"
-            :visible="cues"
+          <hr
+            v-if="item === null"
+            role="separator"
           />
-          <span
-            v-if="input.device === 'gamepad'"
-            class="menu-hint"
-            ><GamepadIcon
-              v-if="gamepadShortcut(item.id, input.recording)"
-              :control="gamepadShortcut(item.id, input.recording) ?? 'a'"
-          /></span>
-          <kbd v-else-if="input.device === 'keyboard'">{{
-            shortcutLabel(item.id, input.recording)
-          }}</kbd>
-        </button>
+          <button
+            v-else
+            type="button"
+            role="menuitem"
+            tabindex="-1"
+            :data-command="item.id"
+            :aria-label="t(commandLabel(item.id))"
+            :disabled="!commandEnabled(item.id, editor)"
+            @click="dispatch(item.id)"
+          >
+            <MnemonicLabel
+              :label="t(commandLabel(item.id))"
+              :mnemonic="item.mnemonic"
+              :visible="cues"
+            />
+            <span
+              v-if="input.device === 'gamepad'"
+              class="menu-hint"
+              ><GamepadIcon
+                v-if="gamepadShortcut(item.id, input.recording)"
+                :control="gamepadShortcut(item.id, input.recording) ?? 'a'"
+            /></span>
+            <kbd v-else-if="input.device === 'keyboard'">{{
+              shortcutLabel(item.id, input.recording)
+            }}</kbd>
+          </button>
+        </template>
         <div
           v-if="input.device === 'gamepad'"
           class="menu-navigation-hint"
@@ -353,6 +361,11 @@ button:focus-visible {
 .menu-popup button:disabled {
   color: var(--el-text-color-disabled);
   cursor: default;
+}
+.menu-popup hr {
+  margin: 4px 2px;
+  border: 0;
+  border-top: 1px solid var(--el-border-color-lighter);
 }
 kbd {
   color: var(--el-text-color-secondary);

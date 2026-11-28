@@ -3,7 +3,6 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { expect, it, vi } from 'vitest';
 import { setupI18n } from '../../src/i18n/setup';
 import { fixture, audioFile } from '../support/app';
-import { workspaceKey } from '../../src/workspace/workspace';
 import { encodeProject } from '../../src/project/codec';
 import SourceInfo from '../../src/app/components/SourceInfo.vue';
 import WindowTitlebar from '../../src/app/components/WindowTitlebar.vue';
@@ -13,7 +12,7 @@ it('shows missing media, relinks through the actual button, and displays the sav
   const localization = setupI18n(f.pinia, { storage: null, locales: ['en'] });
   const global = {
     plugins: [f.pinia, localization.i18n],
-    provide: { [workspaceKey]: f.workspace },
+    provide: f.provide,
   };
   const source = mount(SourceInfo, { global });
   const toolbar = mount(WindowTitlebar, {
@@ -68,7 +67,7 @@ it.each([
     const wrapper = mount(SourceInfo, {
       global: {
         plugins: [f.pinia, localization.i18n],
-        provide: { [workspaceKey]: f.workspace },
+        provide: f.provide,
       },
     });
     try {

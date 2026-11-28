@@ -9,7 +9,7 @@ import {
   type InputLayer,
 } from '../../src/input/bindings';
 import { routeGamepad, routeYuancon } from '../../src/input/router';
-import { COMMANDS, isAppCommand } from '../../src/app/commands';
+import { COMMANDS, isAppCommand } from '../../src/commands/commands';
 import { codeForKey } from '../../src/input/recording';
 import { createI18n } from 'vue-i18n';
 import en from '../../src/i18n/en.json';

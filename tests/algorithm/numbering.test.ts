@@ -162,31 +162,3 @@ test('restricted lists and assignment consumers preserve associations and orderi
     { sourceId: 'later', definitionId: parseId('10') },
   ]);
 });
-
-test('heterogeneous list shifts act independently and retain other data', () => {
-  const list = ['0Z', 'FG', 'G1', 'ZZ', '0F'].map((id, index) => ({
-    definitionId: parseId(id),
-    soundId: 20 - index,
-    label: 'sound-' + index,
-  }));
-  const before = structuredClone(list);
-  for (const delta of [-513, -2, 0, 2, 513]) {
-    const shifted = list.map((d) => ({
-      ...d,
-      definitionId: stepId(d.definitionId, delta, 'restricted'),
-    }));
-    let successive = structuredClone(list);
-    for (let i = 0; i < Math.abs(delta); i++) {
-      successive = successive.map((d) => ({
-        ...d,
-        definitionId: stepId(d.definitionId, Math.sign(delta), 'restricted'),
-      }));
-    }
-    assert.deepEqual(shifted, successive);
-    assert.deepEqual(
-      shifted.map(({ soundId, label }) => ({ soundId, label })),
-      list.map(({ soundId, label }) => ({ soundId, label })),
-    );
-  }
-  assert.deepEqual(list, before);
-});

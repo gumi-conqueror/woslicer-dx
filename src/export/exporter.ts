@@ -1,18 +1,14 @@
+import { inject, provide, type InjectionKey } from 'vue';
 import { sliceFileName, sliceRanges } from '../core/slices';
 import { errorMessage } from '../core/messages';
 import { portableStem } from '../platform/file-names';
 import type { Platform, OutputFile } from '../platform/contracts';
-import type { AudioEngine } from '../audio/audio-jobs';
 import type { EditorStore } from '../slicing/editor-store';
+import type { WorkspaceAudio } from '../workspace/workspace';
 import { currentTrack } from '../project/codec';
-import { defaultSelection, exportJobs, markerRows, type ExportJob } from './export-plan';
+import type { ExportJob } from './export-plan';
 
-export function createExporter(
-  platform: Platform,
-  editor: EditorStore,
-  engineOf: (trackId: string) => AudioEngine | null,
-  generation: () => number,
-) {
+export function createExporter(platform: Platform, editor: EditorStore, audio: WorkspaceAudio) {
   /**
    * The slices of one track's audio, or why it has none to export. By default
    * the track's own markers cut it; an export job can give other markers and a
@@ -20,7 +16,7 @@ export function createExporter(
    */
   function trackSlices(trackId: string, assertCurrent: () => void, job?: ExportJob) {
     const source = editor.sessions.get(trackId)?.source ?? null;
-    const worker = engineOf(trackId);
+    const worker = audio.engine(trackId);
     const base = editor.timeBaseOf(trackId);
     const track = currentTrack(editor.document, trackId);
     if (!source || !worker || !base) return { kind: 'no-source' as const };
@@ -49,18 +45,18 @@ export function createExporter(
   /** Runs one export with the shared lock, cancellation and failure report. */
   async function exclusive(task: (assertCurrent: () => void) => Promise<void>): Promise<void> {
     if (editor.exportLock) return;
-    const version = generation();
+    const version = audio.generation();
     function assertCurrent(): void {
-      if (generation() !== version) throw new DOMException('Export cancelled', 'AbortError');
+      if (audio.generation() !== version) throw new DOMException('Export cancelled', 'AbortError');
     }
     editor.exportLock = true;
     try {
       await task(assertCurrent);
     } catch (error) {
-      if (generation() === version)
+      if (audio.generation() === version)
         editor.setStatus('exportFailed', { message: errorMessage(error) }, true);
     } finally {
-      if (generation() === version) editor.exportLock = false;
+      if (audio.generation() === version) editor.exportLock = false;
     }
   }
 
@@ -149,16 +145,19 @@ export function createExporter(
       ]);
     });
   }
-  /** Exports every track's audio cut at its own markers. */
-  function exportAllTracks(): Promise<void> {
-    const { tracks } = editor.document;
-    const rows = markerRows(tracks);
-    return exportTracks(exportJobs(tracks, rows, defaultSelection(rows)));
-  }
   return {
     exportAll: () => run(false),
     exportSlice: () => run(true),
-    exportAllTracks,
     exportTracks,
   };
+}
+export type Exporter = ReturnType<typeof createExporter>;
+export const exporterKey: InjectionKey<Exporter> = Symbol('exporter');
+export function provideExporter(exporter: Exporter): void {
+  provide(exporterKey, exporter);
+}
+export function useExporter(): Exporter {
+  const exporter = inject(exporterKey);
+  if (!exporter) throw new Error('Exporter provider is missing');
+  return exporter;
 }

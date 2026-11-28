@@ -5,6 +5,7 @@ import { expect, it, vi } from 'vitest';
 import BMHelperPanel from '../../src/bmhelper/BMHelperPanel.vue';
 import { useBmhelperStore } from '../../src/bmhelper/store';
 import { useEditorStore } from '../../src/slicing/editor-store';
+import { createEditorActions, editorActionsKey } from '../../src/slicing/editor-actions';
 import { createWorkspace, workspaceKey } from '../../src/workspace/workspace';
 import { setupI18n } from '../../src/i18n/setup';
 import type { OpenedFile, Platform } from '../../src/platform/contracts';
@@ -15,6 +16,7 @@ import {
   wavDefinitionText,
 } from '../../src/core/bmhelper';
 import { writeSmfSequence } from '../../src/core/formats/smf';
+import { memoryPlatform } from '../support/app';
 
 /**
  * Dialog double for every panel test: renders the default slot (settings
@@ -23,7 +25,7 @@ import { writeSmfSequence } from '../../src/core/formats/smf';
  * in template order — the settings dialog mounts first, the definitions
  * dialog second.
  */
-const dialogEmits: Array<(event: string, ...args: unknown[]) => void> = [];
+const dialogEmits: Array<(event: 'update:modelValue' | 'closed', ...args: unknown[]) => void> = [];
 const dialogStub = defineComponent({
   name: 'ElDialog',
   emits: ['update:modelValue', 'closed'],
@@ -33,22 +35,17 @@ const dialogStub = defineComponent({
   },
 });
 
-// The return type stays inferred: annotating Platform would widen the vi.fn
-// mocks into plain method signatures.
+/**
+ * The shared in-memory platform, with spies on the three calls these tests
+ * check. The return type stays inferred: annotating Platform would widen the
+ * spies into plain method signatures.
+ */
 function createPlatform() {
   return {
-    kind: 'browser' as const,
-    openFile: vi.fn<() => Promise<OpenedFile | null>>(() => Promise.resolve(null)),
-    reopenFile: vi.fn(() => Promise.reject(new Error('unused'))),
-    openProjectMedia: vi.fn(() => Promise.resolve(null)),
-    saveFile: vi.fn(() => Promise.resolve(true)),
-    exportFiles: vi.fn(() => Promise.resolve(null)),
-    readClipboard: vi.fn(() => Promise.resolve('')),
-    writeClipboard: vi.fn(async () => {}),
-    readSession: vi.fn(() => Promise.resolve(null)),
-    writeSession: vi.fn(async () => {}),
-    clearSession: vi.fn(async () => {}),
-    setTheme: vi.fn(async () => {}),
+    ...memoryPlatform().platform,
+    openFile: vi.fn<Platform['openFile']>(() => Promise.resolve(null)),
+    saveFile: vi.fn<Platform['saveFile']>(() => Promise.resolve(true)),
+    writeClipboard: vi.fn<Platform['writeClipboard']>(async () => {}),
   } satisfies Platform;
 }
 
@@ -56,6 +53,7 @@ interface PanelHarness {
   wrapper: VueWrapper;
   platform: Platform;
   store: ReturnType<typeof useBmhelperStore>;
+  editor: ReturnType<typeof useEditorStore>;
   findButton(text: string): DOMWrapper<Element>;
   dispose(): Promise<void>;
 }
@@ -75,7 +73,10 @@ function mountPanel(options: {
   const wrapper = mount(BMHelperPanel, {
     global: {
       plugins: [pinia, translation.i18n],
-      provide: { [workspaceKey as symbol]: workspace },
+      provide: {
+        [workspaceKey as symbol]: workspace,
+        [editorActionsKey as symbol]: createEditorActions(editor),
+      },
       stubs: { PianoRoll: true, ElDialog: dialogStub },
     },
   });
@@ -83,6 +84,7 @@ function mountPanel(options: {
     wrapper,
     platform: options.platform,
     store,
+    editor,
     findButton: (text) => {
       const found = wrapper.findAll('button').find((value) => value.text() === text);
       if (!found) throw new Error(`Missing button: ${text}`);
@@ -159,7 +161,7 @@ it('exports converted BMH names with a warning and keeps Unicode DX work', async
   }
 });
 
-it('emits 48-per-beat cuts and uses platform clipboard and save actions', async () => {
+it('applies 48-per-beat cuts to the timeline and uses platform clipboard and save actions', async () => {
   const platform = createPlatform();
   const harness = mountPanel({
     platform,
@@ -170,7 +172,7 @@ it('emits 48-per-beat cuts and uses platform clipboard and save actions', async 
   });
   try {
     await harness.findButton('Apply markers to timeline').trigger('click');
-    expect(harness.wrapper.emitted('applyCuts')).toEqual([[{ ticks: [0] }]]);
+    expect(harness.editor.ticks).toEqual([0]);
     await harness.findButton('Copy markers').trigger('click');
     await flushPromises();
     const division = harness.store.selectedDivision;
@@ -277,7 +279,7 @@ it('keeps the pending MIDI until the settings dialog finishes closing', async ()
     await flushPromises();
     const channels = () => harness.wrapper.find('[aria-label="MIDI channels"]');
     expect(channels().exists()).toBe(true);
-    const emitSettingsDialog = (event: string, ...args: unknown[]) => {
+    const emitSettingsDialog = (event: 'update:modelValue' | 'closed', ...args: unknown[]) => {
       const emit = dialogEmits[0];
       if (!emit) throw new Error('Missing settings dialog emit');
       emit(event, ...args);

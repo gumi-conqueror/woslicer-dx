@@ -4,25 +4,34 @@ This runbook takes merged work to a published GitHub release. Run commands from 
 Publishing needs push access to `dev`, `main` and tags. [Versioning](VERSIONING.md) defines version numbers.
 [CI](CI.md#publishing-and-deployment) describes what the workflows check.
 
-## 1. Record changes while you work
+## 1. Start the version
 
-Add each user-visible change under `## Unreleased` in `CHANGELOG.md` and `## 未发布` in `CHANGELOG.zh-CN.md`.
-Describe changes users can see, operate or hear. Keep the English and Chinese entries consistent.
-Use Added, Changed and Fixed sections where they apply. Omit empty sections, build results, dependency details and documentation maintenance.
-Use repository history to tell new behavior from existing behavior. Do not copy command transcripts into the changelog.
-
-## 2. Prepare the version
-
-On the branch that will go into `dev`:
+The first entry of both changelogs is the version in work. `package.json` names the same version.
+After a release, start the next version with the first change. On the branch that will go into `dev`:
 
 ```sh
 npm run version:prepare -- <version>
-node scripts/release-notes.mjs
 ```
 
-The first command sets `package.json` and `package-lock.json`, renames both Unreleased sections to `## <version> — <date>` and adds new empty ones.
-It stops when a section is missing or empty. The second command prints the release notes.
+The command sets `package.json` and `package-lock.json`. It adds `## <version> — <date>` above the other entries of `CHANGELOG.md` and `CHANGELOG.zh-CN.md`.
+
+## 2. Record changes while you work
+
+Write each change under that entry in both changelogs. Keep the English and Chinese entries consistent.
+
+- Write only changes that users notice and care about. Omit a change when you are not sure that users care.
+- Write one short line for each change. Users read only the summary.
+- Use Added, Changed and Fixed sections where they apply. Omit empty sections, build results, dependency details and documentation maintenance.
+- Do not write that a version is unreleased or is a prerelease.
+- Use repository history to tell new behavior from existing behavior. Do not copy command transcripts into the changelog.
+
 An alpha entry lists the changes since the previous alpha. Before the final version, merge its alpha entries into one entry.
+
+On the release day, run the command of step 1 again. It sets the date of the entry to today. Then print the release notes:
+
+```sh
+node scripts/release-notes.mjs
+```
 
 Commit the result as `chore(release): prepare version <version>` and run the [development checks](DEVELOPMENT.md#validation).
 

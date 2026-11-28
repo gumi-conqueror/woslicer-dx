@@ -6,11 +6,11 @@ import type {
   HidConnection,
   HidEvent,
 } from '../../platform/input/contracts';
-import { decodeYuanconReport, type YuanconState } from './protocol';
+import { decodeYuanconReport, YUANCON_FILTER, type YuanconState } from './protocol';
 
 export function useYuancon(
   onState: (state: YuanconState | null, time: number) => void,
-  backend: HidBackend = createYuanconBackend(),
+  backend: HidBackend = createYuanconBackend(YUANCON_FILTER),
 ) {
   const available = backend.available;
   const nativePicker = !!backend.list;
