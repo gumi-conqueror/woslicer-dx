@@ -423,7 +423,6 @@
     "openDataFolder": "データフォルダーを開く",
     "addTrack": "オーディオトラックを追加…",
     "removeTrack": "現在のトラックを削除",
-    "exportAllTracks": "全トラックの区間を書き出す…",
     "inputSettings": "入力設定…",
     "track": "トラック",
     "renameTrack": "トラック名を変更",

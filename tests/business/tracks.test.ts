@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest';
 import { createTestApp as setup, audioFile } from '../support/app';
 import { wavFile } from '../support/audio';
+import { defaultSelection, exportJobs, markerRows } from '../../src/export/export-plan';
 
 it('adds tracks with their own audio, markers and output names', async () => {
   const f = setup();
@@ -118,12 +119,18 @@ it('exports the slices of every track into one archive and refuses equal file na
   f.opened = audioFile('snare.wav', 96000);
   await f.run('add-track');
   f.actions.setMarker(96);
+  // The export window starts with this plan: every track cut at its own markers.
+  const plan = () => {
+    const { tracks } = f.editor.document;
+    const rows = markerRows(tracks);
+    return exportJobs(tracks, rows, defaultSelection(rows));
+  };
   f.editor.setOutputOptions({ baseName: 'kick' });
-  await f.run('export-all-tracks');
+  await f.exporter.exportTracks(plan());
   expect(f.editor.isError).toBe(true);
   expect(f.exported).toHaveLength(0);
   f.editor.setOutputOptions({ baseName: 'snare' });
-  await f.run('export-all-tracks');
+  await f.exporter.exportTracks(plan());
   expect(f.editor.isError).toBe(false);
   expect(f.exported.map((file) => file.name).sort()).toEqual(['kick_000.wav', 'snare_000.wav']);
 });

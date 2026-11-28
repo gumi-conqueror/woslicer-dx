@@ -423,7 +423,6 @@
     "openDataFolder": "데이터 폴더 열기",
     "addTrack": "오디오 트랙 추가…",
     "removeTrack": "현재 트랙 삭제",
-    "exportAllTracks": "모든 트랙의 구간 내보내기…",
     "inputSettings": "입력 설정…",
     "track": "트랙",
     "renameTrack": "트랙 이름 변경",

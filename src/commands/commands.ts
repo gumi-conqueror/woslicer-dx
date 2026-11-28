@@ -82,8 +82,20 @@ export function canRecord(state: Pick<CommandState, 'source'>): boolean {
 }
 const hasSource = (state: CommandState) => state.source !== null;
 const hasMarkers = (state: CommandState) => state.ticks.length > 0;
+const hasSelection = (state: CommandState) => state.selectedTicks.length > 0;
+/** The track header shows the name and the file of a track only when it has audio. */
+const hasAudioFile = (state: CommandState) => state.track.media !== null;
+const isFirstTrack = (state: CommandState) =>
+  state.document.tracks[0]?.trackId === state.track.trackId;
+const isLastTrack = (state: CommandState) =>
+  state.document.tracks.at(-1)?.trackId === state.track.trackId;
 /** Linking needs markers on the current track and another track. */
 const canLink = (state: CommandState) => hasMarkers(state) && state.document.tracks.length > 1;
+/** One track exports its own slices. Several tracks open the export window, which lists every track. */
+const canExportAll = (state: CommandState) =>
+  state.document.tracks.length > 1
+    ? state.document.tracks.some((track) => track.slicing.markers.length > 0)
+    : hasSource(state) && hasMarkers(state);
 
 /**
  * Every application command. Menus, shortcuts, controllers, YuanCon and the
@@ -104,7 +116,7 @@ export const COMMANDS = {
   'relink-audio': {
     label: 'menu.relinkAudio',
     group: 'project',
-    enabled: (state) => state.track.media !== null,
+    enabled: hasAudioFile,
     run: ({ workspace }) => workspace.relinkAudio(),
   },
   'open-audio': {
@@ -126,8 +138,9 @@ export const COMMANDS = {
   'rename-track': {
     label: 'menu.renameTrack',
     group: 'project',
+    enabled: hasAudioFile,
     run: ({ editor }) => {
-      editor.renamingTrackId = editor.track.trackId;
+      if (editor.track.media) editor.renamingTrackId = editor.track.trackId;
     },
   },
   'toggle-track-mute': {
@@ -143,23 +156,25 @@ export const COMMANDS = {
   'previous-track': {
     label: 'help.previousTrack',
     group: 'navigation',
+    enabled: (state) => !isFirstTrack(state),
     run: ({ workspace }) => workspace.stepTrack(-1),
   },
   'next-track': {
     label: 'help.nextTrack',
     group: 'navigation',
+    enabled: (state) => !isLastTrack(state),
     run: ({ workspace }) => workspace.stepTrack(1),
   },
   'move-track-up': {
     label: 'help.moveTrackUp',
     group: 'navigation',
-    enabled: (state) => state.document.tracks[0]?.trackId !== state.track.trackId,
+    enabled: (state) => !isFirstTrack(state),
     run: ({ workspace }) => workspace.moveTrack(-1),
   },
   'move-track-down': {
     label: 'help.moveTrackDown',
     group: 'navigation',
-    enabled: (state) => state.document.tracks.at(-1)?.trackId !== state.track.trackId,
+    enabled: (state) => !isLastTrack(state),
     run: ({ workspace }) => workspace.moveTrack(1),
   },
   'new-project-wos': {
@@ -177,7 +192,11 @@ export const COMMANDS = {
     group: 'project',
     run: ({ interop }) => interop.saveWos(),
   },
-  'close-project': { label: 'chrome.close', group: 'project', run: ({ hosts }) => hosts.close() },
+  'close-project': {
+    label: 'chrome.close',
+    group: 'project',
+    run: ({ hosts }) => hosts.close(),
+  },
   help: { label: 'menu.guide', group: 'project', run: ({ hosts }) => hosts.openDialog('help') },
   troubleshoot: {
     label: 'menu.troubleshoot',
@@ -230,13 +249,13 @@ export const COMMANDS = {
   'copy-selection': {
     label: 'menu.copySelection',
     group: 'edit',
-    enabled: hasMarkers,
+    enabled: hasSelection,
     run: ({ actions }) => actions.copySelection(),
   },
   'cut-selection': {
     label: 'menu.cutSelection',
     group: 'edit',
-    enabled: (state) => state.selectedTicks.length > 0,
+    enabled: hasSelection,
     run: ({ actions }) => actions.cutSelection(),
   },
   'paste-selection': {
@@ -450,14 +469,12 @@ export const COMMANDS = {
   'export-all': {
     label: 'menu.exportAll',
     group: 'output',
-    enabled: (state) => hasSource(state) && hasMarkers(state),
-    run: (context) => exportSlices(context, () => context.exporter.exportAll()),
-  },
-  'export-all-tracks': {
-    label: 'menu.exportAllTracks',
-    group: 'output',
-    enabled: (state) => state.document.tracks.some((track) => track.slicing.markers.length > 0),
-    run: (context) => exportSlices(context, () => context.exporter.exportAllTracks()),
+    enabled: canExportAll,
+    // With several tracks, the export window chooses which track is cut at which markers.
+    run: ({ editor, exporter, hosts }) =>
+      editor.document.tracks.length > 1 && hosts.exportSlices
+        ? hosts.exportSlices()
+        : exporter.exportAll(),
   },
   'copy-bmse': {
     label: 'help.bmseOut',
@@ -538,17 +555,6 @@ export function useCommandRunner(): RunCommand | null {
   return inject(runnerKey, null);
 }
 
-/**
- * With several tracks, exporting all slices opens the export window to choose
- * tracks and markers; with one track it exports at once.
- */
-function exportSlices({ editor, hosts }: CommandContext, direct: () => Promise<void>): unknown {
-  if (editor.document.tracks.length > 1 && hosts.exportSlices) {
-    hosts.exportSlices();
-    return undefined;
-  }
-  return direct();
-}
 /** Moves the playhead by whole seconds within the source; the cursor follows it. */
 function seekBy({ editor, playback }: CommandContext, seconds: number): void {
   const source = editor.source;

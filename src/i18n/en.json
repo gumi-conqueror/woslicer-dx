@@ -423,7 +423,6 @@
     "openDataFolder": "Open data folder",
     "addTrack": "Add audio track…",
     "removeTrack": "Remove current track",
-    "exportAllTracks": "Export slices of all tracks…",
     "inputSettings": "Input settings…",
     "track": "Track",
     "renameTrack": "Rename track",

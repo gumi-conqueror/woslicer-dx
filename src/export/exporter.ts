@@ -6,7 +6,7 @@ import type { Platform, OutputFile } from '../platform/contracts';
 import type { EditorStore } from '../slicing/editor-store';
 import type { WorkspaceAudio } from '../workspace/workspace';
 import { currentTrack } from '../project/codec';
-import { defaultSelection, exportJobs, markerRows, type ExportJob } from './export-plan';
+import type { ExportJob } from './export-plan';
 
 export function createExporter(platform: Platform, editor: EditorStore, audio: WorkspaceAudio) {
   /**
@@ -145,16 +145,9 @@ export function createExporter(platform: Platform, editor: EditorStore, audio: W
       ]);
     });
   }
-  /** Exports every track's audio cut at its own markers. */
-  function exportAllTracks(): Promise<void> {
-    const { tracks } = editor.document;
-    const rows = markerRows(tracks);
-    return exportTracks(exportJobs(tracks, rows, defaultSelection(rows)));
-  }
   return {
     exportAll: () => run(false),
     exportSlice: () => run(true),
-    exportAllTracks,
     exportTracks,
   };
 }

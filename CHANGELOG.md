@@ -8,8 +8,13 @@
 
 - **Edit → Copy the markers of the measure** and **Cut the markers of the measure** fill the measure clipboard for **Paste markers into the measure** (Ctrl/Cmd+F), which is now in the Edit menu too. The two new commands have no default keys; assign keys in the input settings. Measure copy, cut and paste show their result in the status bar.
 
+### Changed
+
+- **Export slices of all tracks** is removed. With several tracks, **Export all slices** opens the same export window; it is now also available when another track has the markers. A command wheel slot with the removed command becomes empty.
+
 ### Fixed
 
+- **Copy selected markers** needs a selection, as **Cut selected markers** does. **Rename track** needs audio on the track. **Select previous track** and **Select next track** are unavailable at the ends of the track list.
 - When saving a project, detection, a clipboard copy or a BMHelper action fails, the status bar names that action. It no longer reports a failed load.
 
 ## 2.0.0-alpha.9 — 2026-11-28

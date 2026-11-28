@@ -57,7 +57,6 @@ export const APPLICATION_MENU = [
       { id: 'toggle-track-mute', mnemonic: 'm' },
       { id: 'toggle-track-solo', mnemonic: 's' },
       { id: 'relink-audio', mnemonic: 'l' },
-      { id: 'export-all-tracks', mnemonic: 'x' },
     ],
   },
   {
@@ -107,7 +106,6 @@ export const TRACK_MENU = [
   'relink-audio',
   null,
   'export-all',
-  'export-all-tracks',
   null,
   'link-markers-all-tracks',
   'unlink-markers',

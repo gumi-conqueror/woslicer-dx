@@ -423,7 +423,6 @@
     "openDataFolder": "打开数据文件夹",
     "addTrack": "添加音轨…",
     "removeTrack": "删除当前音轨",
-    "exportAllTracks": "导出全部音轨的切片…",
     "inputSettings": "输入设置…",
     "track": "音轨",
     "renameTrack": "重命名音轨",
