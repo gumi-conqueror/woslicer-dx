@@ -7,7 +7,7 @@ import type { BuildIdentity } from '../../platform/contracts';
 import { useEditorStore } from '../../slicing/editor-store';
 import { useInputState } from '../../input/state';
 import AppIcon from '../../ui/AppIcon.vue';
-import YuanconIcon from '../../ui/YuanconIcon.vue';
+import YuanconIcon from '../../input/YuanconIcon.vue';
 import StatusHints from './StatusHints.vue';
 const input = useInputState();
 defineProps<{ identity: BuildIdentity | null }>();

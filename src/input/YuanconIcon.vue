@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { YuanconGuideControl } from '../input/yuancon/protocol';
+import type { YuanconGuideControl } from './yuancon/protocol';
 defineProps<{
   control?: YuanconGuideControl;
   keys?: number;

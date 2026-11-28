@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { chordKeys, type KeyChord } from '../input/bindings';
+import { chordKeys, type KeyChord } from './bindings';
 
 /**
  * Keys drawn as key caps: the keys of one chord, or several chords separated

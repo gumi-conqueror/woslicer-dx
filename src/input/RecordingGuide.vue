@@ -10,8 +10,8 @@ import {
   yuanconControls,
 } from './bindings';
 import { commandLabel, RECORDING_SEEK_SECONDS } from '../app/commands';
-import GamepadIcon from '../ui/GamepadIcon.vue';
-import YuanconIcon from '../ui/YuanconIcon.vue';
+import GamepadIcon from './GamepadIcon.vue';
+import YuanconIcon from './YuanconIcon.vue';
 const props = defineProps<{ device: 'keyboard' | 'gamepad' | 'yuancon' }>();
 const { t } = useI18n();
 const keys = recordingKeys();

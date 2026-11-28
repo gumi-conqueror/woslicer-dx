@@ -13,8 +13,8 @@ import {
 import { UI_NAVIGATION } from '../../input/gamepad';
 import { COMMAND_GROUPS, commandGroup, commandLabel } from '../commands';
 import { APPLICATION_MENU } from '../menu';
-import GamepadIcon from '../../ui/GamepadIcon.vue';
-import KeyCaps from '../../ui/KeyCaps.vue';
+import GamepadIcon from '../../input/GamepadIcon.vue';
+import KeyCaps from '../../input/KeyCaps.vue';
 import MouseIcon from '../../ui/MouseIcon.vue';
 import { HINT_AREAS } from '../hint-areas';
 import UninstallGuide from './UninstallGuide.vue';

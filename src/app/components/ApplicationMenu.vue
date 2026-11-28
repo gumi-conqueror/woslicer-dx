@@ -7,7 +7,7 @@ import { commandEnabled, commandLabel, type AppCommand } from '../commands';
 import { shortcutLabel, gamepadShortcut } from '../../input/bindings';
 import { useInputState } from '../../input/state';
 import type { UiNavigation } from '../../input/gamepad';
-import GamepadIcon from '../../ui/GamepadIcon.vue';
+import GamepadIcon from '../../input/GamepadIcon.vue';
 import MnemonicLabel from './MnemonicLabel.vue';
 const props = defineProps<{ disabled?: boolean; desktop?: boolean }>();
 const emit = defineEmits<{ command: [command: AppCommand] }>();
