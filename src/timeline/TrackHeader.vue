@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import VolumeSlider from '../../playback/VolumeSlider.vue';
-import { VOLUME_SLIDER_RANGE_DB } from '../../core/volume';
+import VolumeSlider from '../playback/VolumeSlider.vue';
+import { VOLUME_SLIDER_RANGE_DB } from '../core/volume';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useEditorStore } from '../../slicing/editor-store';
-import { FIELD_RANGES } from '../../project/schema';
-import type { LoadingActivity } from '../../workspace/workspace';
-import AppIcon from '../../ui/AppIcon.vue';
-import TrackOverview from '../../timeline/TrackOverview.vue';
+import { useEditorStore } from '../slicing/editor-store';
+import { FIELD_RANGES } from '../project/schema';
+import type { LoadingActivity } from '../workspace/workspace';
+import AppIcon from '../ui/AppIcon.vue';
+import TrackOverview from './TrackOverview.vue';
 
 const props = defineProps<{
   trackId: string;

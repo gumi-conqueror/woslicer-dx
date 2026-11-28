@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { CANCEL, matchesChords, primaryPressed } from '../input/bindings';
-import TrackHeader from '../app/components/TrackHeader.vue';
+import TrackHeader from './TrackHeader.vue';
 import CommandMenu from '../input/CommandMenu.vue';
 import { TRACK_MENU } from '../app/menu';
 import { useCommandRunner } from '../app/commands';
