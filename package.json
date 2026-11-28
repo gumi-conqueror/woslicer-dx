@@ -1,7 +1,7 @@
 {
   "name": "woslicer-dx",
   "productName": "woslicer-dx",
-  "version": "2.0.0-alpha.9",
+  "version": "2.0.0-alpha.10",
   "description": "Offline BMS audio slicer with compatible .wos and original .bmh formats",
   "private": true,
   "engines": {
