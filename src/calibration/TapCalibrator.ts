@@ -22,14 +22,6 @@ export class TapCalibrator {
 
   constructor(private ctx: AudioContext) {}
 
-  isActive(): boolean {
-    return this.active;
-  }
-
-  tapCount(): number {
-    return this.taps.length;
-  }
-
   /** 1-based index of the beat currently sounding (or about to). */
   elapsedBeats(): number {
     if (!this.active || this.intervalSec <= 0) return 0;
