@@ -302,7 +302,7 @@ describe('editor panels with real Element Plus controls', () => {
       ?.trigger('click');
     const jobs = wrapper.emitted('export')?.[0]?.[0];
     if (!Array.isArray(jobs)) throw new Error('Expected export jobs');
-    await f.workspace.exportTracks(jobs);
+    await f.exporter.exportTracks(jobs);
     // The snare is cut at both rows, so its files carry the row; the kick keeps its name.
     expect(f.exported.map((file) => file.name).sort()).toEqual([
       'kick_000.wav',

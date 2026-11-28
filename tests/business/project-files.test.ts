@@ -114,7 +114,7 @@ describe('portable project workflow', () => {
     });
     expect(f.editor.source).toBe(source);
     expect(f.editor.document).toBe(original);
-    await f.workspace.exportAll();
+    await f.exporter.exportAll();
     f.opened = null;
     await f.workspace.relinkAudio();
     expect(f.editor.source).toBe(source);

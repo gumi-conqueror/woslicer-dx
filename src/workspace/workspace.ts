@@ -29,8 +29,6 @@ import type { EditorStore } from '../slicing/editor-store';
 import { createAudioEngine } from '../audio/audio-client';
 import type { AudioEngine } from '../audio/audio-jobs';
 import type { DecodeProgress } from '../audio/decode';
-import { createExporter } from '../export/exporter';
-import { createDetection } from '../detection/detection';
 import { createSessionPersistence } from './persistence';
 import { readEditorSession, restoreEditorSession, type SessionReadResult } from './session';
 
@@ -61,6 +59,14 @@ export interface LoadingActivity {
   /** While decoding: the declared audio length and the frames decoded so far. */
   audio?: DecodeProgress;
 }
+/** The decoded audio of the tracks, for the features that process it. */
+export interface WorkspaceAudio {
+  /** The engine that holds a track's decoded audio; null while the track has none. */
+  engine(trackId: string): AudioEngine | null;
+  currentEngine(): AudioEngine | null;
+  /** Changes when audio is released or replaced. A result of an older generation is stale. */
+  generation(): number;
+}
 export function createWorkspace(options: WorkspaceOptions) {
   const { platform, editor, createEngine = createAudioEngine } = options;
   let generation = 0,
@@ -77,13 +83,11 @@ export function createWorkspace(options: WorkspaceOptions) {
   const persistence = createSessionPersistence(platform, editor, (error) => {
     editor.setStatus('sessionSaveFailed', { message: errorMessage(error) }, true);
   });
-  const exporter = createExporter(
-    platform,
-    editor,
-    (trackId) => engines.get(trackId) ?? null,
-    () => generation,
-  );
-  const detection = createDetection(editor, currentEngine, () => generation);
+  const audio: WorkspaceAudio = {
+    engine: (trackId) => engines.get(trackId) ?? null,
+    currentEngine,
+    generation: () => generation,
+  };
   function beginOpening(activity: LoadingActivity | null = null): number {
     opening++;
     loading.value = activity;
@@ -727,6 +731,7 @@ export function createWorkspace(options: WorkspaceOptions) {
     editor,
     loading: readonly(loading),
     platform,
+    audio,
     openAudio,
     addTrack,
     removeTrack,
@@ -745,8 +750,6 @@ export function createWorkspace(options: WorkspaceOptions) {
     restoreSession,
     dispose,
     flushSession: persistence.flush,
-    ...exporter,
-    ...detection,
     bmseIn,
     bmseOut,
   };

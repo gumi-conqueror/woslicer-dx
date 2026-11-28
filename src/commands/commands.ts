@@ -12,6 +12,7 @@ import type { EditorActions } from '../slicing/editor-actions';
 import type { EditorStore } from '../slicing/editor-store';
 import { FIELD_RANGES, type MarkerKey } from '../project/schema';
 import type { Workspace } from '../workspace/workspace';
+import type { Exporter } from '../export/exporter';
 import type { Playback } from '../playback';
 import { visibleDialog } from '../ui/focus';
 
@@ -59,6 +60,7 @@ interface CommandContext {
   editor: EditorStore;
   actions: EditorActions;
   workspace: Workspace;
+  exporter: Exporter;
   playback: Playback;
   hosts: CommandHosts;
 }
@@ -429,19 +431,19 @@ export const COMMANDS = {
     label: 'menu.exportSlice',
     group: 'output',
     enabled: (state) => hasSource(state) && hasMarkers(state),
-    run: ({ workspace }) => workspace.exportSlice(),
+    run: ({ exporter }) => exporter.exportSlice(),
   },
   'export-all': {
     label: 'menu.exportAll',
     group: 'output',
     enabled: (state) => hasSource(state) && hasMarkers(state),
-    run: (context) => exportSlices(context, () => context.workspace.exportAll()),
+    run: (context) => exportSlices(context, () => context.exporter.exportAll()),
   },
   'export-all-tracks': {
     label: 'menu.exportAllTracks',
     group: 'output',
     enabled: (state) => state.document.tracks.some((track) => track.slicing.markers.length > 0),
-    run: (context) => exportSlices(context, () => context.workspace.exportAllTracks()),
+    run: (context) => exportSlices(context, () => context.exporter.exportAllTracks()),
   },
   'copy-bmse': {
     label: 'help.bmseOut',

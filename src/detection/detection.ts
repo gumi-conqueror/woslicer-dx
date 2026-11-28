@@ -1,24 +1,21 @@
+import { inject, provide, type InjectionKey } from 'vue';
 import { BAND_NAMES } from '../core/bands';
 import { errorMessage } from '../core/messages';
 import { gridStepTicks } from '../core/gridlines';
-import type { AudioEngine } from '../audio/audio-jobs';
 import type { EditorStore } from '../slicing/editor-store';
+import type { WorkspaceAudio } from '../workspace/workspace';
 
-export function createDetection(
-  editor: EditorStore,
-  engine: () => AudioEngine | null,
-  generation: () => number,
-) {
+export function createDetection(editor: EditorStore, audio: WorkspaceAudio) {
   /** Band analysis and both detectors report a failure the same way; stale results stay silent. */
   function reportFailure(error: unknown, version: number): void {
-    if (generation() === version)
+    if (audio.generation() === version)
       editor.setStatus('loadFailed', { message: errorMessage(error) }, true);
   }
   let analysisTask: { generation: number; task: Promise<void> } | null = null;
   function ensureBands(): Promise<void> {
-    const worker = engine(),
+    const worker = audio.currentEngine(),
       source = editor.source,
-      version = generation();
+      version = audio.generation();
     if (!worker || !source || editor.bandAnalysis) return Promise.resolve();
     if (analysisTask?.generation === version) return analysisTask.task;
     editor.bandBusy = true;
@@ -26,21 +23,21 @@ export function createDetection(
     const task = worker
       .bands()
       .then((analysis) => {
-        if (generation() === version) editor.setBandAnalysis(analysis);
+        if (audio.generation() === version) editor.setBandAnalysis(analysis);
       })
       .catch((error) => {
         reportFailure(error, version);
       })
       .finally(() => {
-        if (generation() === version) editor.bandBusy = false;
+        if (audio.generation() === version) editor.bandBusy = false;
         if (analysisTask?.generation === version) analysisTask = null;
       });
     analysisTask = { generation: version, task };
     return task;
   }
   async function detect(): Promise<void> {
-    const version = generation(),
-      worker = engine();
+    const version = audio.generation(),
+      worker = audio.currentEngine();
     if (!editor.source || !worker) {
       editor.setStatus('bandDetectNeedsSource', true);
       return;
@@ -54,7 +51,7 @@ export function createDetection(
     }
     await ensureBands();
     const base = editor.timeBase;
-    if (version !== generation() || !editor.bandAnalysis || !base) return;
+    if (version !== audio.generation() || !editor.bandAnalysis || !base) return;
     const revision = editor.docRevision;
     const start = editor.selectionStartTick,
       end = editor.selectionEndTick;
@@ -74,7 +71,7 @@ export function createDetection(
         snap: settings.snap,
       });
       // An edit or source replacement while detecting invalidates its captured time base.
-      if (generation() !== version || editor.docRevision !== revision) return;
+      if (audio.generation() !== version || editor.docRevision !== revision) return;
       const legal = result.ticks.filter(editor.legalTick);
       const count = editor.addTicks(legal);
       editor.bandEstimate = count;
@@ -86,13 +83,13 @@ export function createDetection(
     } catch (error) {
       reportFailure(error, version);
     } finally {
-      if (generation() === version) editor.bandBusy = false;
+      if (audio.generation() === version) editor.bandBusy = false;
     }
   }
   async function edgeDetect(): Promise<void> {
-    const worker = engine(),
+    const worker = audio.currentEngine(),
       base = editor.timeBase,
-      version = generation(),
+      version = audio.generation(),
       revision = editor.docRevision;
     if (!worker || !base) {
       editor.setStatus('edgeDetectionNeedsSource', true);
@@ -102,15 +99,25 @@ export function createDetection(
     editor.bandBusy = true;
     try {
       const ticks = await worker.edges(base);
-      if (version !== generation() || revision !== editor.docRevision) return;
+      if (version !== audio.generation() || revision !== editor.docRevision) return;
       const legal = ticks.filter(editor.legalTick);
       editor.setTicks(legal, []);
       editor.setStatus('edgeDetectionCandidates', { count: legal.length });
     } catch (error) {
       reportFailure(error, version);
     } finally {
-      if (generation() === version) editor.bandBusy = false;
+      if (audio.generation() === version) editor.bandBusy = false;
     }
   }
   return { ensureBands, detect, edgeDetect };
+}
+export type Detection = ReturnType<typeof createDetection>;
+export const detectionKey: InjectionKey<Detection> = Symbol('detection');
+export function provideDetection(detection: Detection): void {
+  provide(detectionKey, detection);
+}
+export function useDetection(): Detection {
+  const detection = inject(detectionKey);
+  if (!detection) throw new Error('Detection provider is missing');
+  return detection;
 }

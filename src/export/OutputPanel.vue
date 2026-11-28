@@ -3,10 +3,13 @@ import { shortcutLabel } from '../input/bindings';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useWorkspace } from '../workspace/workspace';
+import { useEditorStore } from '../slicing/editor-store';
+import { useExporter } from './exporter';
 import { FIELD_RANGES, inRange } from '../project/schema';
 const { t } = useI18n();
 const workspace = useWorkspace();
-const editor = workspace.editor;
+const editor = useEditorStore();
+const exporter = useExporter();
 // Output fields written through editor transactions.
 const clipStart = computed({
   get: () => editor.clipStartNumber,
@@ -97,12 +100,12 @@ const gate = computed({
         type="primary"
         :loading="editor.exportLock"
         :disabled="!editor.source || !editor.ticks.length"
-        @click="workspace.exportAll()"
+        @click="exporter.exportAll()"
         >{{ t('chrome.export') }}</el-button
       >
       <el-button
         :disabled="!editor.source || !editor.ticks.length || editor.exportLock"
-        @click="workspace.exportSlice()"
+        @click="exporter.exportSlice()"
         >{{ t('chrome.exportSliceAtCursor') }}</el-button
       >
       <el-button

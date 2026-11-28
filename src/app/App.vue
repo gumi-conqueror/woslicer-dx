@@ -44,6 +44,8 @@ import { useInputState } from '../input/state';
 import YuanconDialog from '../input/YuanconDialog.vue';
 import InputSettingsDialog from '../input/InputSettingsDialog.vue';
 import ExportDialog from '../export/ExportDialog.vue';
+import { createExporter, provideExporter } from '../export/exporter';
+import { createDetection, provideDetection } from '../detection/detection';
 import { reservedControl, useBindingOverrides } from '../input/binding-overrides';
 import { useYuanconRecording } from '../input/yuancon/use-recording';
 
@@ -61,9 +63,12 @@ const workspace = createWorkspace({
 });
 const loading = workspace.loading;
 const actions = createEditorActions(editor);
+const exporter = createExporter(platform, editor, workspace.audio);
 const playback = createPlayback(editor);
 provideWorkspace(workspace);
 provideEditorActions(actions);
+provideExporter(exporter);
+provideDetection(createDetection(editor, workspace.audio));
 providePlayback(playback);
 // Localized app state.
 const { t } = useI18n({ useScope: 'global' });
@@ -90,6 +95,7 @@ const commands = createCommands({
   editor,
   actions,
   workspace,
+  exporter,
   playback,
   hosts: {
     close: closeWorkspace,
@@ -418,7 +424,7 @@ onUnmounted(() => {
       <InputSettingsDialog v-model="dialogs.inputSettings" />
       <ExportDialog
         v-model="dialogs.export"
-        @export="(jobs) => void workspace.exportTracks(jobs)"
+        @export="(jobs) => void exporter.exportTracks(jobs)"
       />
       <TroubleshootDialog
         v-model="dialogs.troubleshoot"

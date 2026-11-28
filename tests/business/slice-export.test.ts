@@ -13,9 +13,9 @@ it('refuses re-entrant detection and export while their busy flags hold', async 
       complete = () => resolve(1);
     });
   };
-  const exporting = f.workspace.exportAll();
+  const exporting = f.exporter.exportAll();
   expect(f.editor.exportLock).toBe(true);
-  await f.workspace.exportAll(); // re-entry is a no-op while the first export holds
+  await f.exporter.exportAll(); // re-entry is a no-op while the first export holds
   expect(started).toBe(1);
   if (!complete) throw new Error('Expected a pending export');
   complete();
@@ -29,7 +29,7 @@ it('exports an empty slice for a marker at the source end and skips later marker
   await f.workspace.loadAudio(audioFile());
   f.editor.setNoisegateEnabled(false);
   f.editor.addTicks([0, 48, 96, 120]);
-  await f.workspace.exportAll();
+  await f.exporter.exportAll();
   expect(f.exported.map((file) => file.name)).toEqual([
     'tone_000.wav',
     'tone_001.wav',
@@ -59,7 +59,7 @@ it('stops an old export iterator before it can render from a replacement source'
     }
     return 1;
   };
-  await f.workspace.exportAll();
+  await f.exporter.exportAll();
   expect(continuationRejected).toBe(true);
   expect(f.editor.source?.name).toBe('replacement');
   expect(f.editor.isError).toBe(false);
@@ -80,7 +80,7 @@ it('does not render any output when the host cancels destination selection', asy
   await f.workspace.loadAudio(audioFile());
   f.actions.setMarker(0);
   f.platform.exportFiles = () => Promise.resolve(null);
-  await f.workspace.exportAll();
+  await f.exporter.exportAll();
   expect(renders).toBe(0);
   expect(f.editor.exportLock).toBe(false);
 });

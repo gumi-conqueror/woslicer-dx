@@ -1,7 +1,7 @@
 import { createPinia, disposePinia } from 'pinia';
 import type { DecodeProgress } from '../../src/audio/decode';
 import { createAudioProcessor, type AudioEngine } from '../../src/audio/audio-jobs';
-import { useEditorStore } from '../../src/slicing/editor-store';
+import { useEditorStore, type EditorStore } from '../../src/slicing/editor-store';
 import { createEditorActions, editorActionsKey } from '../../src/slicing/editor-actions';
 import {
   createWorkspace,
@@ -13,6 +13,8 @@ import type { Platform, OpenedFile, OutputFile } from '../../src/platform/contra
 import { onTestFinished } from 'vitest';
 import { readEditorSession } from '../../src/workspace/session';
 import { createCommands } from '../../src/commands/commands';
+import { createExporter, exporterKey } from '../../src/export/exporter';
+import { createDetection, detectionKey } from '../../src/detection/detection';
 import { errorMessage } from '../../src/core/messages';
 import type { Playback } from '../../src/playback';
 
@@ -21,14 +23,19 @@ import type { Playback } from '../../src/playback';
  * doubles only at the platform, audio output and Worker transport boundaries.
  * The driver owns its lifetime within the current test.
  */
-export function createTestApp(createEngine = processorEngine) {
+export function createTestApp(
+  createEngine = processorEngine,
+  /** Tests that listen pass the real playback; the others get one that does nothing. */
+  createPlayback: (editor: EditorStore) => Playback = silentPlayback,
+) {
   const app = fixture(createEngine);
   onTestFinished(() => app.dispose());
-  const playback = silentPlayback();
+  const playback = createPlayback(app.editor);
   const commands = createCommands({
     editor: app.editor,
     actions: app.actions,
     workspace: app.workspace,
+    exporter: app.exporter,
     playback,
     hosts: {
       close() {},
@@ -213,13 +220,22 @@ export function fixture(createEngine = processorEngine) {
       (await confirmOptions.confirmRelinkDifference?.(difference)) ?? false,
   });
   const actions = createEditorActions(editor);
+  const exporter = createExporter(platform, editor, workspace.audio);
+  const detection = createDetection(editor, workspace.audio);
   return {
     pinia,
     editor,
     actions,
     workspace,
+    exporter,
+    detection,
     /** What `App.vue` provides to its components: pass it as `global.provide` to mount one. */
-    provide: { [workspaceKey]: workspace, [editorActionsKey]: actions },
+    provide: {
+      [workspaceKey]: workspace,
+      [editorActionsKey]: actions,
+      [exporterKey]: exporter,
+      [detectionKey]: detection,
+    },
     platform,
     saved: memory.saved,
     exported: memory.exported,
