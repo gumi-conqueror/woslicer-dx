@@ -34,7 +34,6 @@
     "play": "재생",
     "stop": "정지",
     "follow": "따라가기",
-    "calibrate": "입력 보정",
     "bands": "대역",
     "bandDetect": "대역 검출",
     "bandLow": "저역",
@@ -386,8 +385,6 @@
   },
   "menu": {
     "file": "파일",
-    "openWos": ".wos 열기…",
-    "saveWos": ".wos 내보내기…",
     "exit": "종료",
     "quantizeSelection": "선택한 분할점 퀀타이즈",
     "copyMeasure": "마디 복사 (기존 방식)",
@@ -410,7 +407,7 @@
     "selectAll": "모든 분할점 선택",
     "copySelection": "선택한 분할점 복사",
     "cutSelection": "선택한 분할점 잘라내기",
-    "pasteSelection": "선택한 분할점 붙여넣기",
+    "pasteSelection": "분할점 붙여넣기",
     "clearMarkers": "모든 분할점 삭제",
     "view": "보기",
     "zoomIn": "확대",
@@ -430,7 +427,10 @@
     "linkMarkersAll": "분할점을 모든 트랙에 링크",
     "unlinkMarkers": "분할점 링크 해제",
     "relinkMarkers": "같은 위치의 분할점 다시 링크",
-    "sharedMarkers": "트랙 간 분할점 공유"
+    "sharedMarkers": "트랙 간 분할점 공유",
+    "closeProject": "프로젝트 닫기",
+    "calibrate": "입력 보정…",
+    "yuancon": "YuanCon 컨트롤러…"
   },
   "dialogs": {
     "loadAudio": "음원 열기",

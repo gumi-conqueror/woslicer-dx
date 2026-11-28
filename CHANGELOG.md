@@ -10,13 +10,15 @@
 
 ### Changed
 
-- Menus have lines between groups of commands and a new order. **Project** starts with **Open audio**, keeps the `.wos` commands together and ends with **Close**. **Edit** lists cut, copy and paste in that order, then the measure commands, **Select all markers**, **Clear all markers** and the link commands.
+- Menus have lines between groups of commands and a new order. **Project** starts with **Open audio**, keeps the `.wos` commands together and ends with **Close project** (was **Close**). **Edit** lists cut, copy and paste in that order, then the measure commands, **Select all markers**, **Clear all markers** and the link commands.
 - **Export slices of all tracks** is removed. With several tracks, **Export all slices** opens the same export window; it is now also available when another track has the markers. A command wheel slot with the removed command becomes empty.
 - The track context menu no longer has **Share markers across tracks**. The command stays in the **Edit** menu and on the toolbar.
+- **Calibrate…** and **YuanCon controller…** end with an ellipsis, as the other commands that open a window for input.
 
 ### Fixed
 
 - **Copy selected markers** needs a selection, as **Cut selected markers** does. **Rename track** needs audio on the track. **Select previous track** and **Select next track** are unavailable at the ends of the track list.
+- Japanese and Korean: **Paste markers** no longer says that it pastes the selected markers.
 - When saving a project, detection, a clipboard copy or a BMHelper action fails, the status bar names that action. It no longer reports a failed load.
 
 ## 2.0.0-alpha.9 — 2026-11-28

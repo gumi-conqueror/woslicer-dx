@@ -193,7 +193,7 @@ export const COMMANDS = {
     run: ({ interop }) => interop.saveWos(),
   },
   'close-project': {
-    label: 'chrome.close',
+    label: 'menu.closeProject',
     group: 'project',
     run: ({ hosts }) => hosts.close(),
   },
@@ -214,13 +214,13 @@ export const COMMANDS = {
     run: ({ hosts }) => hosts.openDialog('about'),
   },
   calibrate: {
-    label: 'chrome.calibrate',
+    label: 'menu.calibrate',
     group: 'playback',
     enabled: hasSource,
     run: ({ hosts }) => hosts.calibrate(),
   },
   'connect-yuancon': {
-    label: 'recording.controller',
+    label: 'menu.yuancon',
     group: 'playback',
     run: ({ hosts }) => hosts.openDialog('yuancon'),
   },

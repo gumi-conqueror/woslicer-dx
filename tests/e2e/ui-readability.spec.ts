@@ -217,7 +217,7 @@ test('ui readability baseline: calibration dialog', async ({ page }, info) => {
   await expect(page.getByRole('menubar')).toBeVisible();
   await openAudio(page);
   await page.getByRole('button', { name: 'Tools', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Calibrate', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Calibrate…', exact: true }).click();
   await awaitDialogPainted(page);
   await saveShot(page, info.project.name, 'calibration-dialog.png');
   expect(errors).toEqual([]);

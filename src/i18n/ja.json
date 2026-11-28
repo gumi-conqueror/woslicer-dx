@@ -34,7 +34,6 @@
     "play": "再生",
     "stop": "停止",
     "follow": "追従",
-    "calibrate": "入力補正",
     "bands": "帯域",
     "bandDetect": "帯域検出",
     "bandLow": "低域",
@@ -386,8 +385,6 @@
   },
   "menu": {
     "file": "ファイル",
-    "openWos": ".wos を開く…",
-    "saveWos": ".wos を出力…",
     "exit": "終了",
     "quantizeSelection": "選択した分割点をクオンタイズ",
     "copyMeasure": "小節をコピー（従来方式）",
@@ -410,7 +407,7 @@
     "selectAll": "すべての分割点を選択",
     "copySelection": "選択した分割点をコピー",
     "cutSelection": "選択した分割点を切り取り",
-    "pasteSelection": "選択した分割点を貼り付け",
+    "pasteSelection": "分割点を貼り付け",
     "clearMarkers": "全分割点を削除",
     "view": "表示",
     "zoomIn": "拡大",
@@ -430,7 +427,10 @@
     "linkMarkersAll": "分割点を全トラックにリンク",
     "unlinkMarkers": "分割点のリンクを解除",
     "relinkMarkers": "同位置の分割点を再リンク",
-    "sharedMarkers": "分割点をトラック間で共有"
+    "sharedMarkers": "分割点をトラック間で共有",
+    "closeProject": "プロジェクトを閉じる",
+    "calibrate": "入力補正…",
+    "yuancon": "YuanCon コントローラー…"
   },
   "dialogs": {
     "loadAudio": "音声を開く",
