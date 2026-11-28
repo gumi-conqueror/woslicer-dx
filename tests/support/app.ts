@@ -26,8 +26,7 @@ export function createTestApp(createEngine = processorEngine) {
     playback,
     hosts: {
       close() {},
-      about() {},
-      help() {},
+      openDialog() {},
       calibrate() {},
       openProject: () => app.workspace.openProject(),
       newProjectFromWos: () => app.workspace.newProjectFromWos(),

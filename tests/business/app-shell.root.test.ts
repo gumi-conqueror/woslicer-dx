@@ -74,8 +74,7 @@ vi.mock('../../src/commands/commands', async (original) => ({
     hosts: {
       close: () => Promise<void>;
       openProject: () => Promise<void>;
-      about: () => void;
-      help: () => void;
+      openDialog: (id: 'help' | 'about') => void;
       calibrate: () => void;
       report: (error: unknown) => void;
     };
@@ -85,8 +84,7 @@ vi.mock('../../src/commands/commands', async (original) => ({
       if (command === 'close-project') await hosts.close();
       if (command === 'open-project') await hosts.openProject();
       if (command === 'calibrate') hosts.calibrate();
-      if (command === 'help') hosts.help();
-      if (command === 'about') hosts.about();
+      if (command === 'help' || command === 'about') hosts.openDialog(command);
     }
     return { run: (command: string) => execute(command).catch(hosts.report) };
   },

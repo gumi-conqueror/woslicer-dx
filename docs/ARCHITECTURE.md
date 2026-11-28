@@ -96,7 +96,8 @@ Discrete actions follow input → command → feature action. Menus, keyboard sh
 To add a command, add one entry to `COMMANDS` and, if it needs keys, one row to `BINDINGS`. Menus, tooltips, help and the controller hint row read both.
 Bindings have two layers. The recording layer lies over the editing layer and hides only the controls that it binds or reserves.
 Menu, dialog and wheel navigation on a controller is fixed in `UI_NAVIGATION` and is not part of the binding table.
-`run` does nothing while a dialog is visible or `modalOpen` in `App.vue` is true. Register every new app dialog in `modalOpen`.
+`run` does nothing while a dialog is visible or `modalOpen` in `App.vue` is true. `App.vue` keeps one switch for each of its dialogs in `dialogs` and derives `modalOpen` from them.
+To add a dialog, add a key to `dialogs` and a tag to the template. If a command opens it without a condition, add its id to `DialogId` in `commands.ts` and run `hosts.openDialog`.
 The feature action owns validation and undo behavior. Continuous pointer gestures and form drafts remain local to their feature.
 
 `WindowTitlebar.vue` delegates native controls through `src/platform/desktop-window.ts`.

@@ -33,18 +33,18 @@ export type CommandState = Pick<
 export const COMMAND_GROUPS = ['project', 'edit', 'playback', 'navigation', 'output'] as const;
 export type CommandGroup = (typeof COMMAND_GROUPS)[number];
 
+/** The windows that a command opens without a condition. The app shell keeps their switches. */
+export type DialogId = 'about' | 'help' | 'troubleshoot' | 'yuancon' | 'inputSettings';
+
 /** Application actions that commands open; the app shell supplies them. */
 export interface CommandHosts {
   close(): void | Promise<void>;
-  about(): void | Promise<void>;
-  help(): void | Promise<void>;
-  troubleshoot?(): void | Promise<void>;
+  openDialog(id: DialogId): void;
   openDataFolder?(): void | Promise<void>;
+  /** Opens tap calibration when audio is loaded; stops playback first. */
   calibrate(): void | Promise<void>;
   toggleRecording?(): void;
-  connectYuancon?(): void;
   openWheel?(): void;
-  inputSettings?(): void;
   /** Opens the export window, where tracks and marker sets are chosen. */
   exportSlices?(): void;
   openProject(): void | Promise<void>;
@@ -172,18 +172,22 @@ export const COMMANDS = {
     run: ({ workspace }) => workspace.saveWos(),
   },
   'close-project': { label: 'chrome.close', group: 'project', run: ({ hosts }) => hosts.close() },
-  help: { label: 'menu.guide', group: 'project', run: ({ hosts }) => hosts.help() },
+  help: { label: 'menu.guide', group: 'project', run: ({ hosts }) => hosts.openDialog('help') },
   troubleshoot: {
     label: 'menu.troubleshoot',
     group: 'project',
-    run: ({ hosts }) => hosts.troubleshoot?.(),
+    run: ({ hosts }) => hosts.openDialog('troubleshoot'),
   },
   'open-data-folder': {
     label: 'menu.openDataFolder',
     group: 'project',
     run: ({ hosts }) => hosts.openDataFolder?.(),
   },
-  about: { label: 'menu.about', group: 'project', run: ({ hosts }) => hosts.about() },
+  about: {
+    label: 'menu.about',
+    group: 'project',
+    run: ({ hosts }) => hosts.openDialog('about'),
+  },
   calibrate: {
     label: 'chrome.calibrate',
     group: 'playback',
@@ -193,12 +197,12 @@ export const COMMANDS = {
   'connect-yuancon': {
     label: 'recording.controller',
     group: 'playback',
-    run: ({ hosts }) => hosts.connectYuancon?.(),
+    run: ({ hosts }) => hosts.openDialog('yuancon'),
   },
   'input-settings': {
     label: 'menu.inputSettings',
     group: 'navigation',
-    run: ({ hosts }) => hosts.inputSettings?.(),
+    run: ({ hosts }) => hosts.openDialog('inputSettings'),
   },
   'open-wheel': {
     label: 'input.wheel',

@@ -139,8 +139,7 @@ describe('Pinia playback lifetime and audio clock', () => {
       playback,
       hosts: {
         close() {},
-        about() {},
-        help() {},
+        openDialog() {},
         calibrate() {},
         openProject() {},
         newProjectFromWos() {},
@@ -191,8 +190,7 @@ describe('Pinia playback lifetime and audio clock', () => {
       playback,
       hosts: {
         close() {},
-        about() {},
-        help() {},
+        openDialog() {},
         calibrate() {},
         openProject() {},
         newProjectFromWos() {},
